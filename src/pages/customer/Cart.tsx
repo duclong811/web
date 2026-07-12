@@ -11,7 +11,7 @@ export default function Cart() {
 
   const handleCheckout = () => {
     if (cart.length === 0) return;
-    const orderId = createOrder('table-1'); // Mock table number
+    createOrder('table-1'); // Mock table number
     navigate('/order-success');
   };
 

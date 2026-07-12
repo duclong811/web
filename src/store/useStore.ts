@@ -76,7 +76,7 @@ const mockOrders: Order[] = [
   { id: 'o2', tableNumber: 'T05', items: [{ ...mockMenuItems[1], quantity: 1 }, { ...mockMenuItems[4], quantity: 1 }], total: 105000, status: 'preparing', createdAt: new Date().toISOString() }
 ];
 
-export const useStore = create<StoreState>((set, get) => ({
+export const useStore = create<StoreState>((set) => ({
   menuItems: mockMenuItems,
   categories: mockCategories,
   orders: mockOrders,

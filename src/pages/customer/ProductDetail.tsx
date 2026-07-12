@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
+
   const { menuItems, addToCart } = useStore();
   
   // Use a default item if not found, or find the specific item

@@ -34,7 +34,7 @@ export default function CustomerLayout() {
           <div style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-hover))', padding: '0.5rem', borderRadius: '12px', boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)' }}>
             <Coffee size={24} color="white" />
           </div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.5px' }}>Cafe Premium</h1>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.5px' }}>AI-SMARTSERVE</h1>
         </Link>
         <Link to="/cart" className="btn btn-secondary" style={{ position: 'relative', padding: '0.6rem 1.2rem', borderRadius: 'var(--radius-full)' }}>
           <ShoppingCart size={20} />

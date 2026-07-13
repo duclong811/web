@@ -49,7 +49,7 @@ export default function AdminDashboard() {
             </div>
             <span className="text-primary font-label-sm bg-primary/5 px-2 py-1 rounded-lg">{activeTables > 0 ? 'Busy' : 'Quiet'}</span>
           </div>
-          <p className="text-on-surface-variant font-label-md mb-1">Active Tables</p>
+          <p className="text-on-surface-variant font-label-md mb-1">Bàn Đang Phục Vụ</p>
           <h3 className="font-headline-md text-headline-md text-on-surface">{activeTables}/12</h3>
         </div>
 

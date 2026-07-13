@@ -22,10 +22,10 @@ export default function Cart() {
         <div className="flex justify-between items-center px-container-margin py-4 max-w-7xl mx-auto">
           <Link to="/menu" className="font-headline-md text-headline-md font-bold text-primary">AI-SMARTSERVE</Link>
           <div className="hidden md:flex gap-8 items-center">
-            <Link to="/menu" className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md">Menu</Link>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Rewards</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Our Story</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Locations</a>
+            <Link to="/menu" className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md">Thực Đơn</Link>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Ưu Đãi</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Câu Chuyện</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Cửa Hàng</a>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative group">
@@ -54,17 +54,17 @@ export default function Cart() {
               <button className="p-2 hover:bg-surface-container-high rounded-full transition-colors active:scale-90" onClick={() => window.history.back()}>
                 <span className="material-symbols-outlined">arrow_back</span>
               </button>
-              <h1 className="font-headline-lg text-headline-lg text-primary">Checkout</h1>
+              <h1 className="font-headline-lg text-headline-lg text-primary">Thanh Toán</h1>
             </div>
 
             {/* Cart Items List */}
             <section className="space-y-stack-md">
-              <h2 className="font-headline-md text-headline-md text-on-surface-variant border-b border-outline-variant/20 pb-2">Your Order</h2>
+              <h2 className="font-headline-md text-headline-md text-on-surface-variant border-b border-outline-variant/20 pb-2">Đơn Hàng Của Bạn</h2>
               
               {cart.length === 0 ? (
                 <div className="text-center py-16 flex flex-col items-center gap-4">
                   <span className="material-symbols-outlined text-[64px] text-outline-variant" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
-                  <h2 className="font-headline-md text-on-surface">Your cart is empty.</h2>
+                  <h2 className="font-headline-md text-on-surface">Giỏ hàng của bạn đang trống.</h2>
                   <Link to="/" className="px-8 py-3 bg-primary text-white rounded-full font-label-md shadow-md hover:bg-primary-container transition-all active:scale-95">
                     Browse Menu
                   </Link>
@@ -79,7 +79,7 @@ export default function Cart() {
                       <div className="flex justify-between items-start">
                         <div>
                           <h3 className="font-headline-md text-headline-md text-primary">{item.name}</h3>
-                          <p className="text-on-surface-variant text-label-sm font-label-sm">Standard</p>
+                          <p className="text-on-surface-variant text-label-sm font-label-sm">Tiêu Chuẩn</p>
                         </div>
                         <span className="font-bold text-primary">{item.price.toLocaleString()}₫</span>
                       </div>
@@ -107,22 +107,22 @@ export default function Cart() {
             {/* Payment Method Section */}
             {cart.length > 0 && (
               <section className="bg-white p-6 rounded-2xl border border-outline-variant/20">
-                <h2 className="font-headline-md text-headline-md text-primary mb-6">Payment Method</h2>
+                <h2 className="font-headline-md text-headline-md text-primary mb-6">Phương Thức Thanh Toán</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-lg">
                   <div className="space-y-4">
                     <div className="flex items-center p-4 border-2 border-primary bg-secondary-container/20 rounded-xl">
                       <span className="material-symbols-outlined text-primary mr-3" style={{ fontVariationSettings: "'FILL' 1" }}>qr_code_2</span>
                       <div className="flex-grow">
-                        <p className="font-bold text-primary">VietQR Bank Transfer</p>
-                        <p className="text-label-sm font-label-sm text-on-surface-variant">Instant confirmation</p>
+                        <p className="font-bold text-primary">Chuyển Khoản VietQR</p>
+                        <p className="text-label-sm font-label-sm text-on-surface-variant">Xác nhận tức thì</p>
                       </div>
                       <span className="material-symbols-outlined text-primary">check_circle</span>
                     </div>
                     <div className="flex items-center p-4 border border-outline-variant rounded-xl hover:bg-surface-container-low cursor-pointer transition-all">
                       <span className="material-symbols-outlined text-on-surface-variant mr-3">payments</span>
                       <div className="flex-grow">
-                        <p className="font-bold text-on-surface">Cash on Delivery</p>
-                        <p className="text-label-sm font-label-sm text-on-surface-variant">Pay when you receive</p>
+                        <p className="font-bold text-on-surface">Thanh Toán Khi Nhận Hàng</p>
+                        <p className="text-label-sm font-label-sm text-on-surface-variant">Thanh toán lúc nhận đồ</p>
                       </div>
                     </div>
                   </div>
@@ -134,7 +134,7 @@ export default function Cart() {
                       <img className="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUfM0jqU1ucCrF16D0Pk3cY4WKSYdtEprABtNdL0wOWCpaHMZ8d638jA7fKjTm5mDDTGp86Xrmo8lJZu5acec_HYloU7turdWft4pHjix04_EbqRN52OJ0b7RztzrFhAnhzompZfpwQRNjJE5IxyAH4pCZNz2IFzs3StAZtcwWox1AHC0vMSVml7cBhu3Z24LE-yl5hiJycyXJ8Z14Im6nsRpNSmRGyO9OPnNECriB0FcNIBH3oHeP" alt="QR Code" />
                     </div>
                     <p className="text-label-sm font-label-sm text-center text-on-surface-variant">
-                      Scan the VietQR to pay <br/>
+                      Quét mã VietQR để thanh toán <br/>
                       <span className="font-bold text-primary">{total.toLocaleString()}₫</span>
                     </p>
                   </div>
@@ -149,20 +149,17 @@ export default function Cart() {
               <div className="sticky top-24 space-y-stack-lg">
                 {/* Summary Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-[0_8px_40px_rgba(85,55,34,0.08)] border border-surface-variant">
-                  <h2 className="font-headline-md text-headline-md text-primary mb-stack-md border-b border-outline-variant/10 pb-4">Order Summary</h2>
+                  <h2 className="font-headline-md text-headline-md text-primary mb-stack-md border-b border-outline-variant/10 pb-4">Tóm Tắt Đơn Hàng</h2>
                   
                   <div className="space-y-4">
                     <div className="flex justify-between items-center text-on-surface-variant">
-                      <span className="font-body-md text-body-md">Subtotal</span>
+                      <span className="font-body-md text-body-md">Tạm Tính</span>
                       <span className="font-bold">{subtotal.toLocaleString()}₫</span>
                     </div>
-                    <div className="flex justify-between items-center text-on-surface-variant">
-                      <span className="font-body-md text-body-md">Delivery Fee</span>
-                      <span className="font-bold text-[#34d399]">FREE</span>
-                    </div>
+
                     <div className="flex justify-between items-center text-on-surface-variant">
                       <div className="flex items-center gap-1">
-                        <span className="font-body-md text-body-md">Service Fee</span>
+                        <span className="font-body-md text-body-md">Phí Dịch Vụ</span>
                         <span className="material-symbols-outlined text-[16px] cursor-help">info</span>
                       </div>
                       <span className="font-bold">{serviceFee.toLocaleString()}₫</span>
@@ -170,14 +167,14 @@ export default function Cart() {
                     
                     <div className="pt-4 border-t border-outline-variant/30 mt-4">
                       <div className="flex justify-between items-center mb-6">
-                        <span className="font-headline-md text-headline-md text-primary">Total</span>
+                        <span className="font-headline-md text-headline-md text-primary">Tổng Cộng</span>
                         <span className="font-headline-lg text-headline-lg text-primary">{total.toLocaleString()}₫</span>
                       </div>
                       
                       {/* Promo Code */}
                       <div className="relative mb-6">
-                        <input className="w-full pl-4 pr-20 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-label-md font-label-md transition-all" placeholder="Promo code" type="text" />
-                        <button className="absolute right-2 top-1.5 px-4 py-1.5 bg-primary text-white rounded-lg text-label-sm font-label-sm hover:brightness-110 active:scale-95 transition-all">Apply</button>
+                        <input className="w-full pl-4 pr-20 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-label-md font-label-md transition-all" placeholder="Mã khuyến mãi" type="text" />
+                        <button className="absolute right-2 top-1.5 px-4 py-1.5 bg-primary text-white rounded-lg text-label-sm font-label-sm hover:brightness-110 active:scale-95 transition-all">Áp Dụng</button>
                       </div>
                       
                       {/* CTA Button */}
@@ -187,9 +184,9 @@ export default function Cart() {
                       </button>
                       
                       <p className="text-[11px] text-center text-on-surface-variant mt-4 leading-relaxed">
-                        By placing your order, you agree to AI-SMARTSERVE's 
-                        <a className="underline hover:text-primary mx-1" href="#">Terms of Service</a> and 
-                        <a className="underline hover:text-primary mx-1" href="#">Privacy Policy</a>.
+                        Bằng việc đặt hàng, bạn đồng ý với 
+                        <a className="underline hover:text-primary mx-1" href="#">Điều Khoản</a> and 
+                        <a className="underline hover:text-primary mx-1" href="#">Chính Sách Bảo Mật</a>.
                       </p>
                     </div>
                   </div>
@@ -201,8 +198,8 @@ export default function Cart() {
                     <span className="material-symbols-outlined text-primary">support_agent</span>
                   </div>
                   <div>
-                    <p className="font-bold text-primary text-label-md font-label-md">Need help with your order?</p>
-                    <p className="text-label-sm font-label-sm text-on-surface-variant">Chat with our barista anytime</p>
+                    <p className="font-bold text-primary text-label-md font-label-md">Cần hỗ trợ đơn hàng?</p>
+                    <p className="text-label-sm font-label-sm text-on-surface-variant">Chat với barista của chúng tôi bất cứ lúc nào</p>
                   </div>
                 </div>
               </div>
@@ -216,14 +213,14 @@ export default function Cart() {
         <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-stack-lg max-w-7xl mx-auto gap-stack-md">
           <div className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</div>
           <div className="flex flex-wrap justify-center gap-6">
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Privacy Policy</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Terms of Service</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Sustainability</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Careers</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Contact Us</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Chính Sách Bảo Mật</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Điều Khoản</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Bền Vững</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Tuyển Dụng</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Liên Hệ</a>
           </div>
           <p className="text-on-surface-variant font-label-sm text-label-sm opacity-70">
-            © 2024 AI-SMARTSERVE. Handcrafted for your daily ritual.
+            © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
           </p>
         </div>
       </footer>

@@ -29,11 +29,11 @@ export default function NewOrder() {
       <section className="w-[70%] h-full flex flex-col p-container-margin gap-stack-lg overflow-hidden">
         {/* Categories */}
         <div className="flex items-center gap-stack-md overflow-x-auto hide-scrollbar pb-2 shrink-0">
-          <button className="px-6 py-2.5 bg-primary text-on-primary rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Coffee</button>
-          <button className="px-6 py-2.5 bg-surface-container-high text-on-surface-variant hover:bg-outline-variant rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Tea</button>
-          <button className="px-6 py-2.5 bg-surface-container-high text-on-surface-variant hover:bg-outline-variant rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Smoothies</button>
-          <button className="px-6 py-2.5 bg-surface-container-high text-on-surface-variant hover:bg-outline-variant rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Pastries</button>
-          <button className="px-6 py-2.5 bg-surface-container-high text-on-surface-variant hover:bg-outline-variant rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Brunch</button>
+          <button className="px-6 py-2.5 bg-primary text-on-primary rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Cà Phê</button>
+          <button className="px-6 py-2.5 bg-surface-container-high text-on-surface-variant hover:bg-outline-variant rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Trà</button>
+          <button className="px-6 py-2.5 bg-surface-container-high text-on-surface-variant hover:bg-outline-variant rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Sinh Tố</button>
+          <button className="px-6 py-2.5 bg-surface-container-high text-on-surface-variant hover:bg-outline-variant rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Bánh Ngọt</button>
+          <button className="px-6 py-2.5 bg-surface-container-high text-on-surface-variant hover:bg-outline-variant rounded-full font-label-md whitespace-nowrap active:scale-95 transition-transform">Điểm Tâm</button>
         </div>
         
         {/* Product Grid */}
@@ -42,66 +42,66 @@ export default function NewOrder() {
           <div onClick={handleAddItem} className="bg-surface rounded-xl card-shadow overflow-hidden flex flex-col active-sink cursor-pointer group transition-all">
             <div className="h-40 relative overflow-hidden">
               <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjSw3sWz0_PEzYqf8HmVHzDz44J3paYXWzaNn_DKhAQgvSw1mZ2Pd17rI7eVNkLGia2oDzAYSeFigOouiiUiw3v-Ar3sV-3hRPteFCo2WfMVXjZGnQJtgyfq3SBBDKJroyOLSNhxHMYGPzqX4rena7XbWnvvHBZ2wh8MnIaVOKtXbw7bmMCTcyT_ZOtf6hmM7BpGwJV5XRCQ7W-zH5TqUSy_BtYrL4cSUlW34JZDjxQ6fetyYe3Mzr" alt="Classic Latte" />
-              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">45k VND</span>
+              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">45k VNĐ</span>
             </div>
             <div className="p-stack-md">
               <h3 className="font-headline-md text-body-lg text-primary">Classic Latte</h3>
-              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Double shot espresso with silky micro-foam.</p>
+              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Hai shot espresso với bọt sữa siêu mịn.</p>
             </div>
           </div>
           {/* Item 2 */}
           <div onClick={handleAddItem} className="bg-surface rounded-xl card-shadow overflow-hidden flex flex-col active-sink cursor-pointer group transition-all">
             <div className="h-40 relative overflow-hidden">
               <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7cLsBInhGroeLJXKzWYtLyI0OvxkGhTW5isjyUb34prbvK9wsgdI6dC5nsehFByHYLZhhgFWSVKeeFoByzVIMqRkRUTL9cQHU6GCM7dtVsdZXeePG3_adN0tlO7nfc1VVbiRfpecZSZ-wkFBVlR-LiBLsSd39GxRgrsBGvjh4qTcC0uYGQcYeRiSN1DVJNj6USzw0mN0seQrnhhg6qF4coHDgM1kuCVZ6Fkvw8UGRl0FDoblwtbjQ" alt="Iced Matcha" />
-              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">55k VND</span>
+              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">55k VNĐ</span>
             </div>
             <div className="p-stack-md">
               <h3 className="font-headline-md text-body-lg text-primary">Iced Matcha</h3>
-              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Ceremonial grade Uji matcha with fresh milk.</p>
+              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Matcha Uji cao cấp với sữa tươi.</p>
             </div>
           </div>
           {/* Item 3 */}
           <div onClick={handleAddItem} className="bg-surface rounded-xl card-shadow overflow-hidden flex flex-col active-sink cursor-pointer group transition-all">
             <div className="h-40 relative overflow-hidden">
               <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXfjhLwJb7kuUg8x4NT5wfQOpY2aVN0QWLDKuD9HVwus9cfSxsRwvMOrf5pKq-k8SG0no9dfkquiJarHrjiSjWOZvVVkBEBUTWcNRBkv6-F_nyNwlY-2bstq0uZaF7gt4RootMPdiuCQ72_PE0KRWLE2hnpMcHl7E7PKdLpKnd-3_2kFe2D5awgoaEQjAmGlQpjncGnI731eyJuE_SMamJC9plQunLtmsOd5k8L2iAA-Ws_BOs0Ew8" alt="Butter Croissant" />
-              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">35k VND</span>
+              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">35k VNĐ</span>
             </div>
             <div className="p-stack-md">
               <h3 className="font-headline-md text-body-lg text-primary">Butter Croissant</h3>
-              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Freshly baked, 24-hour fermented dough.</p>
+              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Bánh nướng mới, lên men 24h.</p>
             </div>
           </div>
           {/* Item 4 */}
           <div onClick={handleAddItem} className="bg-surface rounded-xl card-shadow overflow-hidden flex flex-col active-sink cursor-pointer group transition-all">
             <div className="h-40 relative overflow-hidden">
               <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSNAgtl36r1JpadMnEMDks3RvZjxRNCsltE9hgtVg0G9XbPGvlFZvwf1IuCq4Lo_Bxd1-j4gWFtcHr5ETttMyh-x11lguwOTUDWrzlca6upW7ZXdYwoY6Uq_FKEmdGSwjZGwHmSOMvS1_Jq8CY2HrjsvOv_g68z_mSyL8FSoibQTQsuGJn8fn3mvk7pyNglVcCxHiCpMAdnJvo3WPzyYyu1etkUv169DFTrpaAXCWHbDE8a0roeP2W" alt="Cold Brew" />
-              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">40k VND</span>
+              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">40k VNĐ</span>
             </div>
             <div className="p-stack-md">
               <h3 className="font-headline-md text-body-lg text-primary">Cold Brew</h3>
-              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Slow-steeped for 18 hours for a smooth finish.</p>
+              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Ủ lạnh 18h cho vị êm ái.</p>
             </div>
           </div>
           {/* Item 5 */}
           <div onClick={handleAddItem} className="bg-surface rounded-xl card-shadow overflow-hidden flex flex-col active-sink cursor-pointer group transition-all">
             <div className="h-40 relative overflow-hidden">
               <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn3CHA9cASoeIA8SPcZ-T-5h28Q07FA2JXLYIxRE1SMpQknReYPICEcZIBos4LPzWvVsk7Fo_tSIxsT7VxECj-RXnkPf47bnyp0REjoDMbZpcDs0hJj5UQjiXhHliOq3HEIOCDCNYFAqpslZGJGk4x9Ct8EDmY6hroMs0t9mgk_bI15QzcJuz8fzGUpoMcGZimxaEmfUjRlmYyQ1J1qdVyHiOPrAgqCNiLURGJ6bx2c-4lEWIW2vkA" alt="Avo Smash" />
-              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">85k VND</span>
+              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">85k VNĐ</span>
             </div>
             <div className="p-stack-md">
               <h3 className="font-headline-md text-body-lg text-primary">Avo Smash</h3>
-              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Sourdough with poached egg and chili flakes.</p>
+              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Bánh mì lên men với trứng trần.</p>
             </div>
           </div>
           {/* Item 6 */}
           <div onClick={handleAddItem} className="bg-surface rounded-xl card-shadow overflow-hidden flex flex-col active-sink cursor-pointer group transition-all">
             <div className="h-40 relative overflow-hidden">
               <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAy9Ql1dNYJ7V-NMXX0c4eBceyRTH7gTBGQHGHyiUYuTxOTOKdAe3wRunAdwVxqpN2ntldTKT42ZOldSt8f6d6-FSdVXmcTJMCDvVM5TQA582nmLnBWA5gPx5O16BqaLvsEPadFSrM-UHrYuKOSe6MMvScJuNtIZ3F7q3vvj4ko6lVIqUxRvhvQtrJQ6lR6LazrtTwSq9Xh5n9b5NsdQrvAtA868j8qDxlAkYr7amLRffL4qUcQdWfE" alt="Tropical Acai" />
-              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">95k VND</span>
+              <span className="absolute bottom-3 right-3 bg-primary-container text-on-primary-container px-3 py-1 rounded-lg font-label-md shadow-lg">95k VNĐ</span>
             </div>
             <div className="p-stack-md">
               <h3 className="font-headline-md text-body-lg text-primary">Tropical Acai</h3>
-              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Organic acai with seasonal fruits and granola.</p>
+              <p className="text-on-surface-variant font-body-md text-label-sm mt-1">Acai hữu cơ với trái cây tươi.</p>
             </div>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function NewOrder() {
       {/* Right Section: Order Summary (30%) */}
       <aside className="w-[30%] h-full bg-surface-container border-l border-outline-variant flex flex-col p-6 shadow-2xl z-20 shrink-0">
         <div className="flex items-center justify-between mb-stack-lg">
-          <h2 className="font-headline-md text-primary font-bold">Current Order</h2>
+          <h2 className="font-headline-md text-primary font-bold">Đơn Hàng Hiện Tại</h2>
           <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-label-sm font-bold">#4202</span>
         </div>
         
@@ -136,7 +136,7 @@ export default function NewOrder() {
           <div className="flex items-center justify-between group">
             <div className="flex flex-col">
               <span className="font-label-md text-on-surface">Classic Latte</span>
-              <span className="text-label-sm text-on-surface-variant italic">Hot, Oat Milk</span>
+              <span className="text-label-sm text-on-surface-variant italic">Nóng, Sữa Yến Mạch</span>
             </div>
             <div className="flex flex-col items-end gap-2">
               <span className="font-label-md text-primary font-bold">90k</span>
@@ -167,7 +167,7 @@ export default function NewOrder() {
           <div className="flex items-center justify-between group">
             <div className="flex flex-col">
               <span className="font-label-md text-on-surface">Iced Matcha</span>
-              <span className="text-label-sm text-on-surface-variant italic">Stevia, Less Ice</span>
+              <span className="text-label-sm text-on-surface-variant italic">Đường kiêng, Ít Đá</span>
             </div>
             <div className="flex flex-col items-end gap-2">
               <span className="font-label-md text-primary font-bold">55k</span>
@@ -183,15 +183,15 @@ export default function NewOrder() {
         {/* Totals */}
         <div className="mt-auto pt-stack-lg border-t border-outline-variant flex flex-col gap-2 shrink-0">
           <div className="flex justify-between font-body-md text-on-surface-variant">
-            <span>Subtotal</span>
+            <span>Tạm Tính</span>
             <span className="font-bold">180k</span>
           </div>
           <div className="flex justify-between font-body-md text-on-surface-variant">
-            <span>Tax (8%)</span>
+            <span>Thuế (8%)</span>
             <span className="font-bold">14.4k</span>
           </div>
           <div className="flex justify-between font-headline-md text-primary mt-2 font-bold">
-            <span>Total</span>
+            <span>Tổng Cộng</span>
             <span>194.4k</span>
           </div>
           <button className="w-full mt-4 bg-primary text-on-primary py-4 rounded-xl font-headline-md text-body-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform hover:bg-tertiary-container shadow-lg font-bold">
@@ -204,7 +204,7 @@ export default function NewOrder() {
       {/* Floating Action Feedback / Toast */}
       <div className={`fixed bottom-gutter right-gutter bg-secondary text-on-secondary px-6 py-3 rounded-full shadow-xl transition-all duration-300 flex items-center gap-3 z-50 ${toastVisible ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
         <span className="material-symbols-outlined">check_circle</span>
-        <span className="font-label-md font-bold">Item added to order</span>
+        <span className="font-label-md font-bold">Đã thêm vào đơn</span>
       </div>
     </div>
   );

@@ -5,11 +5,11 @@ export default function AdminLayout() {
   const location = useLocation();
 
   const navItems = [
-    { path: '/admin/analytics', icon: 'analytics', label: 'Analytics' },
-    { path: '/admin', icon: 'dashboard', label: 'Dashboard' },
-    { path: '/admin/menu', icon: 'restaurant_menu', label: 'Menu' },
-    { path: '/admin/tables', icon: 'table_restaurant', label: 'Tables' },
-    { path: '/admin/staff', icon: 'groups', label: 'Staff' },
+    { path: '/admin/analytics', icon: 'analytics', label: 'Phân Tích' },
+    { path: '/admin', icon: 'dashboard', label: 'Bảng Điều Khiển' },
+    { path: '/admin/menu', icon: 'restaurant_menu', label: 'Thực Đơn' },
+    { path: '/admin/tables', icon: 'table_restaurant', label: 'Bàn' },
+    { path: '/admin/staff', icon: 'groups', label: 'Nhân Sự' },
   ];
 
   return (
@@ -18,7 +18,7 @@ export default function AdminLayout() {
       <aside className="hidden md:flex flex-col h-screen py-gutter px-4 bg-surface-container-low fixed left-0 top-0 w-64 shadow-sm z-20 border-r border-outline-variant/10">
         <div className="mb-stack-lg px-2">
           <h1 className="font-headline-md text-headline-md text-primary tracking-tight">AI-SMARTSERVE</h1>
-          <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70">Management Hub</p>
+          <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70">Trung Tâm Quản Lý</p>
         </div>
         
         <nav className="flex-1 space-y-2">
@@ -43,7 +43,7 @@ export default function AdminLayout() {
           </div>
           <div className="flex-1">
             <p className="font-label-md text-label-md text-on-surface">Alex Chen</p>
-            <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Store Manager</p>
+            <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Quản Lý Cửa Hàng</p>
           </div>
           <div className="absolute inset-0 bg-surface/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
             <span className="material-symbols-outlined text-error">logout</span>
@@ -61,7 +61,7 @@ export default function AdminLayout() {
             </div>
             <div className="relative hidden sm:block">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
-              <input className="bg-surface-container-low border border-outline-variant/30 rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/50" placeholder="Search orders, staff..." type="text" />
+              <input className="bg-surface-container-low border border-outline-variant/30 rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/50" placeholder="Tìm kiếm đơn hàng, nhân sự..." type="text" />
             </div>
           </div>
           
@@ -82,10 +82,10 @@ export default function AdminLayout() {
         <Outlet />
       </main>
 
-      {/* Floating Action Button (FAB) for quick order */}
+      {/* Floating Thao Tác Button (FAB) for quick order */}
       <button className="fixed bottom-24 md:bottom-8 right-8 w-16 h-16 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 z-30 group">
         <span className="material-symbols-outlined text-3xl">add</span>
-        <span className="absolute right-full mr-4 bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">New Quick Order</span>
+        <span className="absolute right-full mr-4 bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Tạo Đơn Nhanh</span>
       </button>
 
       {/* Mobile Navigation Bar */}

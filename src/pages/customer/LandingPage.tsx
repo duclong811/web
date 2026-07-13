@@ -27,8 +27,8 @@ export default function LandingPage() {
       </nav>
       
       <div className="max-w-7xl mx-auto flex min-h-screen">
-        {/* SideNavBar (Shared Component Logic) */}
-        <aside className="h-full w-64 fixed left-[calc(50%-640px)] top-0 pt-24 hidden lg:flex flex-col gap-stack-md px-4 py-8 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10">
+        {/* SideNavBar */}
+        <aside className="h-[calc(100vh-73px)] w-64 sticky top-[73px] hidden lg:flex flex-col gap-stack-md px-4 py-8 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10 z-40 overflow-y-auto">
           <div className="mb-stack-lg px-2">
             <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70 uppercase tracking-widest">Categories</p>
           </div>
@@ -47,7 +47,7 @@ export default function LandingPage() {
             </button>
             <button className="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-surface-variant hover:bg-surface-variant/30 rounded-xl transition-transform active:translate-x-1">
               <span className="material-symbols-outlined">bakery_dining</span>
-              <span className="font-label-md text-label-md">Pastries</span>
+              <span className="font-label-md text-label-md">Bánh Ngọt</span>
             </button>
             <button className="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-surface-variant hover:bg-surface-variant/30 rounded-xl transition-transform active:translate-x-1">
               <span className="material-symbols-outlined">local_mall</span>
@@ -64,7 +64,7 @@ export default function LandingPage() {
         </aside>
         
         {/* Main Content Area */}
-        <main className="flex-1 lg:ml-64 px-container-margin py-stack-lg">
+        <main className="flex-1 px-container-margin py-stack-lg w-0">
           {/* Hero Banner */}
           <section className="relative h-[400px] rounded-3xl overflow-hidden mb-stack-lg group">
             <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" 
@@ -73,16 +73,16 @@ export default function LandingPage() {
             </div>
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex flex-col justify-center px-12">
               <span className="inline-block px-4 py-1 bg-tertiary text-on-tertiary rounded-full font-label-sm text-label-sm mb-4 self-start">
-                  Limited Time Offer
+                  Ưu Đãi Giới Hạn
               </span>
               <h1 className="font-headline-lg text-headline-lg text-white max-w-lg mb-4 leading-tight">
-                  Awaken Your Senses with the New <span className="text-primary-fixed">Honey-Oak Latte</span>
+                  Đánh thức giác quan với <span className="text-primary-fixed">Honey-Oak Latte</span>
               </h1>
               <p className="text-white/80 font-body-lg text-body-lg max-w-md mb-8">
-                  Experience the delicate balance of wild clover honey and toasted oak-infused espresso.
+                  Trải nghiệm sự cân bằng tinh tế của mật ong hoa cỏ dại và espresso ủ gỗ sồi.
               </p>
               <button className="w-fit px-8 py-3 bg-primary-fixed text-on-primary-fixed rounded-full font-label-md text-label-md hover:bg-primary-fixed-dim transition-all active:scale-95">
-                  Discover Seasonal Menu
+                  Khám Phá Menu Theo Mùa
               </button>
             </div>
           </section>
@@ -120,7 +120,7 @@ export default function LandingPage() {
               <div className="p-stack-md flex flex-col h-full">
                 <h3 className="font-headline-md text-headline-md text-on-surface mb-1">Caramel Cloud Macchiato</h3>
                 <p className="font-body-md text-on-surface-variant text-sm line-clamp-2 mb-4">
-                    Velvety cold foam layered over espresso with a hint of vanilla and caramel drizzle.
+                    Lớp bọt sữa lạnh mềm mịn phủ trên lớp espresso cùng hương vani và xốt caramel.
                 </p>
                 <div className="flex items-center justify-between mt-auto">
                   <button className="px-4 py-2 border-1.5 border-primary text-primary rounded-full font-label-sm text-label-sm hover:bg-primary/5 transition-colors" onClick={(e) => {e.preventDefault();}}>Customize</button>
@@ -148,7 +148,7 @@ export default function LandingPage() {
               <div className="p-stack-md flex flex-col h-full">
                 <h3 className="font-headline-md text-headline-md text-on-surface mb-1">Nitro Velvet Brew</h3>
                 <p className="font-body-md text-on-surface-variant text-sm line-clamp-2 mb-4">
-                    Slow-steeped for 20 hours and infused with nitrogen for an ultra-smooth, creamy texture.
+                    Ủ lạnh 20 tiếng và kết hợp với khí nitơ để tạo nên kết cấu siêu mịn, béo ngậy.
                 </p>
                 <div className="flex items-center justify-between mt-auto">
                   <button className="px-4 py-2 border-1.5 border-primary text-primary rounded-full font-label-sm text-label-sm hover:bg-primary/5 transition-colors">Customize</button>
@@ -176,7 +176,7 @@ export default function LandingPage() {
               <div className="p-stack-md flex flex-col h-full">
                 <h3 className="font-headline-md text-headline-md text-on-surface mb-1">Ceremonial Matcha Latte</h3>
                 <p className="font-body-md text-on-surface-variant text-sm line-clamp-2 mb-4">
-                    Finely ground, high-grade matcha whisked with your choice of milk for a mindful boost.
+                    Matcha nguyên chất được nghiền mịn pha cùng loại sữa tùy chọn để tăng cường sự tập trung.
                 </p>
                 <div className="flex items-center justify-between mt-auto">
                   <button className="px-4 py-2 border-1.5 border-primary text-primary rounded-full font-label-sm text-label-sm hover:bg-primary/5 transition-colors">Customize</button>

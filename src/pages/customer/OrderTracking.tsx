@@ -98,9 +98,9 @@ export default function OrderTracking() {
                   {/* Step 3: Ready/Delivery */}
                   <div className="flex flex-col items-center z-10 w-1/4">
                     <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant mb-3 border border-outline-variant">
-                      <span className="material-symbols-outlined text-xl">delivery_dining</span>
+                      <span className="material-symbols-outlined text-xl">room_service</span>
                     </div>
-                    <span className="text-label-md font-label-md text-on-surface-variant text-center">Giao hàng</span>
+                    <span className="text-label-md font-label-md text-on-surface-variant text-center">Chờ nhận món</span>
                     <span className="text-xs text-on-surface-variant/50 mt-1">Chờ...</span>
                   </div>
                   {/* Step 4: Completed */}
@@ -130,12 +130,12 @@ export default function OrderTracking() {
                   <p className="text-white font-label-md text-label-md">Barista Minh đang chuẩn bị đồ uống cho bạn</p>
                 </div>
               </div>
-              <div className="relative rounded-xl overflow-hidden h-64 shadow-md border border-outline-variant">
-                <img className="w-full h-full object-cover" data-alt="Map" data-location="Ho Chi Minh City" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkppObmCCRoEv-RTB9T3zvajam4FIld9WiBjhT3I5Tbu6yZtBFQw2fmBLBlB-IfBgu3efCtwy6eA8k5v2mhDCeKVWoYDoGdG3n5pggRsQRQAPAj7QFQqmQU6sJ5oSMwaDzg96nOSOiNabj97lm6UPYRpZOW0O-iT83vcvQsoWAvdVuF4dwpbgHrP2ouexDGp1p1ADuGoXr7ilQ5_YH0IJ8kAmE9rqUAEWj7HG0HjXAz2szfv8igZEY" />
-                <div className="absolute top-4 right-4 glass-card px-3 py-2 rounded-lg flex items-center gap-2">
-                  <span className="w-2 h-2 bg-error rounded-full animate-pulse"></span>
-                  <span className="text-xs font-bold text-primary">TRỰC TIẾP</span>
+              <div className="relative rounded-xl overflow-hidden h-64 shadow-md border border-outline-variant bg-surface-container-low flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-primary text-3xl">notifications_active</span>
                 </div>
+                <h3 className="font-headline-md text-primary font-bold mb-2">Lấy đồ uống tại quầy</h3>
+                <p className="text-on-surface-variant font-body-md">Chúng tôi sẽ gọi tên hoặc số đơn hàng của bạn khi đồ uống sẵn sàng. Xin cảm ơn!</p>
               </div>
             </div>
           </div>
@@ -178,13 +178,9 @@ export default function OrderTracking() {
                   <span className="text-body-md">Tạm tính</span>
                   <span>110.000đ</span>
                 </div>
-                <div className="flex justify-between text-on-surface-variant">
-                  <span className="text-body-md">Phí giao hàng</span>
-                  <span>15.000đ</span>
-                </div>
                 <div className="flex justify-between text-primary font-bold text-lg pt-2">
                   <span>Tổng cộng</span>
-                  <span>125.000đ</span>
+                  <span>110.000đ</span>
                 </div>
               </div>
               

@@ -15,7 +15,7 @@ export default function MenuManagement() {
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-stack-lg gap-4">
           <div>
-            <h2 className="font-headline-lg text-headline-lg text-primary">Menu Management</h2>
+            <h2 className="font-headline-lg text-headline-lg text-primary">Quản Lý Thực Đơn</h2>
             <p className="text-on-surface-variant font-body-md">Refine and organize your offerings for 'AI-SMARTSERVE'</p>
           </div>
           <button className="flex items-center justify-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label-md shadow-md hover:bg-primary-container transition-all active:scale-95">
@@ -50,10 +50,10 @@ export default function MenuManagement() {
                 <thead className="bg-surface-container-low">
                   <tr>
                     <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs">Product</th>
-                    <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs">Category</th>
-                    <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs">Price</th>
-                    <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs">Status</th>
-                    <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs text-right">Actions</th>
+                    <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs">Danh Mục</th>
+                    <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs">Giá</th>
+                    <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs">Trạng Thái</th>
+                    <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs text-right">Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/20">
@@ -80,13 +80,13 @@ export default function MenuManagement() {
                         <td className="px-6 py-4 font-label-md text-primary">{item.price.toLocaleString()}đ</td>
                         <td className="px-6 py-4">
                           {isPreparing ? (
-                            <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-700 text-[10px] font-bold uppercase">Preparing</span>
+                            <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-700 text-[10px] font-bold uppercase">Đang Pha Chế</span>
                           ) : (
                             <span className="px-2 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-bold uppercase">Ready</span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button className="text-primary hover:bg-primary-fixed px-3 py-1.5 rounded-lg transition-all text-sm font-bold active:scale-95">Edit</button>
+                          <button className="text-primary hover:bg-primary-fixed px-3 py-1.5 rounded-lg transition-all text-sm font-bold active:scale-95">Sửa</button>
                         </td>
                       </tr>
                     );
@@ -107,7 +107,7 @@ export default function MenuManagement() {
             </div>
           </div>
 
-          {/* Stats/Quick Actions (4 cols) */}
+          {/* Stats/Quick Thao Tács (4 cols) */}
           <div className="lg:col-span-4 space-y-stack-md">
             {/* Analytics Card */}
             <div className="bg-surface-container-highest p-stack-md rounded-xl hover:scale-[0.985] transition-transform duration-200 shadow-[0_4px_20px_rgba(85,55,34,0.06)] relative overflow-hidden group">

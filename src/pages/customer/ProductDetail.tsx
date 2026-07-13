@@ -1,26 +1,38 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { MENU_DATA } from './Menu';
 
 export default function ProductDetail() {
   const { id } = useParams();
 
-  const { menuItems, addToCart } = useStore();
+  const { addToCart } = useStore();
   
+  let foundItem = null;
+  let categoryName = 'Cà Phê Pha Máy';
+  for (const [category, items] of Object.entries(MENU_DATA)) {
+    const match = items.find(i => i.id === id);
+    if (match) {
+      foundItem = match;
+      categoryName = category;
+      break;
+    }
+  }
+
   // Use a default item if not found, or find the specific item
-  const item = menuItems.find(i => i.id === id) || {
+  const item = foundItem ? { ...foundItem, categoryId: categoryName } : {
     id: '1',
     name: 'Oolong Milk Tea',
     description: 'Experience the deep, earthy soul of premium roasted Oolong tea leaves, expertly blended with our signature silky milk. A sophisticated balance of toasted notes and creamy smoothness.',
-    price: 45000,
-    categoryId: 'c1',
+    price: 57500,
+    categoryId: 'Cà Phê Pha Máy',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKd6TB68l0dgvWLbBxZzmjvDZZZ_cMU4ok5MEOMER0SqvsbIR_nTB6LVT6KeYzL8siPAiiRYfcYqe09wQyWL95hdMlh1AfQJZRfWGfAqDJ7tRa5zFALx4h9trbOeMQ606u34IaPz5suzCjWu63v8yMrVSH5a_N9oGzS8XsrITZ2v-yg_2T_sFH0KVRu6ZEh1okmdJea_sxDSGMHr0U5XZlYvh8y2rRcDZXBFL0lQFP66vs7u-qb2lZ'
   };
 
   const [quantity, setQuantity] = useState(1);
   const [sugar, setSugar] = useState(100);
   const [ice, setIce] = useState(100);
-  const [size, setSize] = useState('Medium');
+  const [size, setSize] = useState('Vừa');
   const [notes, setNotes] = useState('');
   const [isAdded, setIsAdded] = useState(false);
 
@@ -30,7 +42,14 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     // Typically we'd construct a customized cart item here
     for(let i=0; i<quantity; i++){
-      addToCart(item); // Note: Simplified. In a real app we'd pass customization options too.
+      addToCart({
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        price: currentPrice,
+        image: item.image,
+        categoryId: item.categoryId
+      });
     }
     
     setIsAdded(true);
@@ -41,7 +60,7 @@ export default function ProductDetail() {
     }, 2000);
   };
 
-  const currentPrice = item.price + (size === 'Large' ? 10000 : 0);
+  const currentPrice = item.price + (size === 'Lớn' ? 15000 : 0);
   const totalPrice = currentPrice * quantity;
 
   return (
@@ -51,10 +70,10 @@ export default function ProductDetail() {
         <nav className="flex justify-between items-center px-container-margin py-4 max-w-7xl mx-auto">
           <Link to="/menu" className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">AI-SMARTSERVE</Link>
           <div className="hidden md:flex items-center gap-stack-lg">
-            <Link to="/menu" className="text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 font-label-md text-label-md transition-colors">Menu</Link>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Rewards</a>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Our Story</a>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Locations</a>
+            <Link to="/menu" className="text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 font-label-md text-label-md transition-colors">Thực Đơn</Link>
+            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Ưu Đãi</a>
+            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Câu Chuyện</a>
+            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Cửa Hàng</a>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/cart" className="material-symbols-outlined p-2 hover:bg-surface-container-low rounded-lg transition-all text-on-surface-variant">shopping_cart</Link>
@@ -69,8 +88,8 @@ export default function ProductDetail() {
           <div className="relative rounded-[2rem] overflow-hidden aspect-[4/5] bg-white shadow-xl shadow-primary/5">
             <img className="w-full h-full object-cover" src={item.image} alt={item.name} />
             <div className="absolute top-6 left-6 flex gap-2">
-              <span className="bg-primary text-white font-label-sm text-label-sm px-3 py-1 rounded-full shadow-lg">Bestseller</span>
-              <span className="bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-3 py-1 rounded-full shadow-lg">Premium</span>
+              <span className="bg-primary text-white font-label-sm text-label-sm px-3 py-1 rounded-full shadow-lg">Bán Chạy</span>
+              <span className="bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-3 py-1 rounded-full shadow-lg">Cao Cấp</span>
             </div>
           </div>
           {/* Additional Thumbnails / Details */}
@@ -89,9 +108,9 @@ export default function ProductDetail() {
           {/* Header Info */}
           <div className="space-y-stack-sm">
             <nav className="flex text-on-surface-variant font-label-sm text-label-sm gap-2">
-              <Link to="/" className="hover:text-primary">Menu</Link>
+              <Link to="/" className="hover:text-primary">Thực Đơn</Link>
               <span>/</span>
-              <a className="hover:text-primary" href="#">Milk Tea</a>
+              <a className="hover:text-primary" href="#">Trà Sữa</a>
               <span>/</span>
               <span className="text-primary font-bold">{item.name}</span>
             </nav>
@@ -108,23 +127,23 @@ export default function ProductDetail() {
           <div className="space-y-stack-lg bg-white p-6 rounded-2xl shadow-sm border border-outline-variant/5">
             {/* Size Selector */}
             <div className="space-y-stack-sm">
-              <label className="font-label-md text-label-md text-on-background block">Size Selection</label>
+              <label className="font-label-md text-label-md text-on-background block">Chọn Kích Cỡ</label>
               <div className="grid grid-cols-2 gap-4">
                 <button 
-                  onClick={() => setSize('Medium')}
-                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all interactive-press ${size === 'Medium' ? 'border-primary bg-secondary-container/20 text-primary font-bold' : 'border-outline text-on-surface-variant hover:border-primary'}`}>
+                  onClick={() => setSize('Vừa')}
+                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all interactive-press ${size === 'Vừa' ? 'border-primary bg-secondary-container/20 text-primary font-bold' : 'border-outline text-on-surface-variant hover:border-primary'}`}>
                   <span className="flex items-center gap-2">
                     <span className="material-symbols-outlined">coffee</span> Medium
                   </span>
                   <span className="text-label-sm">+0đ</span>
                 </button>
                 <button 
-                  onClick={() => setSize('Large')}
-                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all interactive-press ${size === 'Large' ? 'border-primary bg-secondary-container/20 text-primary font-bold' : 'border-outline text-on-surface-variant hover:border-primary'}`}>
+                  onClick={() => setSize('Lớn')}
+                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all interactive-press ${size === 'Lớn' ? 'border-primary bg-secondary-container/20 text-primary font-bold' : 'border-outline text-on-surface-variant hover:border-primary'}`}>
                   <span className="flex items-center gap-2">
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'opsz' 32" }}>coffee</span> Large
                   </span>
-                  <span className="text-label-sm">+10,000đ</span>
+                  <span className="text-label-sm">+15.000đ</span>
                 </button>
               </div>
             </div>
@@ -134,7 +153,7 @@ export default function ProductDetail() {
               {/* Sugar */}
               <div className="space-y-stack-sm">
                 <div className="flex justify-between items-center">
-                  <label className="font-label-md text-label-md text-on-background">Sugar Level</label>
+                  <label className="font-label-md text-label-md text-on-background">Lượng Đường</label>
                   <span className="text-primary font-bold">{sugar}%</span>
                 </div>
                 <input 
@@ -149,7 +168,7 @@ export default function ProductDetail() {
               {/* Ice */}
               <div className="space-y-stack-sm pt-4">
                 <div className="flex justify-between items-center">
-                  <label className="font-label-md text-label-md text-on-background">Ice Level</label>
+                  <label className="font-label-md text-label-md text-on-background">Lượng Đá</label>
                   <span className="text-primary font-bold">{ice}%</span>
                 </div>
                 <input 
@@ -164,10 +183,10 @@ export default function ProductDetail() {
 
             {/* Special Instructions */}
             <div className="space-y-stack-sm pt-2">
-              <label className="font-label-md text-label-md text-on-background">Special Instructions</label>
+              <label className="font-label-md text-label-md text-on-background">Ghi Chú Đặc Biệt</label>
               <textarea 
                 className="w-full bg-surface border border-outline-variant rounded-xl p-4 text-body-md focus:ring-2 focus:ring-primary focus:outline-none min-h-[100px] resize-none transition-all" 
-                placeholder="E.g. No foam, extra straw, etc."
+                placeholder="VD: Ít đá, thêm trân châu..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               ></textarea>
@@ -189,7 +208,7 @@ export default function ProductDetail() {
             {/* Add to Cart */}
             <button onClick={handleAddToCart} className={`flex-grow w-full sm:w-auto text-white py-4 px-8 rounded-full font-bold text-label-md flex items-center justify-center gap-2 transition-all shadow-lg interactive-press ${isAdded ? 'bg-tertiary-container shadow-tertiary-container/20' : 'bg-primary hover:bg-primary-container shadow-primary/20'}`}>
               <span className="material-symbols-outlined">{isAdded ? 'check_circle' : 'shopping_bag'}</span>
-              {isAdded ? 'Added!' : `Add to Cart • ${totalPrice.toLocaleString()}đ`}
+              {isAdded ? 'Đã Thêm!' : `Thêm vào Giỏ • ${totalPrice.toLocaleString()}đ`}
             </button>
           </div>
         </section>
@@ -200,14 +219,14 @@ export default function ProductDetail() {
         <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-stack-lg max-w-7xl mx-auto gap-stack-md">
           <div className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</div>
           <div className="flex flex-wrap justify-center gap-6 text-on-surface-variant font-label-sm text-label-sm">
-            <a className="hover:text-primary transition-opacity" href="#">Privacy Policy</a>
-            <a className="hover:text-primary transition-opacity" href="#">Terms of Service</a>
-            <a className="hover:text-primary transition-opacity" href="#">Sustainability</a>
-            <a className="hover:text-primary transition-opacity" href="#">Careers</a>
-            <a className="hover:text-primary transition-opacity" href="#">Contact Us</a>
+            <a className="hover:text-primary transition-opacity" href="#">Chính Sách Bảo Mật</a>
+            <a className="hover:text-primary transition-opacity" href="#">Điều Khoản</a>
+            <a className="hover:text-primary transition-opacity" href="#">Bền Vững</a>
+            <a className="hover:text-primary transition-opacity" href="#">Tuyển Dụng</a>
+            <a className="hover:text-primary transition-opacity" href="#">Liên Hệ</a>
           </div>
           <p className="text-on-surface-variant font-label-sm text-label-sm text-center md:text-right">
-            © 2024 AI-SMARTSERVE. Handcrafted for your daily ritual.
+            © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
           </p>
         </div>
       </footer>

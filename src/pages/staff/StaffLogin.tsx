@@ -43,14 +43,14 @@ export default function StaffLogin() {
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-stack-md shadow-lg transform transition-transform hover:scale-105">
             <span className="material-symbols-outlined text-white text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>coffee</span>
           </div>
-          <h1 className="font-headline-md text-headline-md text-primary mb-1 tracking-tight">BaristaFlow</h1>
+          <h1 className="font-headline-md text-headline-md text-primary mb-1 tracking-tight">AI-SMARTSERVE</h1>
           <p className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">by AI-SMARTSERVE</p>
         </div>
 
         {/* Login Card */}
         <div className="login-card bg-white rounded-[20px] p-8 md:p-10 border border-outline-variant/30 shadow-[0_10px_40px_-10px_rgba(85,55,34,0.1)]">
           <div className="mb-stack-lg">
-            <h2 className="font-headline-md text-headline-md text-on-surface mb-2">Staff Portal</h2>
+            <h2 className="font-headline-md text-headline-md text-on-surface mb-2">Cổng Nhân Viên</h2>
             <p className="font-body-md text-body-md text-on-surface-variant">Welcome back. Please sign in to access your shift dashboard.</p>
           </div>
           
@@ -123,7 +123,7 @@ export default function StaffLogin() {
         {/* Footer Branding/Links */}
         <footer className="mt-stack-lg text-center">
           <p className="font-label-sm text-label-sm text-on-surface-variant/70">
-            © 2024 BaristaFlow Operations. All Rights Reserved.<br/>
+            © 2024 AI-SMARTSERVE Operations. All Rights Reserved.<br/>
             Unauthorized access is prohibited.
           </p>
         </footer>

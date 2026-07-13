@@ -12,19 +12,19 @@ export default function Analytics() {
       {/* Header Section */}
       <section className="mb-stack-lg flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="font-headline-lg text-headline-lg text-primary">Analytics Overview</h2>
-          <p className="font-body-md text-body-md text-on-surface-variant">Tracking your cafe's growth and operational health.</p>
+          <h2 className="font-headline-lg text-headline-lg text-primary">Tổng Quan Phân Tích</h2>
+          <p className="font-body-md text-body-md text-on-surface-variant">Theo dõi sự tăng trưởng và hiệu quả hoạt động.</p>
         </div>
         <div className="flex bg-surface-container p-1 rounded-xl w-fit">
-          <button className="px-4 py-2 rounded-lg text-label-sm font-semibold bg-white shadow-sm text-primary">Daily</button>
-          <button className="px-4 py-2 rounded-lg text-label-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Weekly</button>
-          <button className="px-4 py-2 rounded-lg text-label-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Monthly</button>
+          <button className="px-4 py-2 rounded-lg text-label-sm font-semibold bg-white shadow-sm text-primary">Ngày</button>
+          <button className="px-4 py-2 rounded-lg text-label-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Tuần</button>
+          <button className="px-4 py-2 rounded-lg text-label-sm font-semibold text-on-surface-variant hover:text-primary transition-colors">Tháng</button>
         </div>
       </section>
 
       {/* KPI Metric Grid */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter mb-stack-lg">
-        {/* Total Revenue */}
+        {/* Total Doanh Thu */}
         <div className="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-primary-fixed rounded-lg text-primary">
@@ -35,11 +35,11 @@ export default function Analytics() {
               <span className="text-[12px] font-bold">12.5%</span>
             </div>
           </div>
-          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Total Revenue</p>
-          <h3 className="text-headline-md font-bold text-on-surface">$24,850.00</h3>
+          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Tổng Doanh Thu</p>
+          <h3 className="text-headline-md font-bold text-on-surface">24.850.000đ</h3>
         </div>
         
-        {/* Total Orders */}
+        {/* Total Đơn Hàng */}
         <div className="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2 bg-secondary-fixed rounded-lg text-secondary">
@@ -50,7 +50,7 @@ export default function Analytics() {
               <span className="text-[12px] font-bold">8.2%</span>
             </div>
           </div>
-          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Total Orders</p>
+          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Tổng Số Đơn</p>
           <h3 className="text-headline-md font-bold text-on-surface">1,429</h3>
         </div>
         
@@ -65,8 +65,8 @@ export default function Analytics() {
               <span className="text-[12px] font-bold">2.1%</span>
             </div>
           </div>
-          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Avg. Order Value</p>
-          <h3 className="text-headline-md font-bold text-on-surface">$17.39</h3>
+          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Giá Trị Đơn TB</p>
+          <h3 className="text-headline-md font-bold text-on-surface">175.000đ</h3>
         </div>
         
         {/* Customer Retention */}
@@ -80,71 +80,71 @@ export default function Analytics() {
               <span className="text-[12px] font-bold">4.8%</span>
             </div>
           </div>
-          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Retention Rate</p>
+          <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Tỷ Lệ Giữ Chân</p>
           <h3 className="text-headline-md font-bold text-on-surface">68.4%</h3>
         </div>
       </section>
 
       {/* Bento Grid Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter mb-stack-lg">
-        {/* Revenue Chart (Large Area) */}
+        {/* Doanh Thu Chart (Large Area) */}
         <section className="lg:col-span-8 glass-card p-6 rounded-3xl min-h-[400px] flex flex-col">
           <div className="flex items-center justify-between mb-8">
-            <h3 className="font-headline-md text-headline-md text-primary">Revenue Trends</h3>
+            <h3 className="font-headline-md text-headline-md text-primary">Xu Hướng Doanh Thu</h3>
             <div className="flex items-center space-x-2 text-on-surface-variant font-label-sm">
               <span className="w-3 h-3 rounded-full bg-primary"></span>
-              <span>Direct Sales</span>
+              <span>Tại Quán</span>
               <span className="w-3 h-3 rounded-full bg-secondary ml-4"></span>
-              <span>Delivery</span>
+              <span>Mang Đi</span>
             </div>
           </div>
           {/* Mock Chart Visualization */}
           <div className="flex-1 flex items-end justify-between px-2 gap-2">
             <div className="flex flex-col items-center flex-1 space-y-2">
               <div className="w-full bg-primary/20 rounded-t-lg relative group h-32 hover:h-40 transition-all duration-500 cursor-pointer">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$1.2k</div>
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">12tr</div>
                 <div className="absolute bottom-0 w-full bg-primary rounded-t-lg h-2/3"></div>
               </div>
               <span className="text-[10px] font-bold text-on-surface-variant">MON</span>
             </div>
             <div className="flex flex-col items-center flex-1 space-y-2">
               <div className="w-full bg-primary/20 rounded-t-lg relative group h-48 hover:h-52 transition-all duration-500 cursor-pointer">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$2.8k</div>
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">28tr</div>
                 <div className="absolute bottom-0 w-full bg-primary rounded-t-lg h-3/4"></div>
               </div>
               <span className="text-[10px] font-bold text-on-surface-variant">TUE</span>
             </div>
             <div className="flex flex-col items-center flex-1 space-y-2">
               <div className="w-full bg-primary/20 rounded-t-lg relative group h-40 hover:h-44 transition-all duration-500 cursor-pointer">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$1.9k</div>
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">19tr</div>
                 <div className="absolute bottom-0 w-full bg-primary rounded-t-lg h-1/2"></div>
               </div>
               <span className="text-[10px] font-bold text-on-surface-variant">WED</span>
             </div>
             <div className="flex flex-col items-center flex-1 space-y-2">
               <div className="w-full bg-primary/20 rounded-t-lg relative group h-64 hover:h-72 transition-all duration-500 cursor-pointer">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$3.4k</div>
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">34tr</div>
                 <div className="absolute bottom-0 w-full bg-primary rounded-t-lg h-4/5"></div>
               </div>
               <span className="text-[10px] font-bold text-on-surface-variant">THU</span>
             </div>
             <div className="flex flex-col items-center flex-1 space-y-2">
               <div className="w-full bg-primary/20 rounded-t-lg relative group h-56 hover:h-60 transition-all duration-500 cursor-pointer">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$2.9k</div>
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">29tr</div>
                 <div className="absolute bottom-0 w-full bg-primary rounded-t-lg h-2/3"></div>
               </div>
               <span className="text-[10px] font-bold text-on-surface-variant">FRI</span>
             </div>
             <div className="flex flex-col items-center flex-1 space-y-2">
               <div className="w-full bg-primary/20 rounded-t-lg relative group h-72 hover:h-80 transition-all duration-500 cursor-pointer">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$4.1k</div>
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">41tr</div>
                 <div className="absolute bottom-0 w-full bg-primary rounded-t-lg h-full"></div>
               </div>
               <span className="text-[10px] font-bold text-on-surface-variant">SAT</span>
             </div>
             <div className="flex flex-col items-center flex-1 space-y-2">
               <div className="w-full bg-primary/20 rounded-t-lg relative group h-52 hover:h-56 transition-all duration-500 cursor-pointer">
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">$3.0k</div>
+                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-on-surface text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">30tr</div>
                 <div className="absolute bottom-0 w-full bg-primary rounded-t-lg h-4/5"></div>
               </div>
               <span className="text-[10px] font-bold text-on-surface-variant">SUN</span>
@@ -154,7 +154,7 @@ export default function Analytics() {
 
         {/* Category Distribution (Doughnut) */}
         <section className="lg:col-span-4 glass-card p-6 rounded-3xl flex flex-col">
-          <h3 className="font-headline-md text-headline-md text-primary mb-6">Sales by Category</h3>
+          <h3 className="font-headline-md text-headline-md text-primary mb-6">Doanh Số Theo Danh Mục</h3>
           <div className="relative flex-1 flex items-center justify-center mb-6">
             {/* Semi-circle ring visualization */}
             <div className="w-48 h-48 rounded-full border-[24px] border-secondary-container relative flex items-center justify-center">
@@ -162,7 +162,7 @@ export default function Analytics() {
               <div className="absolute inset-0 rounded-full border-[24px] border-secondary" style={{ clipPath: "polygon(0% 0%, 50% 0%, 50% 50%, 0% 0%)", transform: "rotate(45deg)" }}></div>
               <div className="text-center">
                 <p className="text-headline-md font-bold text-primary">100%</p>
-                <p className="text-[10px] font-bold uppercase text-on-surface-variant">Inventory</p>
+                <p className="text-[10px] font-bold uppercase text-on-surface-variant">Kho Hàng</p>
               </div>
             </div>
           </div>
@@ -170,28 +170,28 @@ export default function Analytics() {
             <div className="flex items-center justify-between text-label-sm">
               <div className="flex items-center space-x-2">
                 <span className="w-2 h-2 rounded-full bg-primary"></span>
-                <span>Specialty Coffee</span>
+                <span>Cà Phê Đặc Sản</span>
               </div>
               <span className="font-bold">45%</span>
             </div>
             <div className="flex items-center justify-between text-label-sm">
               <div className="flex items-center space-x-2">
                 <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                <span>Pastries &amp; Bakery</span>
+                <span>Bánh Ngọt &amp; Bánh Nướng</span>
               </div>
               <span className="font-bold">30%</span>
             </div>
             <div className="flex items-center justify-between text-label-sm">
               <div className="flex items-center space-x-2">
                 <span className="w-2 h-2 rounded-full bg-secondary-container"></span>
-                <span>Tea &amp; Smoothies</span>
+                <span>Trà &amp; Sinh Tố</span>
               </div>
               <span className="font-bold">15%</span>
             </div>
             <div className="flex items-center justify-between text-label-sm">
               <div className="flex items-center space-x-2">
                 <span className="w-2 h-2 rounded-full bg-outline-variant"></span>
-                <span>Seasonal/Merch</span>
+                <span>Theo Mùa/Quà Tặng</span>
               </div>
               <span className="font-bold">10%</span>
             </div>
@@ -203,7 +203,7 @@ export default function Analytics() {
         {/* Top Selling Products */}
         <section className="lg:col-span-5 glass-card p-6 rounded-3xl">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-headline-md text-headline-md text-primary">Top Products</h3>
+            <h3 className="font-headline-md text-headline-md text-primary">Sản Phẩm Bán Chạy</h3>
             <button className="text-primary text-label-sm font-bold flex items-center hover:underline">
               View All <span className="material-symbols-outlined text-[16px] ml-1" data-icon="chevron_right">chevron_right</span>
             </button>
@@ -215,11 +215,11 @@ export default function Analytics() {
               </div>
               <div className="flex-1">
                 <h4 className="font-label-md text-label-md text-on-surface">Brown Sugar Pearl Milk Tea</h4>
-                <p className="text-[12px] text-on-surface-variant">Signature Drink</p>
+                <p className="text-[12px] text-on-surface-variant">Đồ Uống Đặc Trưng</p>
               </div>
               <div className="text-right">
-                <p className="font-bold text-primary">482 sold</p>
-                <p className="text-[10px] text-green-600 font-bold">+$3,374</p>
+                <p className="font-bold text-primary">482 đã bán</p>
+                <p className="text-[10px] text-green-600 font-bold">+33.740.000đ</p>
               </div>
             </div>
             
@@ -229,11 +229,11 @@ export default function Analytics() {
               </div>
               <div className="flex-1">
                 <h4 className="font-label-md text-label-md text-on-surface">Almond Croissant</h4>
-                <p className="text-[12px] text-on-surface-variant">Fresh Bakery</p>
+                <p className="text-[12px] text-on-surface-variant">Bánh Mới Nướng</p>
               </div>
               <div className="text-right">
-                <p className="font-bold text-primary">315 sold</p>
-                <p className="text-[10px] text-green-600 font-bold">+$1,575</p>
+                <p className="font-bold text-primary">315 đã bán</p>
+                <p className="text-[10px] text-green-600 font-bold">+15.750.000đ</p>
               </div>
             </div>
             
@@ -243,22 +243,22 @@ export default function Analytics() {
               </div>
               <div className="flex-1">
                 <h4 className="font-label-md text-label-md text-on-surface">Oat Milk Latte</h4>
-                <p className="text-[12px] text-on-surface-variant">Classic Coffee</p>
+                <p className="text-[12px] text-on-surface-variant">Cà Phê Cổ Điển</p>
               </div>
               <div className="text-right">
-                <p className="font-bold text-primary">289 sold</p>
-                <p className="text-[10px] text-green-600 font-bold">+$1,734</p>
+                <p className="font-bold text-primary">289 đã bán</p>
+                <p className="text-[10px] text-green-600 font-bold">+17.340.000đ</p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Peak Hours Heatmap */}
+        {/* Biểu Đồ Giờ Cao Điểm */}
         <section className="lg:col-span-7 glass-card p-6 rounded-3xl">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-headline-md text-headline-md text-primary">Peak Hours Heatmap</h3>
+            <h3 className="font-headline-md text-headline-md text-primary">Biểu Đồ Giờ Cao Điểm</h3>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] text-on-surface-variant font-bold uppercase">Activity:</span>
+              <span className="text-[10px] text-on-surface-variant font-bold uppercase">Mức độ:</span>
               <div className="flex space-x-1">
                 <div className="w-3 h-3 rounded-sm bg-primary/10"></div>
                 <div className="w-3 h-3 rounded-sm bg-primary/40"></div>
@@ -278,7 +278,7 @@ export default function Analytics() {
                 ))}
                 
                 {/* Row: Mon-Fri Average */}
-                <div className="text-[10px] font-bold flex items-center pr-2 text-on-surface-variant">WEEKDAYS</div>
+                <div className="text-[10px] font-bold flex items-center pr-2 text-on-surface-variant">NGÀY THƯỜNG</div>
                 <div className="h-10 rounded bg-primary/40 heatmap-cell"></div>
                 <div className="h-10 rounded bg-primary/70 heatmap-cell"></div>
                 <div className="h-10 rounded bg-primary heatmap-cell"></div>
@@ -293,7 +293,7 @@ export default function Analytics() {
                 <div className="h-10 rounded bg-primary/20 heatmap-cell"></div>
                 
                 {/* Row: Weekend Average */}
-                <div className="text-[10px] font-bold flex items-center pr-2 text-on-surface-variant">WEEKENDS</div>
+                <div className="text-[10px] font-bold flex items-center pr-2 text-on-surface-variant">CUỐI TUẦN</div>
                 <div className="h-10 rounded bg-primary/20 heatmap-cell"></div>
                 <div className="h-10 rounded bg-primary/50 heatmap-cell"></div>
                 <div className="h-10 rounded bg-primary/80 heatmap-cell"></div>
@@ -312,7 +312,7 @@ export default function Analytics() {
           <div className="mt-6 p-4 bg-secondary-container/20 rounded-2xl border border-secondary/20">
             <div className="flex items-start space-x-3">
               <span className="material-symbols-outlined text-secondary" data-icon="lightbulb">lightbulb</span>
-              <p className="text-label-sm text-on-surface">Staffing Recommendation: Increase counter staff by 2 between 10am - 12pm on Saturdays to reduce wait times during peak morning rush.</p>
+              <p className="text-label-sm text-on-surface">Khuyến nghị nhân sự: Tăng thêm 2 nhân viên quầy từ 10h - 12h sáng Thứ Bảy để giảm thời gian chờ đợi trong giờ cao điểm.</p>
             </div>
           </div>
         </section>

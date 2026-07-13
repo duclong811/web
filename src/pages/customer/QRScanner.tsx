@@ -16,7 +16,7 @@ export default function QRScanner() {
 
   return (
     <div className="card" style={{ maxWidth: '400px', margin: '2rem auto', textAlign: 'center' }}>
-      <h2 style={{ marginBottom: '1rem' }}>Welcome to Cafe Premium</h2>
+      <h2 style={{ marginBottom: '1rem' }}>Welcome to AI-SMARTSERVE</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Scan QR code on your table or enter table number below.</p>
       
       <div style={{ padding: '2rem', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-lg)', marginBottom: '1.5rem', border: '2px dashed var(--accent-secondary)' }}>

@@ -9,7 +9,7 @@ export default function StaffLayout() {
       {/* TopAppBar */}
       <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-margin h-16 bg-surface dark:bg-inverse-surface shadow-sm border-b border-outline-variant/10">
         <div className="flex items-center gap-4">
-          <h1 className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">BaristaFlow</h1>
+          <h1 className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">AI-SMARTSERVE</h1>
         </div>
         <div className="flex items-center gap-stack-md">
           <div className="hidden md:flex items-center gap-stack-md px-4 py-2 rounded-full bg-surface-container-low dark:bg-surface-dim transition-all duration-200 focus-within:ring-2 ring-primary/20">
@@ -30,27 +30,27 @@ export default function StaffLayout() {
           <div className="w-16 h-16 rounded-2xl bg-primary-container flex items-center justify-center mb-3">
             <span className="material-symbols-outlined text-on-primary-container text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_cafe</span>
           </div>
-          <h2 className="font-headline-md text-headline-md font-bold text-primary">Main Street Cafe</h2>
-          <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70">Staff Portal</p>
+          <h2 className="font-headline-md text-headline-md font-bold text-primary">AI-SMARTSERVE</h2>
+          <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70">Cổng Nhân Viên</p>
         </div>
         
         <nav className="flex-1 space-y-2">
           {/* Active: Orders */}
           <Link to="/staff/orders" className={`flex items-center gap-stack-md rounded-xl p-3 transition-transform duration-200 hover:translate-x-1 ${location.pathname.includes('orders') ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant hover:bg-surface-variant'}`}>
             <span className="material-symbols-outlined">assignment</span>
-            <span className="font-label-md text-label-md">Orders</span>
+            <span className="font-label-md text-label-md">Đơn Hàng</span>
           </Link>
           <a className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
             <span className="material-symbols-outlined">inventory_2</span>
-            <span className="font-label-md text-label-md">Inventory</span>
+            <span className="font-label-md text-label-md">Kho Hàng</span>
           </a>
           <a className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
             <span className="material-symbols-outlined">badge</span>
-            <span className="font-label-md text-label-md">Staff</span>
+            <span className="font-label-md text-label-md">Nhân Sự</span>
           </a>
           <a className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
             <span className="material-symbols-outlined">analytics</span>
-            <span className="font-label-md text-label-md">Reports</span>
+            <span className="font-label-md text-label-md">Báo Cáo</span>
           </a>
         </nav>
         
@@ -61,7 +61,7 @@ export default function StaffLayout() {
           </button>
           <button onClick={() => navigate('/staff/login')} className="w-full flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1 cursor-pointer text-left">
             <span className="material-symbols-outlined">logout</span>
-            <span className="font-label-md text-label-md">Logout</span>
+            <span className="font-label-md text-label-md">Đăng Xuất</span>
           </button>
         </div>
       </aside>

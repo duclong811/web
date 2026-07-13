@@ -1,8 +1,10 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
     { path: '/admin/analytics', icon: 'analytics', label: 'Phân Tích' },
@@ -14,8 +16,13 @@ export default function AdminLayout() {
 
   return (
     <div className="bg-background text-on-background antialiased overflow-x-hidden min-h-screen">
+      {/* Mobile Menu Backdrop */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="hidden md:flex flex-col h-screen py-gutter px-4 bg-surface-container-low fixed left-0 top-0 w-64 shadow-sm z-20 border-r border-outline-variant/10">
+      <aside className={`flex-col h-screen py-gutter px-4 bg-surface-container-low fixed left-0 top-0 w-64 shadow-sm z-40 border-r border-outline-variant/10 transition-transform ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden md:flex'}`}>
         <div className="mb-stack-lg px-2">
           <h1 className="font-headline-md text-headline-md text-primary tracking-tight">AI-SMARTSERVE</h1>
           <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70">Trung Tâm Quản Lý</p>
@@ -28,6 +35,7 @@ export default function AdminLayout() {
               <Link 
                 key={item.path}
                 to={item.path} 
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 ${isActive ? 'text-primary bg-secondary-container/30 border-r-4 border-primary' : 'text-on-surface-variant hover:text-primary hover:bg-secondary-container/20'}`}
               >
                 <span className="material-symbols-outlined" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>{item.icon}</span>
@@ -52,13 +60,13 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="md:ml-64 min-h-screen pb-24 md:pb-0">
+      <main className="md:ml-64 min-h-screen pt-16 pb-24 md:pb-0">
         {/* Top Navigation Bar */}
         <header className="fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] z-10 bg-surface/90 backdrop-blur-md h-16 flex justify-between items-center px-gutter shadow-sm border-b border-surface-container">
           <div className="flex items-center gap-4">
-            <div className="md:hidden">
-              <span className="material-symbols-outlined text-primary text-2xl">menu</span>
-            </div>
+            <button className="md:hidden p-2 -ml-2 text-primary hover:bg-surface-variant rounded-full transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+              <span className="material-symbols-outlined text-2xl">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+            </button>
             <div className="relative hidden sm:block">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
               <input className="bg-surface-container-low border border-outline-variant/30 rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/50" placeholder="Tìm kiếm đơn hàng, nhân sự..." type="text" />

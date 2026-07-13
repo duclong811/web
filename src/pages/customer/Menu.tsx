@@ -267,6 +267,7 @@ export const MENU_DATA: Record<string, any[]> = {
 export default function Menu() {
   const { cart, addToCart } = useStore();
   const [activeCategory, setActiveCategory] = useState<string>('Cà Phê Pha Máy');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -302,6 +303,9 @@ export default function Menu() {
       <nav className="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim border-b border-outline-variant/10 shadow-sm dark:shadow-none glass-header">
         <div className="flex justify-between items-center px-container-margin py-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-stack-lg">
+            <button className="lg:hidden p-2 -ml-2 text-primary hover:bg-primary/10 rounded-full transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+              <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+            </button>
             <Link to="/" className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">AI-SMARTSERVE</Link>
             <div className="hidden md:flex gap-gutter items-center">
               <Link to="/" className="font-label-md text-label-md text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1">Thực Đơn</Link>
@@ -331,7 +335,7 @@ export default function Menu() {
       
       <div className="max-w-7xl mx-auto flex min-h-screen">
         {/* SideNavBar */}
-        <aside className="h-[calc(100vh-73px)] w-64 sticky top-[73px] hidden lg:flex flex-col gap-stack-md px-4 py-8 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10 z-40 overflow-y-auto">
+        <aside className={`h-[calc(100vh-73px)] w-64 ${isMobileMenuOpen ? 'fixed left-0 top-[73px] flex bg-surface shadow-2xl z-50' : 'hidden sticky top-[73px]'} lg:flex flex-col gap-stack-md px-4 py-8 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10 lg:z-40 overflow-y-auto`}>
           <div className="mb-stack-lg px-2">
             <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70 uppercase tracking-widest">Danh Mục</p>
           </div>
@@ -339,7 +343,7 @@ export default function Menu() {
             {MENU_CATEGORIES.map(category => (
               <button 
                 key={category.id}
-                onClick={() => setActiveCategory(category.id)}
+                onClick={() => { setActiveCategory(category.id); setIsMobileMenuOpen(false); }}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-transform active:translate-x-1 ${
                   activeCategory === category.id 
                   ? 'bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary font-bold' 

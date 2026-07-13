@@ -1,14 +1,19 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 
 export default function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen overflow-hidden bg-background font-body-md text-on-surface">
       {/* TopAppBar */}
       <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-margin h-16 bg-surface dark:bg-inverse-surface shadow-sm border-b border-outline-variant/10">
         <div className="flex items-center gap-4">
+          <button className="md:hidden p-2 -ml-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+          </button>
           <h1 className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">AI-SMARTSERVE</h1>
         </div>
         <div className="flex items-center gap-stack-md">
@@ -24,8 +29,13 @@ export default function StaffLayout() {
         </div>
       </header>
 
+      {/* Mobile Menu Backdrop */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 top-16 bg-black/50 z-30 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+
       {/* SideNavBar */}
-      <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 flex flex-col p-stack-md z-40 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10">
+      <aside className={`fixed left-0 top-16 h-[calc(100vh-64px)] w-64 flex-col p-stack-md z-40 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10 transition-transform ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden md:flex'}`}>
         <div className="flex flex-col items-center py-6 mb-4">
           <div className="w-16 h-16 rounded-2xl bg-primary-container flex items-center justify-center mb-3">
             <span className="material-symbols-outlined text-on-primary-container text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_cafe</span>
@@ -36,19 +46,19 @@ export default function StaffLayout() {
         
         <nav className="flex-1 space-y-2">
           {/* Active: Orders */}
-          <Link to="/staff/orders" className={`flex items-center gap-stack-md rounded-xl p-3 transition-transform duration-200 hover:translate-x-1 ${location.pathname.includes('orders') ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant hover:bg-surface-variant'}`}>
+          <Link to="/staff/orders" onClick={() => setIsMobileMenuOpen(false)} className={`flex items-center gap-stack-md rounded-xl p-3 transition-transform duration-200 hover:translate-x-1 ${location.pathname.includes('orders') ? 'bg-secondary-container text-on-secondary-container' : 'text-on-surface-variant hover:bg-surface-variant'}`}>
             <span className="material-symbols-outlined">assignment</span>
             <span className="font-label-md text-label-md">Đơn Hàng</span>
           </Link>
-          <a className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
+          <a onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
             <span className="material-symbols-outlined">inventory_2</span>
             <span className="font-label-md text-label-md">Kho Hàng</span>
           </a>
-          <a className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
+          <a onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
             <span className="material-symbols-outlined">badge</span>
             <span className="font-label-md text-label-md">Nhân Sự</span>
           </a>
-          <a className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
+          <a onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-stack-md text-on-surface-variant p-3 hover:bg-surface-variant rounded-xl transition-transform duration-200 hover:translate-x-1" href="#">
             <span className="material-symbols-outlined">analytics</span>
             <span className="font-label-md text-label-md">Báo Cáo</span>
           </a>
@@ -67,7 +77,7 @@ export default function StaffLayout() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 ml-64 mt-16 overflow-hidden bg-background">
+      <main className="flex-1 md:ml-64 mt-16 overflow-hidden bg-background">
         <Outlet />
       </main>
     </div>

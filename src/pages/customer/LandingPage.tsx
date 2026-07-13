@@ -1,12 +1,17 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 
 export default function LandingPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   return (
     <div className="font-body-md text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed min-h-screen bg-background">
       {/* TopNavBar (Shared Component Identity) */}
       <nav className="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim border-b border-outline-variant/10 shadow-sm dark:shadow-none">
         <div className="flex justify-between items-center px-container-margin py-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-stack-lg">
+            <button className="lg:hidden p-2 -ml-2 text-primary hover:bg-primary/10 rounded-full transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+              <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+            </button>
             <Link to="/menu" className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">AI-SMARTSERVE</Link>
             <div className="hidden md:flex gap-gutter items-center">
               <a className="font-label-md text-label-md text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1" href="#">Menu</a>
@@ -28,7 +33,7 @@ export default function LandingPage() {
       
       <div className="max-w-7xl mx-auto flex min-h-screen">
         {/* SideNavBar */}
-        <aside className="h-[calc(100vh-73px)] w-64 sticky top-[73px] hidden lg:flex flex-col gap-stack-md px-4 py-8 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10 z-40 overflow-y-auto">
+        <aside className={`h-[calc(100vh-73px)] w-64 ${isMobileMenuOpen ? 'fixed left-0 top-[73px] flex bg-surface shadow-2xl z-50' : 'hidden sticky top-[73px]'} lg:flex flex-col gap-stack-md px-4 py-8 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10 lg:z-40 overflow-y-auto`}>
           <div className="mb-stack-lg px-2">
             <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70 uppercase tracking-widest">Categories</p>
           </div>

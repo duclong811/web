@@ -76,7 +76,7 @@ export default function StaffManagement() {
               <span className="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">Manager</span>
             </div>
             <div className="flex items-center gap-4 mt-1 text-on-surface-variant font-body-md text-[14px]">
-              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">mail</span> sarah.j@warmbrew.com</span>
+              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">mail</span> sarah.j@aismartserve.com</span>
               <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">schedule</span> 08:00 - 16:00</span>
             </div>
           </div>
@@ -99,7 +99,7 @@ export default function StaffManagement() {
               <span className="px-3 py-1 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">Barista</span>
             </div>
             <div className="flex items-center gap-4 mt-1 text-on-surface-variant font-body-md text-[14px]">
-              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">mail</span> m.chen@warmbrew.com</span>
+              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">mail</span> m.chen@aismartserve.com</span>
               <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">schedule</span> 07:00 - 15:00</span>
             </div>
           </div>
@@ -122,7 +122,7 @@ export default function StaffManagement() {
               <span className="px-3 py-1 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">Server</span>
             </div>
             <div className="flex items-center gap-4 mt-1 text-on-surface-variant font-body-md text-[14px]">
-              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">mail</span> a.smith@warmbrew.com</span>
+              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">mail</span> a.smith@aismartserve.com</span>
               <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">schedule</span> Off Duty</span>
             </div>
           </div>
@@ -145,7 +145,7 @@ export default function StaffManagement() {
               <span className="px-3 py-1 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm">Server</span>
             </div>
             <div className="flex items-center gap-4 mt-1 text-on-surface-variant font-body-md text-[14px]">
-              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">mail</span> j.wilson@warmbrew.com</span>
+              <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">mail</span> j.wilson@aismartserve.com</span>
               <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">schedule</span> 14:00 - 22:00</span>
             </div>
           </div>

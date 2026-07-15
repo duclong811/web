@@ -84,7 +84,7 @@ export default function ProductDetail() {
 
       <main className="flex-grow max-w-7xl mx-auto w-full px-container-margin py-stack-lg flex flex-col md:flex-row gap-12 items-start">
         {/* Left: Product Image Section */}
-        <section className="w-full md:w-1/2 sticky top-24">
+        <section className="w-full md:w-1/2 md:sticky md:top-24">
           <div className="relative rounded-[2rem] overflow-hidden aspect-[4/5] bg-white shadow-xl shadow-primary/5">
             <img className="w-full h-full object-cover" src={item.image} alt={item.name} />
             <div className="absolute top-6 left-6 flex gap-2">

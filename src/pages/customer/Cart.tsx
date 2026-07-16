@@ -173,9 +173,15 @@ export default function Cart() {
                       </div>
                       
                       {/* Promo Code */}
-                      <div className="relative mb-6">
+                      <div className="relative mb-4">
                         <input className="w-full pl-4 pr-20 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-label-md font-label-md transition-all" placeholder="Mã khuyến mãi" type="text" />
                         <button className="absolute right-2 top-1.5 px-4 py-1.5 bg-primary text-white rounded-lg text-label-sm font-label-sm hover:brightness-110 active:scale-95 transition-all">Áp Dụng</button>
+                      </div>
+
+                      {/* Reward Points Phone Number */}
+                      <div className="relative mb-6">
+                        <input className="w-full pl-4 pr-24 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-label-md font-label-md transition-all" placeholder="SĐT tích điểm" type="tel" />
+                        <button className="absolute right-2 top-1.5 px-4 py-1.5 bg-primary text-white rounded-lg text-label-sm font-label-sm hover:brightness-110 active:scale-95 transition-all">Xác Nhận</button>
                       </div>
                       
                       {/* CTA Button */}

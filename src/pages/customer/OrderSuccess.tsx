@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
+import MobileBottomNav from '../../components/MobileBottomNav';
 
 export default function OrderSuccess() {
   useEffect(() => {
@@ -149,6 +150,7 @@ export default function OrderSuccess() {
           <p className="font-label-md text-label-md text-on-surface-variant">© 2024 AI-SMARTSERVE. All rights reserved.</p>
         </div>
       </footer>
+      <MobileBottomNav />
     </div>
   );
 }

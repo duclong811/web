@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import MobileBottomNav from '../../components/MobileBottomNav';
 
 const MENU_CATEGORIES = [
   { id: 'Cà Phê Pha Máy', icon: 'coffee' },
@@ -495,10 +496,12 @@ export default function Menu() {
       </footer>
 
       {/* Floating Action Button */}
-      <Link to="/ai-suggest" className="fixed bottom-8 right-8 z-50 flex items-center gap-2 px-6 py-4 bg-primary text-on-primary rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 group">
+      <Link to="/ai-suggest" className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 flex items-center gap-2 px-6 py-4 bg-primary text-on-primary rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 group">
         <span className="material-symbols-outlined group-hover:rotate-12 transition-transform">auto_awesome</span>
         <span className="font-label-md text-label-md">AI Gợi Ý</span>
       </Link>
+      
+      <MobileBottomNav />
     </div>
   );
 }

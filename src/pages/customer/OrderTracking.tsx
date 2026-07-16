@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
+import MobileBottomNav from '../../components/MobileBottomNav';
 
 export default function OrderTracking() {
   useEffect(() => {
@@ -222,27 +223,7 @@ export default function OrderTracking() {
       </footer>
 
       {/* Mobile Bottom Navigation (Visible only on mobile) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-surface shadow-[0_-2px_10px_rgba(0,0,0,0.05)] px-container-margin py-3 flex justify-around items-center z-50">
-        <Link to="/" className="flex flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
-          <span className="material-symbols-outlined">home</span>
-          <span className="text-[10px] font-bold mt-1">Trang chủ</span>
-        </Link>
-        <Link to="/" className="flex flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
-          <span className="material-symbols-outlined">menu_book</span>
-          <span className="text-[10px] font-bold mt-1">Thực đơn</span>
-        </Link>
-        <div className="flex flex-col items-center text-primary">
-          <div className="relative">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>receipt_long</span>
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full animate-pulse"></span>
-          </div>
-          <span className="text-[10px] font-bold mt-1">Đơn hàng</span>
-        </div>
-        <div className="flex flex-col items-center text-on-surface-variant hover:text-primary transition-colors">
-          <span className="material-symbols-outlined">loyalty</span>
-          <span className="text-[10px] font-bold mt-1">Ưu đãi</span>
-        </div>
-      </div>
+      <MobileBottomNav />
     </div>
   );
 }

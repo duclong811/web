@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
+import MobileBottomNav from '../../components/MobileBottomNav';
 
 export default function AIRecommendations() {
   useEffect(() => {
@@ -179,7 +180,7 @@ export default function AIRecommendations() {
         </section>
 
         {/* Sticky Bottom Actions */}
-        <div className="sticky bottom-0 bg-white/80 backdrop-blur-md border-t border-outline-variant py-6 px-container-margin z-40">
+        <div className="sticky bottom-16 md:bottom-0 bg-white/80 backdrop-blur-md border-t border-outline-variant py-6 px-container-margin z-40">
           <div className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-4 items-center justify-between">
             <Link to="/" className="w-full sm:w-auto px-10 py-3 rounded-full border-2 border-primary text-primary font-label-md hover:bg-primary/5 transition-colors text-center">Tiếp Tục Chọn Món</Link>
             <Link to="/cart" className="w-full sm:w-auto px-12 py-4 rounded-full bg-primary text-white font-label-md shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
@@ -208,6 +209,7 @@ export default function AIRecommendations() {
           </div>
         </div>
       </footer>
+      <MobileBottomNav />
     </div>
   );
 }

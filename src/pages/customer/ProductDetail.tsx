@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { MENU_DATA } from './Menu';
+import MobileBottomNav from '../../components/MobileBottomNav';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -230,6 +231,7 @@ export default function ProductDetail() {
           </p>
         </div>
       </footer>
+      <MobileBottomNav />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useStore } from '../../store/useStore';
 import { Link, useNavigate } from 'react-router-dom';
+import MobileBottomNav from '../../components/MobileBottomNav';
 
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart, createOrder } = useStore();
@@ -224,6 +225,7 @@ export default function Cart() {
           </p>
         </div>
       </footer>
+      <MobileBottomNav />
     </div>
   );
 }

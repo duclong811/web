@@ -3,11 +3,13 @@ import { useParams, Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { MENU_DATA } from './Menu';
 import MobileBottomNav from '../../components/MobileBottomNav';
+import { ShoppingCart } from 'lucide-react';
 
 export default function ProductDetail() {
   const { id } = useParams();
 
-  const { addToCart } = useStore();
+  const { cart, addToCart } = useStore();
+  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
   
   let foundItem = null;
   let categoryName = 'Cà Phê Pha Máy';
@@ -77,7 +79,14 @@ export default function ProductDetail() {
             <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Cửa Hàng</a>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/cart" className="material-symbols-outlined p-2 hover:bg-surface-container-low rounded-lg transition-all text-on-surface-variant">shopping_cart</Link>
+            <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
+              <ShoppingCart className="text-primary" size={24} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
             <Link to="/staff/login" className="material-symbols-outlined p-2 hover:bg-surface-container-low rounded-lg transition-all text-on-surface-variant">person</Link>
           </div>
         </nav>

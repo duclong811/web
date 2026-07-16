@@ -58,9 +58,6 @@ export default function AIRecommendations() {
                 </span>
               )}
             </Link>
-            <Link to="/staff/login" className="active:scale-95 transition-transform duration-150 p-2 rounded-full hover:bg-surface-container-low dark:hover:bg-surface-container">
-              <span className="material-symbols-outlined text-primary dark:text-primary-fixed">account_circle</span>
-            </Link>
           </div>
         </div>
       </header>

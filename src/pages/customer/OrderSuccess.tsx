@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
+import { useStore } from '../../store/useStore';
+import { ShoppingCart } from 'lucide-react';
 
 export default function OrderSuccess() {
+  const { cart } = useStore();
+  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
+
   useEffect(() => {
     const createConfetti = () => {
       const container = document.getElementById('confetti-container');
@@ -60,9 +65,18 @@ export default function OrderSuccess() {
       <header className="bg-surface docked full-width top-0 sticky z-50 shadow-sm w-full">
         <div className="flex justify-between items-center w-full px-container-margin py-4 max-w-7xl mx-auto">
           <Link to="/" className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</Link>
-          <div className="flex gap-stack-md">
-            <Link to="/cart"><span className="material-symbols-outlined text-primary" data-icon="shopping_cart">shopping_cart</span></Link>
-            <Link to="/staff/login"><span className="material-symbols-outlined text-primary" data-icon="person">person</span></Link>
+          <div className="flex items-center gap-4">
+            <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
+              <ShoppingCart className="text-primary" size={24} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            <Link to="/staff/login" className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">
+              <span className="material-symbols-outlined text-primary">person</span>
+            </Link>
           </div>
         </div>
       </header>

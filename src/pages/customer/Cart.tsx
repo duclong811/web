@@ -1,10 +1,12 @@
 import { useStore } from '../../store/useStore';
 import { Link, useNavigate } from 'react-router-dom';
 import MobileBottomNav from '../../components/MobileBottomNav';
+import { ShoppingCart } from 'lucide-react';
 
 export default function Cart() {
   const { cart, updateQuantity, removeFromCart, createOrder } = useStore();
   const navigate = useNavigate();
+  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const serviceFee = 5000;
@@ -29,16 +31,14 @@ export default function Cart() {
             <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Cửa Hàng</a>
           </div>
           <div className="flex items-center gap-4">
-            <div className="relative group">
-              <button className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">
-                <span className="material-symbols-outlined text-primary">shopping_cart</span>
-                {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">
-                    {cart.reduce((acc, i) => acc + i.quantity, 0)}
-                  </span>
-                )}
-              </button>
-            </div>
+            <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
+              <ShoppingCart className="text-primary" size={24} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
             <Link to="/staff/login" className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">
               <span className="material-symbols-outlined text-primary">person</span>
             </Link>

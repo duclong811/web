@@ -316,9 +316,6 @@ export default function Menu() {
             </div>
           </div>
           <div className="flex items-center gap-stack-md">
-            <Link to="/tracking" className="p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95" title="Order Tracking">
-              <span className="material-symbols-outlined text-primary">receipt_long</span>
-            </Link>
             <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
               <ShoppingCart className="text-primary" size={24} />
               {cartCount > 0 && (

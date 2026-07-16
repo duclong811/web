@@ -1,8 +1,24 @@
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
+import { useStore } from '../../store/useStore';
+import { ShoppingCart } from 'lucide-react';
 
 export default function AIRecommendations() {
+  const { cart, addToCart } = useStore();
+  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  const handleAddToCart = (id: string, name: string, price: number, image: string, categoryId: string = 'AI Gợi Ý') => {
+    addToCart({
+      id,
+      name,
+      price,
+      categoryId,
+      description: 'Gợi ý từ chuyên gia AI',
+      image
+    });
+  };
+
   useEffect(() => {
     // Subtle parallax effect on scroll for cards
     const handleScroll = () => {
@@ -34,6 +50,14 @@ export default function AIRecommendations() {
             <Link to="/cart" className="text-primary font-bold border-b-2 border-primary pb-1 font-label-md text-label-md">Giỏ Hàng</Link>
           </nav>
           <div className="flex items-center gap-4">
+            <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
+              <ShoppingCart className="text-primary" size={24} />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
             <Link to="/staff/login" className="active:scale-95 transition-transform duration-150 p-2 rounded-full hover:bg-surface-container-low dark:hover:bg-surface-container">
               <span className="material-symbols-outlined text-primary dark:text-primary-fixed">account_circle</span>
             </Link>
@@ -75,7 +99,7 @@ export default function AIRecommendations() {
               <div className="bg-tertiary-fixed-dim/20 rounded-lg p-3 mb-4">
                 <p className="text-label-sm text-on-tertiary-fixed-variant leading-relaxed italic">"Vị bùi của hạnh nhân nướng cân bằng hoàn hảo với hương vị mộc mạc, đậm mùi hoa của trà Oolong."</p>
               </div>
-              <button className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
+              <button onClick={() => handleAddToCart('pas-1', 'Almond Croissant', 45000, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAlwhNX6VEn4w1bVqQuNP4PUn6Q2E4EJpS7Mpqgrd2OSfvPjEZvCHn4t8ywUAeAfoSgsNjiIJeJfYuRRGAEaF7BZmucXjsF_cHCyESl4UeEWOzc8Td9B_oGwhLagwLJn-u5e0L52t7AcC22VeNxjYmOxY58d-bY-quB2bZOQQBKSBmGonefSR9FSP3ejUE8Rn6wmpcqoveWKKO5jdvA9WG7MX81sq9371MSF_iGWKKbRA-nYfKd0gY', 'Bánh Ngọt')} className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 Thêm vào Combo
               </button>
@@ -91,7 +115,7 @@ export default function AIRecommendations() {
               <div className="bg-tertiary-fixed-dim/20 rounded-lg p-3 mb-4">
                 <p className="text-label-sm text-on-tertiary-fixed-variant leading-relaxed italic">"Hương hoa oải hương dịu nhẹ hòa quyện tuyệt vời với kết cấu béo ngậy của trà sữa."</p>
               </div>
-              <button className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
+              <button onClick={() => handleAddToCart('pas-2', 'Lavender Macaron', 32500, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDDI2LFP7YTlf3W-DOmahNfhkeE0REOIwkRfAktI1kbdHD2DK0vqUqOO1NX7ea-dKF2oXfa1tXT89j6nrCHqkiBa5DHKBi5C1yl-c1d1cB5ZtC-FHi5MQsWVr5VS97cW6etQbfGBvzm73n1NvYWZH86mQ8higX0Li6GemA1RgpGQJicWWjzt-16tjecEePOQrA2S9mNGh8knNi6OFTvPR27SVcbAWYjBviiIJXgLOeLvL4k0YW0P_47', 'Bánh Ngọt')} className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 Thêm vào Combo
               </button>
@@ -107,7 +131,7 @@ export default function AIRecommendations() {
               <div className="bg-tertiary-fixed-dim/20 rounded-lg p-3 mb-4">
                 <p className="text-label-sm text-on-tertiary-fixed-variant leading-relaxed italic">"Vị cam chanh thanh mát làm dịu đi độ béo của sữa, làm tươi mới vị giác sau mỗi ngụm."</p>
               </div>
-              <button className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
+              <button onClick={() => handleAddToCart('pas-3', 'Lemon Drizzle Cake', 57500, 'https://lh3.googleusercontent.com/aida-public/AB6AXuD5PnNR9EJ9_C7qSwCOdp6yH1t5-DLWUqXtY4A5FMhwixIoOJyrBg3bK9e-_f1-tzeYsFanDAgNYJPf4VoznlqPppyyWKhfqWRSBYYn5TQaf3CfhjPggGJZGJx8ScOQik2WgFnbY1LzqDNtBXCIBehrlilZbnWITubGSTs5j-JrsLztnB5PrcdOqJe7-ZX-yOAwdYox_sfSDO1Wjg5TPhTGbVfBAhjQvmMRLZYHfjlgrIi7HSGnR0wd', 'Bánh Ngọt')} className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 Thêm vào Combo
               </button>
@@ -123,7 +147,7 @@ export default function AIRecommendations() {
               <div className="bg-tertiary-fixed-dim/20 rounded-lg p-3 mb-4">
                 <p className="text-label-sm text-on-tertiary-fixed-variant leading-relaxed italic">"Hương vị bơ nguyên bản, mộc mạc giúp làm nổi bật trọn vẹn hương vị lá trà Oolong thượng hạng."</p>
               </div>
-              <button className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
+              <button onClick={() => handleAddToCart('pas-4', 'Butter Shortbread', 40000, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQmARlY698zgmUMPEQAyQyQi2X-Py-b6Ni4vHDZnB6JZq6CZaFYoxcEa3WHflpNIpEShXRYYllKUeYssnYg6p03XLfsbVPKP511ra2kOYQ84RlyWMi_Rsv-Q1BMIovtQ_3UvvgK3JJM81xrVVu0umKCdUbXyLbxPmpwO7orbW8rojKDeFEIlpqySzrjPVf74T0PinblMbp9HMq2NQUl0xqaKmX7Y140jvlQm_3-ERmJw6FK6Bcea0S', 'Bánh Ngọt')} className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 Thêm vào Combo
               </button>
@@ -155,7 +179,7 @@ export default function AIRecommendations() {
                     <span className="text-on-surface-variant line-through font-body-md text-body-md">142.500đ</span>
                     <span className="text-primary font-bold text-headline-md">119.500đ</span>
                   </div>
-                  <button className="w-full py-3 rounded-full bg-secondary text-white font-label-md hover:bg-opacity-90 transition-all active:scale-95">Nâng Cấp Đơn Hàng</button>
+                  <button onClick={() => handleAddToCart('combo-1', 'Thức Uống Buổi Sáng', 119500, 'https://lh3.googleusercontent.com/aida-public/AB6AXuAJonOoRVtp75jLFjbYKlZWznNOnDuOeLHG64m4ONgxDQCNWifUblrvlsw4VgG_p69645mJnnA6cLzCSr2NjW4A0e91iuAZ5gphC5kmfvUNVMPtFZcvV3gFW6vUgJQyrpYQzqh9b3Jcul57FUQ9nBr1evDsi-FVn66O5fBV_P9trR4rl63JLjAakZ26AMRbSOj7h1yCtRWs1oGecyRN_28gVhkuLy5vWrgeX4XnjfUP4qR7CLM25nJR', 'Combo')} className="w-full py-3 rounded-full bg-secondary text-white font-label-md hover:bg-opacity-90 transition-all active:scale-95">Nâng Cấp Đơn Hàng</button>
                 </div>
               </div>
 
@@ -172,7 +196,7 @@ export default function AIRecommendations() {
                     <span className="text-on-surface-variant line-through font-body-md text-body-md">165.000đ</span>
                     <span className="text-primary font-bold text-headline-md">135.000đ</span>
                   </div>
-                  <button className="w-full py-3 rounded-full bg-secondary text-white font-label-md hover:bg-opacity-90 transition-all active:scale-95">Nâng Cấp Đơn Hàng</button>
+                  <button onClick={() => handleAddToCart('combo-2', 'Tiệc Trà Chiều', 135000, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBdS9L4GoZiyPNcaqpTJhX2PFNee5iRRr-ZSOifvQ9Rfa8Huzrfaf8btQuIpUvzIdqk6mu4aErLJ7nY0N_qC8sih8bWa5ZwzCAg4whxroQTnt8--_VTqMKwkvRenjIWnzNm1wIsc2a82P_jfVjFJ7s_3Uuz8lwur7RWYGqtEWfUOmAOH3MS3VZA7zGWcdmxrTkAE4XdyuszhK5WcWp0R5Hq-MYk66AhBysE80BInlA940__GYZr5xiS', 'Combo')} className="w-full py-3 rounded-full bg-secondary text-white font-label-md hover:bg-opacity-90 transition-all active:scale-95">Nâng Cấp Đơn Hàng</button>
                 </div>
               </div>
             </div>

@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
+import { useStore } from '../../store/useStore';
+import { ShoppingCart } from 'lucide-react';
 
 export default function OrderTracking() {
+  const { cart } = useStore();
+  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
+
   useEffect(() => {
     // Add small hover effects to list items
     const listItems = document.querySelectorAll('.flex.justify-between.items-center.p-2');
@@ -54,9 +59,18 @@ export default function OrderTracking() {
           <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer">Our Story</a>
           <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer">Locations</a>
         </div>
-        <div className="flex items-center gap-stack-md">
-          <Link to="/cart"><span className="material-symbols-outlined text-primary p-2 cursor-pointer hover:bg-surface-container-low rounded-full transition-colors">shopping_cart</span></Link>
-          <Link to="/staff/login"><span className="material-symbols-outlined text-primary p-2 cursor-pointer hover:bg-surface-container-low rounded-full transition-colors">person</span></Link>
+        <div className="flex items-center gap-4">
+          <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
+            <ShoppingCart className="text-primary" size={24} />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+          <Link to="/staff/login" className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">
+            <span className="material-symbols-outlined text-primary">person</span>
+          </Link>
         </div>
       </nav>
 

@@ -1,15 +1,22 @@
 ﻿import { useState, useEffect } from 'react';
 import { useStore, type OrderStatus } from '../../store/useStore';
+import Pagination from '../../components/Pagination';
 
 export default function OrderDashboard() {
   const { orders, updateOrderStatus, fetchOrders, initRealtime, currentStoreId } = useStore();
   const [filter, setFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 6;
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders(currentStoreId);
     initRealtime(currentStoreId);
   }, [currentStoreId]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -35,6 +42,9 @@ export default function OrderDashboard() {
     if (filter === 'paid') return o.status === 'paid';
     return true;
   });
+
+  const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const getStatusStyles = (status: OrderStatus) => {
     switch(status) {
@@ -122,14 +132,14 @@ export default function OrderDashboard() {
 
       {/* Orders Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-5">
-        {filteredOrders.length === 0 ? (
+        {paginatedOrders.length === 0 ? (
           <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-outline-variant/20 p-6 shadow-xs">
             <span className="material-symbols-outlined text-4xl text-outline-variant mb-2">assignment_turned_in</span>
             <h3 className="text-sm sm:text-base font-bold text-on-surface mb-1">Hiện không có đơn hàng nào trong mục này</h3>
             <p className="text-xs text-on-surface-variant">Khi khách hàng đặt món tại bàn, đơn mới sẽ tự động hiển thị tại đây.</p>
           </div>
         ) : (
-          filteredOrders.map(order => {
+          paginatedOrders.map(order => {
             const styles = getStatusStyles(order.status);
             return (
               <div key={order.id} className={styles.card}>
@@ -188,6 +198,21 @@ export default function OrderDashboard() {
             );
           })
         )}
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="bg-white rounded-2xl p-2 border border-outline-variant/15 shadow-2xs">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(p) => {
+            setCurrentPage(p);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          totalItems={filteredOrders.length}
+          pageSize={PAGE_SIZE}
+          itemName="đơn hàng"
+        />
       </div>
     </div>
   );

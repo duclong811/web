@@ -3,6 +3,7 @@ import { useStore } from '../../store/useStore';
 import { ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
+import Pagination from '../../components/Pagination';
 
 const DEFAULT_CATEGORIES = [
   { id: 'Cà Phê Pha Máy', name: 'Cà Phê Pha Máy', icon: 'coffee' },
@@ -30,6 +31,8 @@ export default function Menu() {
   const [activeCategory, setActiveCategory] = useState<string>('Cà Phê Pha Máy');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 6;
 
   // Stock status per branch
   const [stockStatus, setStockStatus] = useState<{ [id: string]: boolean }>({});
@@ -61,6 +64,11 @@ export default function Menu() {
     }
   }, [categories]);
 
+  // Reset page when category or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, searchQuery]);
+
   // Filter items matching activeCategory or search
   const activeItems = menuItems
     .filter(m => !m.categoryName?.toLowerCase().includes('quà') && !m.categoryName?.toLowerCase().includes('lưu niệm'))
@@ -71,6 +79,9 @@ export default function Menu() {
       const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchCat && matchSearch;
     });
+
+  const totalPages = Math.ceil(activeItems.length / PAGE_SIZE);
+  const paginatedItems = activeItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const handleAddToCart = (id: string, name: string, price: number, image: string) => {
     const isOutOfStock = stockStatus[id] === false;
@@ -86,7 +97,6 @@ export default function Menu() {
     };
     addToCart(fullItem, { quantity: 1 });
   };
-
   return (
     <div className="font-body-md text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed min-h-screen bg-background animate-in fade-in duration-500">
       {/* TopNavBar */}
@@ -182,7 +192,7 @@ export default function Menu() {
                 }`}
               >
                 <span className="material-symbols-outlined text-lg">apps</span>
-                <span>Tất Cả Món</span>
+                <span>Tất Cả Món ({menuItems.length})</span>
               </button>
               {displayCategories.map(c => {
                 const catName = c.name || c.id;
@@ -245,12 +255,12 @@ export default function Menu() {
 
           {/* Dynamic Menu Grid */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-stack-lg">
-            {activeItems.length === 0 ? (
+            {paginatedItems.length === 0 ? (
               <div className="col-span-full py-16 text-center text-on-surface-variant font-medium bg-white rounded-2xl border border-outline-variant/10 p-6">
                 Không tìm thấy món nào trong danh mục này.
               </div>
             ) : (
-              activeItems.map((item) => {
+              paginatedItems.map((item) => {
                 const isOutOfStock = stockStatus[item.id.toString()] === false;
 
                 return (
@@ -324,9 +334,24 @@ export default function Menu() {
             )}
           </section>
 
+          {/* Pagination Controls for Customer Menu */}
+          <div className="bg-white rounded-2xl p-2 border border-outline-variant/15 shadow-2xs mt-2">
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={totalPages} 
+              onPageChange={(p) => {
+                setCurrentPage(p);
+                window.scrollTo({ top: 120, behavior: 'smooth' });
+              }} 
+              totalItems={activeItems.length} 
+              pageSize={PAGE_SIZE} 
+              itemName="món đồ uống"
+            />
+          </div>
+
           {/* Active Order Status Card */}
           {activeOrder && (
-            <section className="mt-6 p-4 sm:p-stack-md bg-secondary-container/30 border border-primary/20 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in">
+            <section className="mt-4 p-4 sm:p-stack-md bg-secondary-container/30 border border-primary/20 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in">
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-10 sm:w-12 h-10 sm:h-12 bg-primary rounded-full flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-white text-lg sm:text-xl animate-pulse">coffee</span>

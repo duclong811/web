@@ -1,13 +1,17 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore, type MenuItem } from '../../store/useStore';
+import Pagination from '../../components/Pagination';
 
 interface PosCartItem {
+  cartId: string;
   item: MenuItem;
   quantity: number;
   sizeName: string;
   sizeExtra: number;
-  note?: string;
+  sugarLevel: string;
+  iceLevel: string;
+  note: string;
 }
 
 export default function NewOrder() {
@@ -22,12 +26,23 @@ export default function NewOrder() {
 
   const [activeCategory, setActiveCategory] = useState<string>('Tất Cả');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 8;
+
   const [orderType, setOrderType] = useState<'Dine-in' | 'Takeaway'>('Dine-in');
   const [selectedTable, setSelectedTable] = useState<string>('T01');
   const [posCart, setPosCart] = useState<PosCartItem[]>([]);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Customization Modal State
+  const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
+  const [modalSize, setModalSize] = useState<'Medium' | 'Large'>('Medium');
+  const [modalSugar, setModalSugar] = useState<string>('100%');
+  const [modalIce, setModalIce] = useState<string>('100%');
+  const [modalNote, setModalNote] = useState<string>('');
+  const [modalQuantity, setModalQuantity] = useState<number>(1);
 
   // Stock status for current branch
   const [stockStatus, setStockStatus] = useState<{ [id: string]: boolean }>({});
@@ -45,33 +60,68 @@ export default function NewOrder() {
     return () => window.removeEventListener('storage', loadStock);
   }, [currentStoreId]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, searchQuery]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
+  const openCustomizeModal = (item: MenuItem, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
 
-  const handleAddItem = (item: MenuItem) => {
     const isOutOfStock = stockStatus[item.id.toString()] === false;
     if (isOutOfStock) {
       showToast(`Món ${item.name} đang tạm hết tại quán!`);
       return;
     }
 
+    setCustomizingItem(item);
+    setModalSize('Medium');
+    setModalSugar('100%');
+    setModalIce('100%');
+    setModalNote('');
+    setModalQuantity(1);
+  };
+
+  const handleAddCustomizedItem = () => {
+    if (!customizingItem) return;
+
+    const sizeExtra = modalSize === 'Large' ? 15000 : 0;
+    const cartId = `${customizingItem.id}_${modalSize}_${modalSugar}_${modalIce}_${modalNote.trim()}`;
+
     setPosCart(prev => {
-      const existingIdx = prev.findIndex(p => p.item.id === item.id);
+      const existingIdx = prev.findIndex(p => p.cartId === cartId);
       if (existingIdx > -1) {
         const updated = [...prev];
-        updated[existingIdx].quantity += 1;
+        updated[existingIdx].quantity += modalQuantity;
         return updated;
       } else {
-        return [...prev, { item, quantity: 1, sizeName: 'Medium', sizeExtra: 0 }];
+        return [...prev, {
+          cartId,
+          item: customizingItem,
+          quantity: modalQuantity,
+          sizeName: modalSize,
+          sizeExtra,
+          sugarLevel: modalSugar,
+          iceLevel: modalIce,
+          note: modalNote.trim(),
+        }];
       }
     });
 
-    showToast(`Đã thêm ${item.name}`);
+    showToast(`Đã thêm ${modalQuantity}x ${customizingItem.name}`);
+    setCustomizingItem(null);
   };
 
-  const handleUpdateQuantity = (index: number, delta: number) => {
+  const handleUpdateQuantity = (index: number, delta: number, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+
     setPosCart(prev => {
       const updated = [...prev];
       const newQty = updated[index].quantity + delta;
@@ -103,20 +153,25 @@ export default function NewOrder() {
 
     setIsSubmitting(true);
     try {
-      // Temporarily populate store cart for API compatibility
       useStore.setState({
         cart: posCart.map(ci => ({
           ...ci.item,
           quantity: ci.quantity,
           sizeName: ci.sizeName,
           price: (ci.item.price || 0) + ci.sizeExtra,
-          sugarLevel: '100%',
-          iceLevel: '100%',
+          sugarLevel: ci.sugarLevel,
+          iceLevel: ci.iceLevel,
+          note: ci.note,
         }))
       });
 
       const tableIdentifier = orderType === 'Dine-in' ? selectedTable : 'Mang Về';
-      await createOrder(tableIdentifier, undefined, 'Khách tại quầy', `${orderType === 'Takeaway' ? '[Mang Về]' : `[Tại Bàn ${selectedTable}]`} Tạo đơn tại quầy POS`);
+      await createOrder(
+        tableIdentifier, 
+        undefined, 
+        'Khách tại quầy', 
+        `${orderType === 'Takeaway' ? '[Mang Về]' : `[Tại Bàn ${selectedTable}]`} Tạo đơn tại quầy POS`
+      );
       
       showToast('Tạo đơn hàng thành công!');
       setPosCart([]);
@@ -124,7 +179,7 @@ export default function NewOrder() {
       
       setTimeout(() => {
         navigate('/staff/orders');
-      }, 800);
+      }, 600);
     } catch (err) {
       console.error('POS order failed:', err);
       showToast('Đã ghi nhận đơn hàng tại quầy!');
@@ -136,13 +191,15 @@ export default function NewOrder() {
     }
   };
 
-  // Filter items
+  // Filter & Pagination
   const filteredItems = menuItems.filter(item => {
     const matchCat = activeCategory === 'Tất Cả' || (item.categoryName || item.categoryId || '').includes(activeCategory);
     const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchCat && matchSearch;
   });
 
+  const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+  const paginatedItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   return (
     <div className="max-w-7xl mx-auto -m-3 sm:-m-6 md:-m-8 flex flex-col lg:flex-row h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-hidden bg-background">
       {/* Toast Notification */}
@@ -153,10 +210,10 @@ export default function NewOrder() {
         </div>
       )}
 
-      {/* Left Section: Menu Catalog (Full width on Mobile, ~65-70% on Desktop) */}
+      {/* Left Section: Menu Catalog */}
       <section className="flex-1 flex flex-col h-full overflow-hidden p-3 sm:p-5 lg:p-6 pb-24 lg:pb-6">
         {/* Top Control Bar: Search & Categories */}
-        <div className="space-y-3 mb-4 shrink-0">
+        <div className="space-y-3 mb-3 shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="relative flex-1">
               <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-base">search</span>
@@ -202,19 +259,19 @@ export default function NewOrder() {
 
         {/* Menu Items Grid */}
         <div className="flex-1 overflow-y-auto pr-1">
-          {filteredItems.length === 0 ? (
+          {paginatedItems.length === 0 ? (
             <div className="py-16 text-center text-xs sm:text-sm text-on-surface-variant bg-white rounded-2xl border border-outline-variant/15 p-6">
               Không tìm thấy món nào phù hợp.
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3.5">
-              {filteredItems.map(item => {
+              {paginatedItems.map(item => {
                 const isOutOfStock = stockStatus[item.id.toString()] === false;
 
                 return (
                   <div
                     key={item.id}
-                    onClick={() => !isOutOfStock && handleAddItem(item)}
+                    onClick={(e) => openCustomizeModal(item, e)}
                     className={`bg-white rounded-2xl border transition-all flex flex-col overflow-hidden group select-none ${
                       isOutOfStock
                       ? 'border-red-200 bg-red-50/30 opacity-70 cursor-not-allowed'
@@ -236,12 +293,9 @@ export default function NewOrder() {
                           Hết Món
                         </span>
                       ) : (
-                        <button 
-                          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 text-primary flex items-center justify-center shadow-md group-hover:bg-primary group-hover:text-white transition-colors"
-                          title="Thêm món"
-                        >
-                          <span className="material-symbols-outlined text-base font-bold">add</span>
-                        </button>
+                        <span className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 text-primary flex items-center justify-center shadow-md group-hover:bg-primary group-hover:text-white transition-colors">
+                          <span className="material-symbols-outlined text-base font-bold">tune</span>
+                        </span>
                       )}
                     </div>
 
@@ -249,9 +303,14 @@ export default function NewOrder() {
                       <h4 className={`text-xs sm:text-sm font-bold line-clamp-1 ${isOutOfStock ? 'text-red-900 line-through' : 'text-on-surface'}`}>
                         {item.name}
                       </h4>
-                      <p className="text-[10px] sm:text-xs text-on-surface-variant truncate mt-0.5">
-                        {item.categoryName || item.categoryId}
-                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[10px] sm:text-xs text-on-surface-variant truncate">
+                          {item.categoryName || item.categoryId}
+                        </span>
+                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                          Tùy chỉnh
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -259,9 +318,21 @@ export default function NewOrder() {
             </div>
           )}
         </div>
+
+        {/* POS Pagination Bar */}
+        <div className="mt-2 shrink-0 bg-white rounded-xl p-1.5 border border-outline-variant/15 shadow-2xs">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={(p) => setCurrentPage(p)}
+            totalItems={filteredItems.length}
+            pageSize={PAGE_SIZE}
+            itemName="món"
+          />
+        </div>
       </section>
 
-      {/* Right Section: Desktop POS Order Panel (Hidden on mobile, visible on lg:) */}
+      {/* Right Section: Desktop POS Order Panel */}
       <aside className="hidden lg:flex w-96 bg-white border-l border-outline-variant/20 flex-col p-5 shadow-lg shrink-0 z-20">
         <div className="flex items-center justify-between pb-3 border-b border-outline-variant/15">
           <div className="flex items-center gap-2">
@@ -322,32 +393,45 @@ export default function NewOrder() {
             <div className="py-20 text-center text-xs text-on-surface-variant">
               <span className="material-symbols-outlined text-3xl text-outline-variant mb-1">touch_app</span>
               <p>Chưa có món nào được chọn.</p>
-              <p className="text-[10px] opacity-70">Nhấn vào món bên trái để thêm vào đơn.</p>
+              <p className="text-[10px] opacity-70">Nhấn vào món để tùy chỉnh đường/đá/size.</p>
             </div>
           ) : (
             posCart.map((ci, index) => (
-              <div key={index} className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-low/40 border border-outline-variant/10">
-                <div className="min-w-0 pr-2">
-                  <p className="text-xs font-bold text-on-surface truncate">{ci.item.name}</p>
-                  <p className="text-[11px] font-extrabold text-primary">
+              <div key={ci.cartId} className="p-2.5 rounded-xl bg-surface-container-low/40 border border-outline-variant/10 flex flex-col gap-1.5">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 pr-2">
+                    <p className="text-xs font-bold text-on-surface truncate">{ci.item.name}</p>
+                    <p className="text-[10px] text-on-surface-variant font-medium leading-tight">
+                      {ci.sizeName} · Đường {ci.sugarLevel} · Đá {ci.iceLevel}
+                      {ci.note ? ` · "${ci.note}"` : ''}
+                    </p>
+                  </div>
+
+                  <span className="text-xs font-extrabold text-primary shrink-0">
                     {((ci.item.price + ci.sizeExtra) * ci.quantity).toLocaleString('vi-VN')}đ
-                  </p>
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0 bg-white px-1.5 py-1 rounded-lg border border-outline-variant/20 shadow-2xs">
-                  <button 
-                    onClick={() => handleUpdateQuantity(index, -1)}
-                    className="w-5 h-5 rounded flex items-center justify-center text-primary hover:bg-surface-variant active:scale-95"
-                  >
-                    <span className="material-symbols-outlined text-sm font-bold">remove</span>
-                  </button>
-                  <span className="w-5 text-center text-xs font-extrabold text-on-surface">{ci.quantity}</span>
-                  <button 
-                    onClick={() => handleUpdateQuantity(index, 1)}
-                    className="w-5 h-5 rounded flex items-center justify-center text-primary hover:bg-surface-variant active:scale-95"
-                  >
-                    <span className="material-symbols-outlined text-sm font-bold">add</span>
-                  </button>
+                <div className="flex items-center justify-between pt-1 border-t border-outline-variant/10">
+                  <span className="text-[10px] text-on-surface-variant font-bold">
+                    {(ci.item.price + ci.sizeExtra).toLocaleString('vi-VN')}đ / ly
+                  </span>
+
+                  <div className="flex items-center gap-1.5 shrink-0 bg-white px-1.5 py-0.5 rounded-lg border border-outline-variant/20 shadow-2xs">
+                    <button 
+                      onClick={(e) => handleUpdateQuantity(index, -1, e)}
+                      className="w-5 h-5 rounded flex items-center justify-center text-primary hover:bg-surface-variant active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-sm font-bold">remove</span>
+                    </button>
+                    <span className="w-5 text-center text-xs font-extrabold text-on-surface">{ci.quantity}</span>
+                    <button 
+                      onClick={(e) => handleUpdateQuantity(index, 1, e)}
+                      className="w-5 h-5 rounded flex items-center justify-center text-primary hover:bg-surface-variant active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-sm font-bold">add</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -379,7 +463,6 @@ export default function NewOrder() {
           </button>
         </div>
       </aside>
-
       {/* Mobile Floating Bottom Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-outline-variant/20 shadow-2xl z-30">
         <div className="flex items-center justify-between gap-3 max-w-md mx-auto">
@@ -475,28 +558,41 @@ export default function NewOrder() {
             {/* Items List in Sheet */}
             <div className="flex-1 overflow-y-auto space-y-2.5 my-2 pr-1">
               {posCart.map((ci, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-2xl bg-surface-container-low/50 border border-outline-variant/15">
-                  <div className="min-w-0 pr-2">
-                    <p className="text-xs font-bold text-on-surface truncate">{ci.item.name}</p>
-                    <p className="text-xs font-extrabold text-primary mt-0.5">
+                <div key={ci.cartId} className="p-3 rounded-2xl bg-surface-container-low/50 border border-outline-variant/15 flex flex-col gap-1.5">
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0 pr-2">
+                      <p className="text-xs font-bold text-on-surface truncate">{ci.item.name}</p>
+                      <p className="text-[10px] text-on-surface-variant font-medium mt-0.5">
+                        {ci.sizeName} · Đường {ci.sugarLevel} · Đá {ci.iceLevel}
+                        {ci.note ? ` · "${ci.note}"` : ''}
+                      </p>
+                    </div>
+
+                    <span className="text-xs font-extrabold text-primary shrink-0">
                       {((ci.item.price + ci.sizeExtra) * ci.quantity).toLocaleString('vi-VN')}đ
-                    </p>
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 bg-white px-2 py-1 rounded-xl border border-outline-variant/20 shadow-2xs">
-                    <button 
-                      onClick={() => handleUpdateQuantity(index, -1)}
-                      className="w-6 h-6 rounded flex items-center justify-center text-primary hover:bg-surface-variant active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-base font-bold">remove</span>
-                    </button>
-                    <span className="w-5 text-center text-xs font-black text-on-surface">{ci.quantity}</span>
-                    <button 
-                      onClick={() => handleUpdateQuantity(index, 1)}
-                      className="w-6 h-6 rounded flex items-center justify-center text-primary hover:bg-surface-variant active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-base font-bold">add</span>
-                    </button>
+                  <div className="flex items-center justify-between pt-1 border-t border-outline-variant/10">
+                    <span className="text-[10px] text-on-surface-variant font-bold">
+                      {(ci.item.price + ci.sizeExtra).toLocaleString('vi-VN')}đ / ly
+                    </span>
+
+                    <div className="flex items-center gap-2 shrink-0 bg-white px-2 py-1 rounded-xl border border-outline-variant/20 shadow-2xs">
+                      <button 
+                        onClick={(e) => handleUpdateQuantity(index, -1, e)}
+                        className="w-6 h-6 rounded flex items-center justify-center text-primary hover:bg-surface-variant active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-base font-bold">remove</span>
+                      </button>
+                      <span className="w-5 text-center text-xs font-black text-on-surface">{ci.quantity}</span>
+                      <button 
+                        onClick={(e) => handleUpdateQuantity(index, 1, e)}
+                        className="w-6 h-6 rounded flex items-center justify-center text-primary hover:bg-surface-variant active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-base font-bold">add</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -516,6 +612,175 @@ export default function NewOrder() {
               >
                 <span className="material-symbols-outlined text-lg">check_circle</span>
                 {isSubmitting ? 'Đang gửi đơn...' : 'Xác Nhận & Đặt Đơn'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POS Quick Customization Modal (Sugar / Ice / Size / Notes) */}
+      {customizingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setCustomizingItem(null)}
+          />
+
+          {/* Modal Box */}
+          <div className="relative bg-white rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col p-5 sm:p-6 shadow-2xl z-10 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-outline-variant/15 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-surface-container shrink-0">
+                  <img 
+                    src={customizingItem.image || 'https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=200'} 
+                    alt={customizingItem.name} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-on-surface">{customizingItem.name}</h3>
+                  <p className="text-xs font-extrabold text-primary">
+                    {((customizingItem.price || 0) + (modalSize === 'Large' ? 15000 : 0)).toLocaleString('vi-VN')}đ
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setCustomizingItem(null)}
+                className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            {/* Customization Options Body */}
+            <div className="flex-1 overflow-y-auto space-y-4 py-3 pr-1">
+              {/* Size Selector */}
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">
+                  1. Kích Cỡ (Size)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalSize('Medium')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-between ${
+                      modalSize === 'Medium' 
+                      ? 'border-primary bg-primary/10 text-primary shadow-xs' 
+                      : 'border-outline-variant/30 text-on-surface-variant hover:border-primary/50'
+                    }`}
+                  >
+                    <span>Vừa (Medium)</span>
+                    <span className="text-[10px] opacity-80">+0đ</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalSize('Large')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-between ${
+                      modalSize === 'Large' 
+                      ? 'border-primary bg-primary/10 text-primary shadow-xs' 
+                      : 'border-outline-variant/30 text-on-surface-variant hover:border-primary/50'
+                    }`}
+                  >
+                    <span>Lớn (Large)</span>
+                    <span className="text-[10px] font-extrabold text-primary">+15.000đ</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sugar Level */}
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">
+                  2. Mức Đường
+                </label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {['100%', '70%', '50%', '30%', '0%'].map(lvl => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setModalSugar(lvl)}
+                      className={`py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        modalSugar === lvl 
+                        ? 'border-primary bg-primary text-white shadow-xs' 
+                        : 'border-outline-variant/30 text-on-surface-variant hover:bg-surface-variant'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ice Level */}
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">
+                  3. Mức Đá
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                  {['100%', '70%', '50%', '30%', 'Ko đá', 'Nóng'].map(lvl => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setModalIce(lvl)}
+                      className={`py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                        modalIce === lvl 
+                        ? 'border-primary bg-primary text-white shadow-xs' 
+                        : 'border-outline-variant/30 text-on-surface-variant hover:bg-surface-variant'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Special Note */}
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">
+                  4. Ghi Chú Riêng Cho Bếp / Barista
+                </label>
+                <input 
+                  type="text"
+                  placeholder="VD: Ít ngọt, tách đá riêng, nhiều sữa..."
+                  value={modalNote}
+                  onChange={(e) => setModalNote(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              {/* Quantity */}
+              <div className="flex items-center justify-between pt-2 border-t border-outline-variant/10">
+                <span className="text-xs font-bold text-on-surface">Số lượng ly:</span>
+                <div className="flex items-center gap-2 bg-surface-container-low px-2 py-1 rounded-xl border border-outline-variant/20">
+                  <button
+                    type="button"
+                    onClick={() => setModalQuantity(q => q > 1 ? q - 1 : 1)}
+                    className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-primary shadow-xs active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-base font-bold">remove</span>
+                  </button>
+                  <span className="w-6 text-center text-sm font-black text-primary">{modalQuantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setModalQuantity(q => q + 1)}
+                    className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-primary shadow-xs active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-base font-bold">add</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-outline-variant/15 shrink-0">
+              <button
+                type="button"
+                onClick={handleAddCustomizedItem}
+                className="w-full py-3 bg-primary text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:bg-primary-container active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-base">add_shopping_cart</span>
+                <span>Thêm Vào Đơn • {(((customizingItem.price || 0) + (modalSize === 'Large' ? 15000 : 0)) * modalQuantity).toLocaleString('vi-VN')}đ</span>
               </button>
             </div>
           </div>

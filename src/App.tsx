@@ -1,10 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+﻿import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 import StaffLayout from './layouts/StaffLayout';
 import AdminLayout from './layouts/AdminLayout';
 
 // Customer Pages
-// Removed LandingPage as Menu is now the main entry
 import ProductDetail from './pages/customer/ProductDetail';
 import Menu from './pages/customer/Menu';
 import AIRecommendations from './pages/customer/AIRecommendations';
@@ -14,6 +13,7 @@ import OrderTracking from './pages/customer/OrderTracking';
 
 // Staff Pages
 import StaffLogin from './pages/staff/StaffLogin';
+import StaffDashboard from './pages/staff/StaffDashboard';
 import OrderDashboard from './pages/staff/OrderDashboard';
 import NewOrder from './pages/staff/NewOrder';
 
@@ -40,7 +40,8 @@ function App() {
         {/* Staff Routes */}
         <Route path="/staff/login" element={<StaffLogin />} />
         <Route path="/staff" element={<StaffLayout />}>
-          <Route index element={<Navigate to="orders" replace />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<StaffDashboard />} />
           <Route path="orders" element={<OrderDashboard />} />
           <Route path="new-order" element={<NewOrder />} />
         </Route>

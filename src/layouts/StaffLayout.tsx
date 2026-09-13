@@ -1,10 +1,22 @@
 ﻿import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useStore } from '../store/useStore';
 
 export default function StaffLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { orders, fetchOrders, initRealtime, currentStoreId } = useStore();
+
+  useEffect(() => {
+    fetchOrders(currentStoreId);
+    initRealtime(currentStoreId);
+  }, [currentStoreId]);
+
+  // Realtime pending/preparing orders count
+  const pendingCount = orders.filter(o => o.status === 'pending').length;
+  const preparingCount = orders.filter(o => o.status === 'preparing').length;
+  const activeOrdersCount = pendingCount + preparingCount;
 
   return (
     <div className="flex min-h-screen bg-background font-body-md text-on-surface">
@@ -18,7 +30,7 @@ export default function StaffLayout() {
           >
             <span className="material-symbols-outlined text-2xl">{isMobileMenuOpen ? 'close' : 'menu'}</span>
           </button>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => navigate('/staff/dashboard')}>
             <span className="material-symbols-outlined text-primary text-xl hidden sm:inline-block" style={{ fontVariationSettings: "'FILL' 1" }}>local_cafe</span>
             <h1 className="text-base sm:text-xl font-black text-primary dark:text-primary-fixed-dim whitespace-nowrap tracking-tight">
               AI-SMARTSERVE
@@ -32,11 +44,22 @@ export default function StaffLayout() {
             <input className="bg-transparent border-none focus:ring-0 text-xs text-on-surface-variant w-40 outline-none" placeholder="Tìm đơn hàng..." type="text" />
           </div>
           
-          <button className="p-1.5 sm:p-2 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors flex items-center justify-center">
+          <button 
+            onClick={() => navigate('/staff/orders')}
+            className="relative p-1.5 sm:p-2 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors flex items-center justify-center"
+            title="Đơn hàng mới"
+          >
             <span className="material-symbols-outlined text-xl">notifications</span>
+            {pendingCount > 0 && (
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+            )}
           </button>
           
-          <button className="p-1.5 sm:p-2 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors flex items-center justify-center">
+          <button 
+            onClick={() => navigate('/staff/dashboard')}
+            className="p-1.5 sm:p-2 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors flex items-center justify-center"
+            title="Tổng quan ca"
+          >
             <span className="material-symbols-outlined text-xl">settings</span>
           </button>
           
@@ -58,7 +81,7 @@ export default function StaffLayout() {
       <aside className={`fixed left-0 top-0 bottom-0 md:top-14 sm:md:top-16 w-64 flex flex-col p-4 z-50 md:z-30 bg-surface md:bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/15 transition-transform duration-300 shadow-2xl md:shadow-none ${
         isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}>
-        <div className="flex flex-col items-center py-4 mb-2 border-b border-outline-variant/10 md:border-none">
+        <div className="flex flex-col items-center py-4 mb-2 border-b border-outline-variant/10 md:border-none cursor-pointer" onClick={() => { setIsMobileMenuOpen(false); navigate('/staff/dashboard'); }}>
           <div className="w-12 h-12 rounded-2xl bg-primary-container flex items-center justify-center mb-2 shadow-xs">
             <span className="material-symbols-outlined text-on-primary-container text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_cafe</span>
           </div>
@@ -67,39 +90,67 @@ export default function StaffLayout() {
         </div>
         
         <nav className="flex-1 space-y-1.5 overflow-y-auto py-2">
-          {/* Active: Orders */}
+          {/* Item 1: Live Orders */}
           <Link 
             to="/staff/orders" 
             onClick={() => setIsMobileMenuOpen(false)} 
-            className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition-all text-xs font-bold ${
-              location.pathname.includes('orders') 
+            className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 transition-all text-xs font-bold ${
+              location.pathname.endsWith('/orders') 
               ? 'bg-secondary-container text-on-secondary-container shadow-xs' 
               : 'text-on-surface-variant hover:bg-surface-variant/40'
             }`}
           >
-            <span className="material-symbols-outlined text-lg">assignment</span>
-            <span>Đơn Hàng Trực Tiếp</span>
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-lg">assignment</span>
+              <span>Đơn Hàng Trực Tiếp</span>
+            </div>
+            {activeOrdersCount > 0 && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                pendingCount > 0 ? 'bg-amber-400 text-primary animate-pulse' : 'bg-primary/20 text-primary'
+              }`}>
+                {activeOrdersCount}
+              </span>
+            )}
           </Link>
           
+          {/* Item 2: Shift Dashboard & Live Metrics (Replaced broken customer menu redirect) */}
           <Link 
-            to="/" 
+            to="/staff/dashboard" 
             onClick={() => setIsMobileMenuOpen(false)} 
-            className="flex items-center gap-3 text-on-surface-variant px-3.5 py-2.5 hover:bg-surface-variant/40 rounded-xl transition-all text-xs font-bold"
+            className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition-all text-xs font-bold ${
+              location.pathname.endsWith('/dashboard') 
+              ? 'bg-secondary-container text-on-secondary-container shadow-xs' 
+              : 'text-on-surface-variant hover:bg-surface-variant/40'
+            }`}
           >
-            <span className="material-symbols-outlined text-lg">menu_book</span>
-            <span>Xem Thực Đơn Khách</span>
+            <span className="material-symbols-outlined text-lg">dashboard</span>
+            <span>Tổng Quan Ca Làm</span>
+          </Link>
+
+          {/* Item 3: Quick POS Order */}
+          <Link 
+            to="/staff/new-order" 
+            onClick={() => setIsMobileMenuOpen(false)} 
+            className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 transition-all text-xs font-bold ${
+              location.pathname.endsWith('/new-order') 
+              ? 'bg-secondary-container text-on-secondary-container shadow-xs' 
+              : 'text-on-surface-variant hover:bg-surface-variant/40'
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">point_of_sale</span>
+            <span>Bán Hàng Tại Quầy (POS)</span>
           </Link>
 
           <a 
-            onClick={() => setIsMobileMenuOpen(false)} 
+            onClick={() => { setIsMobileMenuOpen(false); navigate('/staff/dashboard'); }} 
             className="flex items-center gap-3 text-on-surface-variant px-3.5 py-2.5 hover:bg-surface-variant/40 rounded-xl transition-all text-xs font-bold cursor-pointer"
           >
             <span className="material-symbols-outlined text-lg">inventory_2</span>
-            <span>Kho Hàng</span>
+            <span>Kho & Trạng Thái Món</span>
           </a>
 
           <a 
-            onClick={() => setIsMobileMenuOpen(false)} 
+            onClick={() => { setIsMobileMenuOpen(false); navigate('/staff/dashboard'); }} 
             className="flex items-center gap-3 text-on-surface-variant px-3.5 py-2.5 hover:bg-surface-variant/40 rounded-xl transition-all text-xs font-bold cursor-pointer"
           >
             <span className="material-symbols-outlined text-lg">analytics</span>
@@ -113,7 +164,7 @@ export default function StaffLayout() {
             className="w-full mb-2 py-2.5 bg-primary text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all hover:bg-primary-container active:scale-95 shadow-xs"
           >
             <span className="material-symbols-outlined text-base">add</span>
-            Tạo Đơn Tại Quầy
+            + Tạo Đơn Tại Quầy
           </button>
           
           <button 

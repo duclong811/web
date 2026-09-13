@@ -4,21 +4,34 @@ import { useStore, type OrderStatus } from '../../store/useStore';
 export default function OrderDashboard() {
   const { orders, updateOrderStatus, fetchOrders, initRealtime, currentStoreId } = useStore();
   const [filter, setFilter] = useState('All');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchOrders(currentStoreId);
     initRealtime(currentStoreId);
   }, [currentStoreId]);
 
-  const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleStatusChange = (orderId: string, newStatus: OrderStatus, orderCode?: string) => {
     updateOrderStatus(orderId, newStatus);
+    if (newStatus === 'paid') {
+      showToast(`Đã thu tiền đơn #${orderCode || orderId} thành công!`);
+    } else if (newStatus === 'ready') {
+      showToast(`Đơn #${orderCode || orderId} đã sẵn sàng phục vụ!`);
+    } else if (newStatus === 'preparing') {
+      showToast(`Đang pha chế đơn #${orderCode || orderId}...`);
+    }
   };
 
   const filteredOrders = orders.filter(o => {
     if (filter === 'All') return true;
     if (filter === 'pending') return o.status === 'pending';
     if (filter === 'preparing') return o.status === 'preparing';
-    if (filter === 'done') return o.status === 'ready' || o.status === 'done' || o.status === 'served';
+    if (filter === 'ready') return o.status === 'ready' || o.status === 'done' || o.status === 'served';
     if (filter === 'paid') return o.status === 'paid';
     return true;
   });
@@ -40,8 +53,8 @@ export default function OrderDashboard() {
           badge: "bg-[#85532a] text-white font-bold px-2.5 py-0.5 rounded-full text-[11px] animate-pulse",
           badgeText: "Đang Pha Chế",
           btn: "bg-secondary text-white shadow-xs hover:opacity-90",
-          btnText: "Đã pha chế xong ➔",
-          nextStatus: "done" as OrderStatus
+          btnText: "Xong món (Lên khay) ➔",
+          nextStatus: "ready" as OrderStatus
         };
       case 'ready':
       case 'done':
@@ -49,16 +62,16 @@ export default function OrderDashboard() {
         return {
           card: "bg-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col transition-all hover:shadow-md border border-green-200",
           badge: "bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full text-[11px] flex items-center gap-1",
-          badgeText: "Món Đã Sẵn Sàng",
-          btn: "bg-surface-container-highest text-on-surface hover:bg-outline-variant/50",
-          btnText: "Đã giao / Thu tiền ➔",
+          badgeText: "Món Đã Sẵn Sàng (Chờ Thu Tiền)",
+          btn: "bg-green-600 text-white shadow-xs hover:bg-green-700",
+          btnText: "Thu tiền 💵 ➔",
           nextStatus: "paid" as OrderStatus
         };
       case 'paid':
         return {
-          card: "bg-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col transition-all opacity-60 grayscale-[0.2] border border-outline-variant/20",
-          badge: "bg-gray-100 text-gray-700 font-bold px-2.5 py-0.5 rounded-full text-[11px]",
-          badgeText: "Đã Thanh Toán",
+          card: "bg-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col transition-all opacity-75 border border-outline-variant/20 bg-gray-50/50",
+          badge: "bg-blue-100 text-blue-800 font-bold px-2.5 py-0.5 rounded-full text-[11px] flex items-center gap-1",
+          badgeText: "✓ Đã Thu Tiền",
           btn: "hidden",
           btnText: "",
           nextStatus: "paid" as OrderStatus
@@ -70,6 +83,14 @@ export default function OrderDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-4">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-primary text-white text-xs sm:text-sm font-bold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
+          <span className="material-symbols-outlined text-lg">check_circle</span>
+          {toastMessage}
+        </div>
+      )}
+
       {/* Header Bar */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-outline-variant/15 shadow-xs">
         <div>
@@ -77,7 +98,7 @@ export default function OrderDashboard() {
             Đơn Hàng Trực Tiếp (Live Orders)
           </h1>
           <p className="text-xs text-on-surface-variant">
-            Tự động đồng bộ và nhận đơn mới qua WebSocket SignalR.
+            Tự động đồng bộ và nhận đơn mới qua WebSocket SignalR. Đơn đã thu tiền được lưu trong ca.
           </p>
         </div>
         
@@ -90,10 +111,10 @@ export default function OrderDashboard() {
               onChange={(e) => setFilter(e.target.value)}
             >
               <option value="All">Tất Cả Đơn ({orders.length})</option>
-              <option value="pending">Chờ Xác Nhận</option>
-              <option value="preparing">Đang Pha Chế</option>
-              <option value="done">Sẵn Sàng / Đã Giao</option>
-              <option value="paid">Đã Thanh Toán</option>
+              <option value="pending">Chờ Xác Nhận ({orders.filter(o => o.status === 'pending').length})</option>
+              <option value="preparing">Đang Pha Chế ({orders.filter(o => o.status === 'preparing').length})</option>
+              <option value="ready">Sẵn Sàng / Chờ Thu Tiền ({orders.filter(o => o.status === 'ready' || o.status === 'done' || o.status === 'served').length})</option>
+              <option value="paid">Đã Thu Tiền ({orders.filter(o => o.status === 'paid').length})</option>
             </select>
           </div>
         </div>
@@ -104,7 +125,7 @@ export default function OrderDashboard() {
         {filteredOrders.length === 0 ? (
           <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-outline-variant/20 p-6 shadow-xs">
             <span className="material-symbols-outlined text-4xl text-outline-variant mb-2">assignment_turned_in</span>
-            <h3 className="text-sm sm:text-base font-bold text-on-surface mb-1">Hiện không có đơn hàng nào</h3>
+            <h3 className="text-sm sm:text-base font-bold text-on-surface mb-1">Hiện không có đơn hàng nào trong mục này</h3>
             <p className="text-xs text-on-surface-variant">Khi khách hàng đặt món tại bàn, đơn mới sẽ tự động hiển thị tại đây.</p>
           </div>
         ) : (
@@ -156,7 +177,7 @@ export default function OrderDashboard() {
                   </div>
                   {styles.btn !== "hidden" && (
                     <button 
-                      onClick={() => handleStatusChange(order.id, styles.nextStatus)}
+                      onClick={() => handleStatusChange(order.id, styles.nextStatus, order.orderCode)}
                       className={`px-3.5 py-2 rounded-xl font-bold text-xs shadow-xs transition-all active:scale-95 whitespace-nowrap ${styles.btn}`}
                     >
                       {styles.btnText}

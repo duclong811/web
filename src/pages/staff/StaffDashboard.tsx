@@ -10,11 +10,8 @@ export default function StaffDashboard() {
   const navigate = useNavigate();
   const { orders, menuItems, fetchMenu, fetchOrders, initRealtime, currentStoreId, updateOrderStatus } = useStore();
   
-  // Local stock status state (In Stock / Out of Stock)
-  const [stockStatus, setStockStatus] = useState<StockStatus>(() => {
-    const saved = localStorage.getItem('webcafe_stock_status');
-    return saved ? JSON.parse(saved) : {};
-  });
+  // Stock status keyed by storeId to isolate branches
+  const [stockStatus, setStockStatus] = useState<StockStatus>({});
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -22,6 +19,11 @@ export default function StaffDashboard() {
     fetchOrders(currentStoreId);
     fetchMenu(currentStoreId);
     initRealtime(currentStoreId);
+
+    // Load branch-specific stock status
+    const storeKey = `webcafe_stock_store_${currentStoreId}`;
+    const saved = localStorage.getItem(storeKey);
+    setStockStatus(saved ? JSON.parse(saved) : {});
   }, [currentStoreId]);
 
   const showToast = (msg: string) => {
@@ -34,8 +36,13 @@ export default function StaffDashboard() {
       const current = prev[productId] !== false; // default true (in stock)
       const next = !current;
       const updated = { ...prev, [productId]: next };
-      localStorage.setItem('webcafe_stock_status', JSON.stringify(updated));
-      showToast(next ? `Đã mở bán lại: ${productName}` : `Đã chuyển sang tạm hết món: ${productName}`);
+      const storeKey = `webcafe_stock_store_${currentStoreId}`;
+      localStorage.setItem(storeKey, JSON.stringify(updated));
+      
+      // Also broadcast storage event for other open tabs
+      window.dispatchEvent(new Event('storage'));
+
+      showToast(next ? `[Quán #${currentStoreId}] Mở bán lại: ${productName}` : `[Quán #${currentStoreId}] Chuyển sang tạm hết món: ${productName}`);
       return updated;
     });
   };
@@ -45,16 +52,22 @@ export default function StaffDashboard() {
   const preparingOrders = orders.filter(o => o.status === 'preparing');
   const activeOrdersCount = pendingOrders.length + preparingOrders.length;
   
+  // Completed/Served/Paid orders
+  const readyOrders = orders.filter(o => o.status === 'ready' || o.status === 'done' || o.status === 'served');
+  const paidOrders = orders.filter(o => o.status === 'paid');
   const completedOrders = orders.filter(o => o.status === 'ready' || o.status === 'done' || o.status === 'served' || o.status === 'paid');
   const completedOrdersCount = completedOrders.length;
 
+  // Cups served calculation from all processed orders
   const totalCupsServed = completedOrders.reduce((sum, order) => {
     return sum + (order.items?.reduce((iSum, item) => iSum + item.quantity, 0) || 0);
   }, 0);
 
-  const totalRevenue = completedOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+  // Revenue: ONLY count orders that are PAID!
+  const totalRevenue = paidOrders.reduce((sum, order) => sum + (order.total || 0), 0);
+  const pendingCollectionRevenue = readyOrders.reduce((sum, order) => sum + (order.total || 0), 0);
 
-  // Best selling products from live orders
+  // Best selling products from all orders in current shift (including paid)
   const productSalesMap: { [name: string]: { name: string; count: number; image?: string; revenue: number } } = {};
   orders.forEach(order => {
     order.items?.forEach(item => {
@@ -89,14 +102,14 @@ export default function StaffDashboard() {
               Ca Sáng / Đang Hoạt Động
             </span>
             <span className="text-[11px] text-on-surface-variant font-medium">
-              Cửa hàng: The Coffee House - Q1
+              Chi nhánh #{currentStoreId} · The Coffee House
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-primary tracking-tight">
             Tổng Quan Ca Làm & Số Lượng Đơn
           </h1>
           <p className="text-xs sm:text-sm text-on-surface-variant mt-0.5">
-            Dữ liệu đồng bộ trực tiếp theo thời gian thực từ hệ thống Bếp & Quầy thu ngân.
+            Dữ liệu doanh thu tính từ đơn đã thu tiền. Đơn đã thanh toán được lưu trữ nguyên vẹn trong ca.
           </p>
         </div>
 
@@ -160,10 +173,10 @@ export default function StaffDashboard() {
               <span className="text-2xl sm:text-3xl font-black text-green-700">
                 {completedOrdersCount}
               </span>
-              <span className="text-[11px] font-bold text-on-surface-variant">đơn đã giao</span>
+              <span className="text-[11px] font-bold text-on-surface-variant">đơn đã phục vụ</span>
             </div>
             <p className="text-[11px] text-green-700/80 mt-1 font-medium">
-              Đạt 100% tỷ lệ đúng hạn
+              {paidOrders.length} đã thu tiền · {readyOrders.length} sẵn sàng
             </p>
           </div>
         </div>
@@ -189,10 +202,10 @@ export default function StaffDashboard() {
           </div>
         </div>
 
-        {/* Card 4: Shift Revenue */}
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-outline-variant/20 shadow-xs flex flex-col justify-between relative overflow-hidden group hover:border-primary/30 transition-all">
+        {/* Card 4: Shift Revenue (ONLY PAID ORDERS) */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-outline-variant/20 shadow-xs flex flex-col justify-between relative overflow-hidden group hover:border-blue-500/30 transition-all">
           <div className="flex justify-between items-start">
-            <span className="text-xs font-bold text-on-surface-variant">Doanh Thu Tạm Tính</span>
+            <span className="text-xs font-bold text-on-surface-variant">Doanh Thu Đã Thu</span>
             <span className="p-2 rounded-xl bg-blue-50 text-blue-700">
               <span className="material-symbols-outlined text-xl">payments</span>
             </span>
@@ -205,7 +218,7 @@ export default function StaffDashboard() {
               <span className="text-xs font-extrabold text-blue-700">đ</span>
             </div>
             <p className="text-[11px] text-on-surface-variant mt-1">
-              Tiền mặt & Chuyển khoản QR
+              {pendingCollectionRevenue > 0 ? `Chờ thu: ${pendingCollectionRevenue.toLocaleString('vi-VN')}đ` : 'Đã quyết toán đủ'}
             </p>
           </div>
         </div>
@@ -219,7 +232,7 @@ export default function StaffDashboard() {
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-xl">receipt_long</span>
-                <h2 className="text-base font-bold text-on-surface">Đơn Hàng Đang Xử Lý Gần Đây</h2>
+                <h2 className="text-base font-bold text-on-surface">Đơn Hàng Gần Nhất Trong Ca</h2>
               </div>
               <button
                 onClick={() => navigate('/staff/orders')}
@@ -235,18 +248,23 @@ export default function StaffDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {orders.slice(0, 4).map(order => {
+                {orders.slice(0, 5).map(order => {
                   const isPending = order.status === 'pending';
                   const isPreparing = order.status === 'preparing';
-                  const isDone = order.status === 'ready' || order.status === 'done' || order.status === 'served';
+                  const isReady = order.status === 'ready' || order.status === 'done' || order.status === 'served';
+                  const isPaid = order.status === 'paid';
 
                   return (
                     <div
                       key={order.id}
-                      className="p-3.5 rounded-2xl bg-surface-container-lowest border border-outline-variant/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:border-primary/40 transition-all"
+                      className={`p-3.5 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 transition-all ${
+                        isPaid 
+                        ? 'bg-gray-50/70 border-outline-variant/15 opacity-80' 
+                        : 'bg-surface-container-lowest border-outline-variant/20 hover:border-primary/40'
+                      }`}
                     >
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-primary/10 text-primary">
                             Bàn: {order.tableNumber}
                           </span>
@@ -256,9 +274,9 @@ export default function StaffDashboard() {
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                             isPending ? 'bg-amber-100 text-amber-800' :
                             isPreparing ? 'bg-orange-100 text-orange-900 animate-pulse' :
-                            isDone ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'
+                            isReady ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                           }`}>
-                            {isPending ? 'Chờ xác nhận' : isPreparing ? 'Đang pha chế' : isDone ? 'Đã sẵn sàng' : 'Đã thanh toán'}
+                            {isPending ? 'Chờ xác nhận' : isPreparing ? 'Đang pha chế' : isReady ? 'Đã xong / Chờ thu tiền' : '✓ Đã thu tiền'}
                           </span>
                         </div>
                         <p className="text-xs text-on-surface-variant line-clamp-1">
@@ -266,7 +284,7 @@ export default function StaffDashboard() {
                         </p>
                       </div>
 
-                      <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/10">
+                      <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-outline-variant/10 shrink-0">
                         <span className="text-xs font-extrabold text-primary">
                           {order.total.toLocaleString('vi-VN')}đ
                         </span>
@@ -281,19 +299,28 @@ export default function StaffDashboard() {
                         )}
                         {isPreparing && (
                           <button
-                            onClick={() => updateOrderStatus(order.id, 'done')}
+                            onClick={() => updateOrderStatus(order.id, 'ready')}
                             className="px-3 py-1.5 bg-secondary text-white text-[11px] font-bold rounded-lg hover:opacity-90 active:scale-95 transition-all shadow-xs"
                           >
                             Xong món
                           </button>
                         )}
-                        {isDone && (
+                        {isReady && (
                           <button
-                            onClick={() => updateOrderStatus(order.id, 'paid')}
-                            className="px-3 py-1.5 bg-surface-container-highest text-on-surface text-[11px] font-bold rounded-lg hover:bg-outline-variant/40 active:scale-95 transition-all"
+                            onClick={() => {
+                              updateOrderStatus(order.id, 'paid');
+                              showToast(`Đã thu tiền đơn #${order.orderCode || order.id} thành công!`);
+                            }}
+                            className="px-3 py-1.5 bg-green-600 text-white text-[11px] font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all shadow-xs"
                           >
-                            Thu tiền
+                            Thu tiền 💵
                           </button>
+                        )}
+                        {isPaid && (
+                          <span className="text-[11px] font-bold text-green-700 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">check</span>
+                            Đã thu
+                          </span>
                         )}
                       </div>
                     </div>
@@ -303,15 +330,15 @@ export default function StaffDashboard() {
             )}
           </div>
 
-          {/* Top Selling Items */}
+          {/* Top Selling Items (Retained accurately even after payment) */}
           <div className="bg-white p-5 rounded-3xl border border-outline-variant/15 shadow-xs">
             <div className="flex items-center gap-2 mb-3">
               <span className="material-symbols-outlined text-primary text-xl">star</span>
-              <h2 className="text-base font-bold text-on-surface">Top Món Bán Chạy Trong Ca</h2>
+              <h2 className="text-base font-bold text-on-surface">Top Món Bán Chạy Trong Ca (Lũy kế)</h2>
             </div>
 
             {topSellingProducts.length === 0 ? (
-              <p className="text-xs text-on-surface-variant py-4 text-center">Chưa có dữ liệu bán món hôm nay.</p>
+              <p className="text-xs text-on-surface-variant py-4 text-center">Chưa có dữ liệu bán món trong ca hôm nay.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {topSellingProducts.map((p, idx) => (
@@ -334,20 +361,20 @@ export default function StaffDashboard() {
           </div>
         </div>
 
-        {/* Right Column (5 Cols): Out-of-Stock / Menu Availability Switcher */}
+        {/* Right Column (5 Cols): Out-of-Stock / Menu Availability Switcher Isolated per Store */}
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-white p-5 rounded-3xl border border-outline-variant/15 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-xl">toggle_on</span>
-                <h2 className="text-base font-bold text-on-surface">Quản Lý Tình Trạng Món</h2>
+                <h2 className="text-base font-bold text-on-surface">Tình Trạng Món - Quán #{currentStoreId}</h2>
               </div>
               <span className="text-[10px] font-bold text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full">
                 {menuItems.length} món
               </span>
             </div>
             <p className="text-[11px] text-on-surface-variant mb-3">
-              Barista có thể bật/tắt nhanh khi món tạm hết nguyên liệu (sữa, hạt cafe, topping...) để khách không đặt thêm.
+              Barista bật/tắt trạng thái hết món riêng cho <span className="font-bold text-primary">Chi nhánh #{currentStoreId}</span> (không ảnh hưởng đến quán khác).
             </p>
 
             <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">

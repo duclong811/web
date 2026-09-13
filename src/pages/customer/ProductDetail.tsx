@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import MobileBottomNav from '../../components/MobileBottomNav';
@@ -8,7 +8,7 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { menuItems, cart, addToCart } = useStore();
+  const { menuItems, cart, addToCart, currentStoreId } = useStore();
   const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
   
   // Find item dynamically from store
@@ -21,6 +21,20 @@ export default function ProductDetail() {
     categoryName: 'Cà Phê Pha Máy',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAb7dmU9p5ws6yiGWFQpEh-Vjo0PCA4sYcpCjINzCM3Te0tnsc9ffhxbMqhXwS7_UeEMCLtBftnxvaW-r--YOlDyGw_cqWmfbTrTi9x04jt5jvNm1zWxdQmgdxk0COUycCP_X3lzDPhldmC8jF2emQxsl_LjSU_wRlGYcAvL9KlYEpvc75GxsLaJyeJWoZdR3CyjB-3uLAfxuL5A33XycLc9p5gssh1z_k2p2uFU0nfU_ylV5jeljNf'
   };
+
+  const [stockStatus, setStockStatus] = useState<{ [id: string]: boolean }>({});
+
+  useEffect(() => {
+    const loadStock = () => {
+      const saved = localStorage.getItem(`webcafe_stock_store_${currentStoreId}`);
+      setStockStatus(saved ? JSON.parse(saved) : {});
+    };
+    loadStock();
+    window.addEventListener('storage', loadStock);
+    return () => window.removeEventListener('storage', loadStock);
+  }, [currentStoreId]);
+
+  const isOutOfStock = stockStatus[item.id.toString()] === false;
 
   const [quantity, setQuantity] = useState(1);
   const [sugar, setSugar] = useState(100);
@@ -37,6 +51,8 @@ export default function ProductDetail() {
   const totalPrice = currentPrice * quantity;
 
   const handleAddToCart = () => {
+    if (isOutOfStock) return;
+
     addToCart(item, {
       quantity,
       sizeName: size,
@@ -50,64 +66,65 @@ export default function ProductDetail() {
     setTimeout(() => {
       setIsAdded(false);
       navigate('/cart');
-    }, 1000);
+    }, 800);
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background font-body-md text-on-surface">
-      {/* Top Navigation Bar */}
-      <header className="w-full sticky top-0 z-40 bg-surface/95 dark:bg-surface-dim backdrop-blur-md shadow-xs border-b border-outline-variant/10">
-        <nav className="flex justify-between items-center px-4 sm:px-container-margin py-3.5 max-w-7xl mx-auto">
+    <div className="font-body-md text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed min-h-screen bg-background animate-in fade-in duration-300">
+      {/* Top Header */}
+      <nav className="w-full sticky top-0 z-40 bg-surface/95 dark:bg-surface-dim backdrop-blur-md border-b border-outline-variant/10 shadow-xs">
+        <div className="flex justify-between items-center px-4 sm:px-container-margin py-3.5 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => navigate(-1)} 
-              className="p-1.5 -ml-1 hover:bg-surface-container-high rounded-full transition-colors flex items-center justify-center text-primary"
+              className="p-1.5 sm:p-2 rounded-full hover:bg-surface-variant text-primary flex items-center justify-center transition-colors"
               aria-label="Quay lại"
             >
-              <span className="material-symbols-outlined text-xl">arrow_back</span>
+              <span className="material-symbols-outlined text-xl sm:text-2xl">arrow_back</span>
             </button>
-            <Link to="/" className="text-lg sm:text-2xl font-black text-primary dark:text-primary-fixed-dim tracking-tight">
-              AI-SMARTSERVE
-            </Link>
-          </div>
-          
-          <div className="hidden md:flex items-center gap-stack-lg">
-            <Link to="/" className="text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 font-label-md text-label-md transition-colors">Thực Đơn</Link>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Ưu Đãi</a>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Câu Chuyện</a>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Cửa Hàng</a>
+            <h2 className="text-base sm:text-xl font-bold text-primary truncate max-w-[200px] sm:max-w-md">
+              {item.name}
+            </h2>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
-              <ShoppingCart className="text-primary" size={22} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-            <Link to="/staff/login" className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95">
-              <span className="material-symbols-outlined text-primary text-xl">person</span>
-            </Link>
-          </div>
-        </nav>
-      </header>
+          <Link 
+            to="/cart" 
+            className="relative p-2 rounded-full hover:bg-surface-variant text-primary flex items-center justify-center transition-colors"
+            aria-label="Giỏ hàng"
+          >
+            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-white rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center shadow-md">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+        </div>
+      </nav>
 
       {/* Main Content Layout */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-container-margin py-4 sm:py-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-start flex-grow pb-28 lg:pb-12">
-        
-        {/* Left Column: Product Visuals (RELATIVE on mobile, STICKY only on Desktop) */}
-        <section className="relative lg:sticky lg:top-20 w-full space-y-3">
-          <div className="relative h-60 sm:h-80 lg:h-auto lg:aspect-square w-full rounded-3xl overflow-hidden shadow-md bg-surface-container-lowest">
+      <main className="max-w-6xl mx-auto px-4 sm:px-container-margin py-4 sm:py-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 pb-28 md:pb-12">
+        {/* Left Column: Product Visual */}
+        <section className="w-full">
+          <div className="relative aspect-4/3 sm:aspect-square w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-surface-container-low border border-primary/10 shadow-sm">
             <img 
-              alt={item.name} 
-              className="w-full h-full object-cover" 
               src={item.image} 
+              alt={item.name} 
+              className={`w-full h-full object-cover transition-transform duration-500 hover:scale-105 ${isOutOfStock ? 'grayscale-[0.4] opacity-80' : ''}`}
             />
-            <div className="absolute top-3 left-3 flex gap-2">
-              <span className="bg-primary/85 backdrop-blur-md text-white text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-xs">Bán Chạy</span>
-              <span className="bg-secondary-container/90 backdrop-blur-md text-on-secondary-container text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-xs">Cao Cấp</span>
+            {isOutOfStock ? (
+              <div className="absolute top-4 left-4 z-10 px-3 py-1.5 bg-red-600 text-white font-black text-xs uppercase rounded-xl shadow-lg flex items-center gap-1.5 animate-pulse">
+                <span className="material-symbols-outlined text-sm">block</span>
+                TẠM HẾT MÓN TẠI QUÁN
+              </div>
+            ) : (
+              <div className="absolute top-3 left-3 sm:top-4 sm:left-4 px-2.5 py-1 bg-white/95 backdrop-blur-md shadow-xs rounded-lg flex items-center gap-1">
+                <span className="material-symbols-outlined text-amber-500 text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                <span className="text-xs sm:text-sm font-bold text-on-surface">{item.rating || 4.8}</span>
+              </div>
+            )}
+            <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 px-3.5 py-1.5 bg-primary text-on-primary rounded-xl font-bold text-sm sm:text-base shadow-md">
+              {item.price.toLocaleString('vi-VN')}đ
             </div>
           </div>
         </section>
@@ -132,8 +149,16 @@ export default function ProductDetail() {
             </div>
           </div>
 
+          {/* Out of Stock Alert Banner */}
+          {isOutOfStock && (
+            <div className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs sm:text-sm font-bold flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">error</span>
+              Món này hiện đang tạm hết tại Chi nhánh #{currentStoreId}. Quý khách vui lòng chọn món khác nhé!
+            </div>
+          )}
+
           {/* Customization Options */}
-          <div className="space-y-5 bg-white p-4 sm:p-6 rounded-2xl shadow-xs border border-outline-variant/15">
+          <div className={`space-y-5 bg-white p-4 sm:p-6 rounded-2xl shadow-xs border border-outline-variant/15 ${isOutOfStock ? 'opacity-60 pointer-events-none' : ''}`}>
             {/* Size Selector */}
             <div className="space-y-2">
               <label className="text-xs sm:text-sm font-bold text-on-background block">Chọn Kích Cỡ</label>
@@ -207,7 +232,7 @@ export default function ProductDetail() {
           {/* Bottom Actions */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center pt-3 border-t border-outline-variant/15">
             {/* Quantity Selector */}
-            <div className="flex items-center justify-between w-full sm:w-auto bg-surface-variant/40 p-1 rounded-2xl border border-outline-variant/20">
+            <div className={`flex items-center justify-between w-full sm:w-auto bg-surface-variant/40 p-1 rounded-2xl border border-outline-variant/20 ${isOutOfStock ? 'opacity-50 pointer-events-none' : ''}`}>
               <button 
                 onClick={handleDecrement} 
                 className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-xs hover:bg-primary hover:text-white transition-colors text-primary"
@@ -225,11 +250,20 @@ export default function ProductDetail() {
 
             {/* Add to Cart */}
             <button 
+              disabled={isOutOfStock}
               onClick={handleAddToCart} 
-              className={`w-full sm:flex-grow text-white py-3.5 sm:py-4 px-6 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${isAdded ? 'bg-green-600 shadow-green-600/20' : 'bg-primary hover:bg-primary-container shadow-primary/20'}`}
+              className={`w-full sm:flex-grow py-3.5 sm:py-4 px-6 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
+                isOutOfStock
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : isAdded 
+                  ? 'bg-green-600 text-white shadow-green-600/20' 
+                  : 'bg-primary text-white hover:bg-primary-container shadow-md shadow-primary/20 active:scale-95'
+              }`}
             >
-              <span className="material-symbols-outlined text-lg">{isAdded ? 'check_circle' : 'shopping_bag'}</span>
-              {isAdded ? 'Đã Thêm Vào Giỏ!' : `Thêm vào Giỏ • ${totalPrice.toLocaleString('vi-VN')}đ`}
+              <span className="material-symbols-outlined text-lg">
+                {isOutOfStock ? 'block' : isAdded ? 'check_circle' : 'shopping_bag'}
+              </span>
+              {isOutOfStock ? 'Món Này Đang Tạm Hết' : isAdded ? 'Đã Thêm Vào Giỏ!' : `Thêm vào Giỏ • ${totalPrice.toLocaleString('vi-VN')}đ`}
             </button>
           </div>
         </section>

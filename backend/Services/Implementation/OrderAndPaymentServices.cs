@@ -378,9 +378,10 @@ namespace WebCafe.Backend.Services.Implementation
 
         public async Task<List<OrderDto>> GetActiveOrdersByStoreAsync(int storeId)
         {
+            var today = DateTime.UtcNow.Date;
             var activeStatuses = new[] { OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Preparing, OrderStatus.Ready, OrderStatus.Served };
             var orders = await _db.Orders
-                .Where(o => o.StoreId == storeId && activeStatuses.Contains(o.Status))
+                .Where(o => o.StoreId == storeId && (activeStatuses.Contains(o.Status) || (o.Status == OrderStatus.Paid && o.CreatedAt >= today)))
                 .Include(o => o.Store)
                 .Include(o => o.Table)
                 .Include(o => o.Customer)
@@ -649,3 +650,4 @@ namespace WebCafe.Backend.Services.Implementation
         }
     }
 }
+

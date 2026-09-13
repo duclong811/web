@@ -1,34 +1,71 @@
-import { useStore } from '../../store/useStore';
+﻿import { useStore } from '../../store/useStore';
 import { Link, useNavigate } from 'react-router-dom';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { ShoppingCart } from 'lucide-react';
+import { useState } from 'react';
 
 export default function Cart() {
-  const { cart, updateQuantity, removeFromCart, createOrder } = useStore();
+  const { 
+    cart, 
+    updateQuantity, 
+    removeFromCart, 
+    createOrder, 
+    currentTable,
+    appliedVoucherCode,
+    voucherDiscount,
+    setVoucher
+  } = useStore();
+
   const navigate = useNavigate();
+  const [voucherInput, setVoucherInput] = useState('');
+  const [voucherError, setVoucherError] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [orderNote, setOrderNote] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
-
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const serviceFee = 5000;
-  const total = subtotal + serviceFee;
+  const discountAmount = voucherDiscount ? (subtotal * voucherDiscount / 100) : 0;
+  const serviceFee = cart.length > 0 ? 0 : 0;
+  const total = Math.max(0, subtotal - discountAmount + serviceFee);
 
-  const handleCheckout = () => {
-    if (cart.length === 0) return;
-    createOrder('table-1'); // Mock table number
-    navigate('/order-success');
+  const handleApplyVoucher = () => {
+    if (!voucherInput.trim()) return;
+    if (voucherInput.toUpperCase() === 'WELCOME50' || voucherInput.toUpperCase() === 'GIAM10') {
+      setVoucher(voucherInput.toUpperCase(), 10);
+      setVoucherError('');
+    } else {
+      setVoucherError('Mã ưu đãi không hợp lệ hoặc đã hết hạn.');
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0 || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const tableToUse = currentTable || 'T01';
+      const order = await createOrder(tableToUse, customerPhone, customerName, orderNote);
+      navigate(`/tracking?code=${order.orderCode}`);
+    } catch (err) {
+      console.error('Order creation error:', err);
+      navigate('/order-success');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="font-body-md text-on-surface custom-scrollbar min-h-screen flex flex-col">
-      {/* TopNavBar Implementation */}
+    <div className="font-body-md text-on-surface custom-scrollbar min-h-screen flex flex-col bg-background">
+      {/* TopNavBar */}
       <nav className="bg-surface sticky top-0 z-50 shadow-sm transition-all duration-200 border-b border-outline-variant/10">
         <div className="flex justify-between items-center px-container-margin py-4 max-w-7xl mx-auto">
-          <Link to="/menu" className="font-headline-md text-headline-md font-bold text-primary">AI-SMARTSERVE</Link>
+          <Link to="/" className="font-headline-md text-headline-md font-bold text-primary">AI-SMARTSERVE</Link>
           <div className="hidden md:flex gap-8 items-center">
-            <Link to="/menu" className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md">Thực Đơn</Link>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Ưu Đãi</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Câu Chuyện</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Cửa Hàng</a>
+            <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md">Thực Đơn</Link>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Ưu Đãi</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Câu Chuyện</a>
+            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Cửa Hàng</a>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
@@ -55,49 +92,68 @@ export default function Cart() {
               <button className="p-2 hover:bg-surface-container-high rounded-full transition-colors active:scale-90" onClick={() => window.history.back()}>
                 <span className="material-symbols-outlined">arrow_back</span>
               </button>
-              <h1 className="font-headline-lg text-headline-lg text-primary">Thanh Toán</h1>
+              <h1 className="font-headline-lg text-headline-lg text-primary font-bold">Thanh Toán & Đặt Món</h1>
             </div>
 
             {/* Cart Items List */}
             <section className="space-y-stack-md">
-              <h2 className="font-headline-md text-headline-md text-on-surface-variant border-b border-outline-variant/20 pb-2">Đơn Hàng Của Bạn</h2>
+              <h2 className="font-headline-md text-headline-md text-on-surface-variant border-b border-outline-variant/20 pb-2 font-bold">Đơn Hàng Của Bạn</h2>
               
               {cart.length === 0 ? (
-                <div className="text-center py-16 flex flex-col items-center gap-4">
+                <div className="text-center py-16 flex flex-col items-center gap-4 bg-white rounded-2xl border border-outline-variant/20 p-8">
                   <span className="material-symbols-outlined text-[64px] text-outline-variant" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
-                  <h2 className="font-headline-md text-on-surface">Giỏ hàng của bạn đang trống.</h2>
-                  <Link to="/" className="px-8 py-3 bg-primary text-white rounded-full font-label-md shadow-md hover:bg-primary-container transition-all active:scale-95">
-                    Browse Menu
+                  <h2 className="font-headline-md text-on-surface font-bold">Giỏ hàng của bạn đang trống.</h2>
+                  <p className="text-on-surface-variant text-sm">Hãy khám phá các món đồ uống thơm ngon và thêm vào giỏ nhé!</p>
+                  <Link to="/" className="px-8 py-3 bg-primary text-white rounded-full font-label-md shadow-md hover:bg-primary-container transition-all active:scale-95 font-bold mt-2">
+                    Khám Phá Thực Đơn
                   </Link>
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.id} className="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_rgba(85,55,34,0.05)] border border-surface-variant flex items-center gap-4 group transition-all hover:shadow-[0_8px_30px_rgba(85,55,34,0.1)]">
-                    <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                  <div key={`${item.id}-${item.sizeName}-${item.sugarLevel}-${item.iceLevel}`} className="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_rgba(85,55,34,0.05)] border border-surface-variant flex items-center gap-4 group transition-all hover:shadow-[0_8px_30px_rgba(85,55,34,0.1)]">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-low">
                       <img className="w-full h-full object-cover" src={item.image} alt={item.name} />
                     </div>
                     <div className="flex-grow">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-headline-md text-headline-md text-primary">{item.name}</h3>
-                          <p className="text-on-surface-variant text-label-sm font-label-sm">Tiêu Chuẩn</p>
+                          <h3 className="font-headline-md text-label-md font-bold text-on-surface">{item.name}</h3>
+                          <div className="text-xs text-on-surface-variant mt-1 flex flex-wrap gap-2">
+                            {item.sizeName && <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md font-bold">Size: {item.sizeName}</span>}
+                            {item.sugarLevel && <span>Đường: {item.sugarLevel}</span>}
+                            {item.iceLevel && <span>Đá: {item.iceLevel}</span>}
+                            {item.note && <span className="italic text-primary">"{item.note}"</span>}
+                          </div>
                         </div>
-                        <span className="font-bold text-primary">{item.price.toLocaleString()}₫</span>
+                        <button 
+                          onClick={() => removeFromCart(item.id)} 
+                          className="text-error hover:bg-error/10 p-1.5 rounded-full transition-colors"
+                          title="Xóa món"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
                       </div>
                       
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center bg-surface-container-low rounded-full px-2 py-1 gap-4 border border-outline-variant/10">
-                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-variant active:scale-90 transition-all">
-                            <span className="material-symbols-outlined text-[18px]">remove</span>
+                      <div className="flex justify-between items-center mt-4">
+                        <span className="font-headline-md text-label-md text-primary font-bold">
+                          {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                        </span>
+                        
+                        <div className="flex items-center gap-2 bg-surface-variant/40 rounded-full px-2 py-1">
+                          <button 
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-primary shadow-xs hover:bg-primary hover:text-white transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-xs">remove</span>
                           </button>
-                          <span className="font-label-md text-label-md font-bold">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-variant active:scale-90 transition-all">
-                            <span className="material-symbols-outlined text-[18px]">add</span>
+                          <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                          <button 
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-primary shadow-xs hover:bg-primary hover:text-white transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-xs">add</span>
                           </button>
                         </div>
-                        <button onClick={() => removeFromCart(item.id)} className="text-error text-label-sm font-label-sm hover:underline flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="material-symbols-outlined text-[16px]">delete</span> Remove
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -105,40 +161,41 @@ export default function Cart() {
               )}
             </section>
 
-            {/* Payment Method Section */}
+            {/* Customer Details Form */}
             {cart.length > 0 && (
-              <section className="bg-white p-6 rounded-2xl border border-outline-variant/20">
-                <h2 className="font-headline-md text-headline-md text-primary mb-6">Phương Thức Thanh Toán</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-stack-lg">
-                  <div className="space-y-4">
-                    <div className="flex items-center p-4 border-2 border-primary bg-secondary-container/20 rounded-xl">
-                      <span className="material-symbols-outlined text-primary mr-3" style={{ fontVariationSettings: "'FILL' 1" }}>qr_code_2</span>
-                      <div className="flex-grow">
-                        <p className="font-bold text-primary">Chuyển Khoản VietQR</p>
-                        <p className="text-label-sm font-label-sm text-on-surface-variant">Xác nhận tức thì</p>
-                      </div>
-                      <span className="material-symbols-outlined text-primary">check_circle</span>
-                    </div>
-                    <div className="flex items-center p-4 border border-outline-variant rounded-xl hover:bg-surface-container-low cursor-pointer transition-all">
-                      <span className="material-symbols-outlined text-on-surface-variant mr-3">payments</span>
-                      <div className="flex-grow">
-                        <p className="font-bold text-on-surface">Thanh Toán Khi Nhận Hàng</p>
-                        <p className="text-label-sm font-label-sm text-on-surface-variant">Thanh toán lúc nhận đồ</p>
-                      </div>
-                    </div>
+              <section className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/20 space-y-4">
+                <h3 className="font-headline-md text-label-md font-bold text-primary">Thông Tin Bàn & Ghi Chú</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-on-surface-variant block mb-1">Tên khách hàng (Tùy chọn)</label>
+                    <input 
+                      type="text" 
+                      placeholder="VD: Anh Minh" 
+                      className="w-full px-4 py-2.5 bg-surface border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                    />
                   </div>
-                  
-                  {/* QR Code Area */}
-                  <div className="flex flex-col items-center justify-center bg-surface-container-low rounded-2xl p-6 border border-dashed border-primary/30">
-                    <div className="relative w-48 h-48 bg-white p-3 rounded-lg shadow-inner mb-4">
-                      <div className="absolute inset-0 m-3 border-2 border-primary/10 rounded"></div>
-                      <img className="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUfM0jqU1ucCrF16D0Pk3cY4WKSYdtEprABtNdL0wOWCpaHMZ8d638jA7fKjTm5mDDTGp86Xrmo8lJZu5acec_HYloU7turdWft4pHjix04_EbqRN52OJ0b7RztzrFhAnhzompZfpwQRNjJE5IxyAH4pCZNz2IFzs3StAZtcwWox1AHC0vMSVml7cBhu3Z24LE-yl5hiJycyXJ8Z14Im6nsRpNSmRGyO9OPnNECriB0FcNIBH3oHeP" alt="QR Code" />
-                    </div>
-                    <p className="text-label-sm font-label-sm text-center text-on-surface-variant">
-                      Quét mã VietQR để thanh toán <br/>
-                      <span className="font-bold text-primary">{total.toLocaleString()}₫</span>
-                    </p>
+                  <div>
+                    <label className="text-xs font-bold text-on-surface-variant block mb-1">Số điện thoại tích điểm (Tùy chọn)</label>
+                    <input 
+                      type="tel" 
+                      placeholder="VD: 0901234567" 
+                      className="w-full px-4 py-2.5 bg-surface border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                    />
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-on-surface-variant block mb-1">Ghi chú cho quầy thu ngân / Bếp</label>
+                  <input 
+                    type="text" 
+                    placeholder="VD: Mang ra bàn sớm giúp mình nhé" 
+                    className="w-full px-4 py-2.5 bg-surface border border-outline-variant/40 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    value={orderNote}
+                    onChange={(e) => setOrderNote(e.target.value)}
+                  />
                 </div>
               </section>
             )}
@@ -146,90 +203,75 @@ export default function Cart() {
 
           {/* Right Side: Order Summary */}
           {cart.length > 0 && (
-            <aside className="w-full lg:w-[380px] shrink-0">
-              <div className="sticky top-24 space-y-stack-lg">
-                {/* Summary Card */}
-                <div className="bg-white p-6 rounded-2xl shadow-[0_8px_40px_rgba(85,55,34,0.08)] border border-surface-variant">
-                  <h2 className="font-headline-md text-headline-md text-primary mb-stack-md border-b border-outline-variant/10 pb-4">Tóm Tắt Đơn Hàng</h2>
-                  
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center text-on-surface-variant">
-                      <span className="font-body-md text-body-md">Tạm Tính</span>
-                      <span className="font-bold">{subtotal.toLocaleString()}₫</span>
-                    </div>
+            <div className="w-full lg:w-96 flex-shrink-0 space-y-stack-md">
+              <div className="bg-surface-container-lowest p-6 rounded-2xl shadow-md border border-outline-variant/20 sticky top-24 space-y-4">
+                <h3 className="font-headline-md text-headline-md font-bold text-primary border-b border-outline-variant/20 pb-3">
+                  Tóm Tắt Đơn Hàng
+                </h3>
 
-                    <div className="flex justify-between items-center text-on-surface-variant">
-                      <div className="flex items-center gap-1">
-                        <span className="font-body-md text-body-md">Phí Dịch Vụ</span>
-                        <span className="material-symbols-outlined text-[16px] cursor-help">info</span>
-                      </div>
-                      <span className="font-bold">{serviceFee.toLocaleString()}₫</span>
-                    </div>
-                    
-                    <div className="pt-4 border-t border-outline-variant/30 mt-4">
-                      <div className="flex justify-between items-center mb-6">
-                        <span className="font-headline-md text-headline-md text-primary">Tổng Cộng</span>
-                        <span className="font-headline-lg text-headline-lg text-primary">{total.toLocaleString()}₫</span>
-                      </div>
-                      
-                      {/* Promo Code */}
-                      <div className="relative mb-4">
-                        <input className="w-full pl-4 pr-20 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-label-md font-label-md transition-all" placeholder="Mã khuyến mãi" type="text" />
-                        <button className="absolute right-2 top-1.5 px-4 py-1.5 bg-primary text-white rounded-lg text-label-sm font-label-sm hover:brightness-110 active:scale-95 transition-all">Áp Dụng</button>
-                      </div>
+                {/* Voucher Box */}
+                <div>
+                  <label className="text-xs font-bold text-on-surface-variant block mb-1">Mã Giảm Giá</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Nhập WELCOME50" 
+                      className="flex-grow px-3 py-2 bg-surface border border-outline-variant/40 rounded-xl text-xs uppercase font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      value={voucherInput}
+                      onChange={(e) => setVoucherInput(e.target.value)}
+                    />
+                    <button 
+                      type="button"
+                      onClick={handleApplyVoucher}
+                      className="px-4 py-2 bg-secondary text-white rounded-xl text-xs font-bold hover:bg-secondary/90 transition-colors"
+                    >
+                      Áp Dụng
+                    </button>
+                  </div>
+                  {appliedVoucherCode && (
+                    <p className="text-xs text-green-600 font-bold mt-1.5 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">check_circle</span>
+                      Đã áp dụng mã {appliedVoucherCode} (-{voucherDiscount}%)
+                    </p>
+                  )}
+                  {voucherError && <p className="text-xs text-error font-semibold mt-1">{voucherError}</p>}
+                </div>
 
-                      {/* Reward Points Phone Number */}
-                      <div className="relative mb-6">
-                        <input className="w-full pl-4 pr-24 py-3 bg-surface-container-low border border-outline-variant/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-label-md font-label-md transition-all" placeholder="SĐT tích điểm" type="tel" />
-                        <button className="absolute right-2 top-1.5 px-4 py-1.5 bg-primary text-white rounded-lg text-label-sm font-label-sm hover:brightness-110 active:scale-95 transition-all">Xác Nhận</button>
-                      </div>
-                      
-                      {/* CTA Button */}
-                      <button onClick={handleCheckout} className="w-full bg-primary text-white py-4 rounded-full font-bold text-lg hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                        Đặt món
-                        <span className="material-symbols-outlined">arrow_forward</span>
-                      </button>
-                      
-                      <p className="text-[11px] text-center text-on-surface-variant mt-4 leading-relaxed">
-                        Bằng việc đặt hàng, bạn đồng ý với 
-                        <a className="underline hover:text-primary mx-1" href="#">Điều Khoản</a> and 
-                        <a className="underline hover:text-primary mx-1" href="#">Chính Sách Bảo Mật</a>.
-                      </p>
+                {/* Price Breakdown */}
+                <div className="space-y-2 pt-3 border-t border-outline-variant/20 text-sm">
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Tạm tính ({cartCount} món)</span>
+                    <span className="font-bold">{subtotal.toLocaleString('vi-VN')}đ</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600 font-bold">
+                      <span>Giảm giá</span>
+                      <span>-{discountAmount.toLocaleString('vi-VN')}đ</span>
                     </div>
+                  )}
+                  <div className="flex justify-between text-on-surface font-extrabold text-base pt-2 border-t border-outline-variant/20">
+                    <span>Tổng thanh toán</span>
+                    <span className="text-primary text-xl font-bold">{total.toLocaleString('vi-VN')}đ</span>
                   </div>
                 </div>
 
-                {/* Quick Support Badge */}
-                <div className="bg-secondary-container/30 border border-secondary-container p-4 rounded-xl flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary">support_agent</span>
-                  </div>
-                  <div>
-                    <p className="font-bold text-primary text-label-md font-label-md">Cần hỗ trợ đơn hàng?</p>
-                    <p className="text-label-sm font-label-sm text-on-surface-variant">Chat với barista của chúng tôi bất cứ lúc nào</p>
-                  </div>
-                </div>
+                {/* Submit Button */}
+                <button 
+                  onClick={handleCheckout}
+                  disabled={isSubmitting}
+                  className="w-full py-4 bg-primary text-white rounded-full font-headline-md text-label-md font-bold hover:bg-primary-container transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined">send</span>
+                  {isSubmitting ? 'Đang Gửi Đơn...' : `Xác Nhận Đặt Món • ${total.toLocaleString('vi-VN')}đ`}
+                </button>
               </div>
-            </aside>
+            </div>
           )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-surface-container-highest mt-auto border-t border-outline-variant/20">
-        <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-stack-lg max-w-7xl mx-auto gap-stack-md">
-          <div className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</div>
-          <div className="flex flex-wrap justify-center gap-6">
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Chính Sách Bảo Mật</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Điều Khoản</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Bền Vững</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Tuyển Dụng</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-sm text-label-sm" href="#">Liên Hệ</a>
-          </div>
-          <p className="text-on-surface-variant font-label-sm text-label-sm opacity-70">
-            © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
-          </p>
-        </div>
+      <footer className="w-full mt-auto bg-surface-container-highest border-t border-outline-variant/20 py-6 px-container-margin text-center text-xs text-on-surface-variant">
+        © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
       </footer>
       <MobileBottomNav />
     </div>

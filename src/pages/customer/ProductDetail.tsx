@@ -1,170 +1,171 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+﻿import { useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
-import { MENU_DATA } from './Menu';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { ShoppingCart } from 'lucide-react';
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
-  const { cart, addToCart } = useStore();
+  const { menuItems, cart, addToCart } = useStore();
   const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
   
-  let foundItem = null;
-  let categoryName = 'Cà Phê Pha Máy';
-  for (const [category, items] of Object.entries(MENU_DATA)) {
-    const match = items.find(i => i.id === id);
-    if (match) {
-      foundItem = match;
-      categoryName = category;
-      break;
-    }
-  }
-
-  // Use a default item if not found, or find the specific item
-  const item = foundItem ? { ...foundItem, categoryId: categoryName } : {
-    id: '1',
-    name: 'Oolong Milk Tea',
-    description: 'Experience the deep, earthy soul of premium roasted Oolong tea leaves, expertly blended with our signature silky milk. A sophisticated balance of toasted notes and creamy smoothness.',
+  // Find item dynamically from store
+  const item = menuItems.find(i => i.id === id || i.id === `hc-${id}`) || menuItems[0] || {
+    id: '5',
+    name: 'Caramel Cloud Macchiato',
+    description: 'Lớp bọt sữa lạnh mềm mịn phủ trên lớp espresso cùng hương vani và xốt caramel.',
     price: 57500,
     categoryId: 'Cà Phê Pha Máy',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKd6TB68l0dgvWLbBxZzmjvDZZZ_cMU4ok5MEOMER0SqvsbIR_nTB6LVT6KeYzL8siPAiiRYfcYqe09wQyWL95hdMlh1AfQJZRfWGfAqDJ7tRa5zFALx4h9trbOeMQ606u34IaPz5suzCjWu63v8yMrVSH5a_N9oGzS8XsrITZ2v-yg_2T_sFH0KVRu6ZEh1okmdJea_sxDSGMHr0U5XZlYvh8y2rRcDZXBFL0lQFP66vs7u-qb2lZ'
+    categoryName: 'Cà Phê Pha Máy',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAb7dmU9p5ws6yiGWFQpEh-Vjo0PCA4sYcpCjINzCM3Te0tnsc9ffhxbMqhXwS7_UeEMCLtBftnxvaW-r--YOlDyGw_cqWmfbTrTi9x04jt5jvNm1zWxdQmgdxk0COUycCP_X3lzDPhldmC8jF2emQxsl_LjSU_wRlGYcAvL9KlYEpvc75GxsLaJyeJWoZdR3CyjB-3uLAfxuL5A33XycLc9p5gssh1z_k2p2uFU0nfU_ylV5jeljNf'
   };
 
   const [quantity, setQuantity] = useState(1);
   const [sugar, setSugar] = useState(100);
   const [ice, setIce] = useState(100);
-  const [size, setSize] = useState('Vừa');
+  const [size, setSize] = useState('Medium');
   const [notes, setNotes] = useState('');
   const [isAdded, setIsAdded] = useState(false);
 
   const handleIncrement = () => setQuantity(q => q + 1);
   const handleDecrement = () => setQuantity(q => (q > 1 ? q - 1 : 1));
 
+  const sizeExtra = (size === 'Large' || size === 'Lớn') ? 15000 : 0;
+  const currentPrice = item.price + sizeExtra;
+  const totalPrice = currentPrice * quantity;
+
   const handleAddToCart = () => {
-    // Typically we'd construct a customized cart item here
-    for(let i=0; i<quantity; i++){
-      addToCart({
-        id: item.id,
-        name: item.name,
-        description: item.description || '',
-        price: currentPrice,
-        image: item.image,
-        categoryId: item.categoryId
-      });
-    }
+    addToCart(item, {
+      quantity,
+      sizeName: size,
+      sizeExtra,
+      sugarLevel: `${sugar}%`,
+      iceLevel: `${ice}%`,
+      note: notes,
+    });
     
     setIsAdded(true);
     setTimeout(() => {
       setIsAdded(false);
-      // Optionally navigate back or to cart
-      // navigate('/cart');
-    }, 2000);
+      navigate('/cart');
+    }, 1000);
   };
 
-  const currentPrice = item.price + (size === 'Lớn' ? 15000 : 0);
-  const totalPrice = currentPrice * quantity;
-
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background font-body-md text-on-surface">
       {/* Top Navigation Bar */}
-      <header className="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim shadow-sm dark:shadow-none border-b border-outline-variant/10">
-        <nav className="flex justify-between items-center px-container-margin py-4 max-w-7xl mx-auto">
-          <Link to="/menu" className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">AI-SMARTSERVE</Link>
-          <div className="hidden md:flex items-center gap-stack-lg">
-            <Link to="/menu" className="text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 font-label-md text-label-md transition-colors">Thực Đơn</Link>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Ưu Đãi</a>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Câu Chuyện</a>
-            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md" href="#">Cửa Hàng</a>
+      <header className="w-full sticky top-0 z-40 bg-surface/95 dark:bg-surface-dim backdrop-blur-md shadow-xs border-b border-outline-variant/10">
+        <nav className="flex justify-between items-center px-4 sm:px-container-margin py-3.5 max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => navigate(-1)} 
+              className="p-1.5 -ml-1 hover:bg-surface-container-high rounded-full transition-colors flex items-center justify-center text-primary"
+              aria-label="Quay lại"
+            >
+              <span className="material-symbols-outlined text-xl">arrow_back</span>
+            </button>
+            <Link to="/" className="text-lg sm:text-2xl font-black text-primary dark:text-primary-fixed-dim tracking-tight">
+              AI-SMARTSERVE
+            </Link>
           </div>
-          <div className="flex items-center gap-4">
+          
+          <div className="hidden md:flex items-center gap-stack-lg">
+            <Link to="/" className="text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 font-label-md text-label-md transition-colors">Thực Đơn</Link>
+            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Ưu Đãi</a>
+            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Câu Chuyện</a>
+            <a className="text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Cửa Hàng</a>
+          </div>
+
+          <div className="flex items-center gap-3">
             <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
-              <ShoppingCart className="text-primary" size={24} />
+              <ShoppingCart className="text-primary" size={22} />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
                   {cartCount}
                 </span>
               )}
             </Link>
-            <Link to="/staff/login" className="material-symbols-outlined p-2 hover:bg-surface-container-low rounded-lg transition-all text-on-surface-variant">person</Link>
+            <Link to="/staff/login" className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95">
+              <span className="material-symbols-outlined text-primary text-xl">person</span>
+            </Link>
           </div>
         </nav>
       </header>
 
-      <main className="flex-grow max-w-7xl mx-auto w-full px-container-margin py-stack-lg flex flex-col md:flex-row gap-12 items-start">
-        {/* Left: Product Image Section */}
-        <section className="w-full md:w-1/2 md:sticky md:top-24">
-          <div className="relative rounded-[2rem] overflow-hidden aspect-[4/5] bg-white shadow-xl shadow-primary/5">
-            <img className="w-full h-full object-cover" src={item.image} alt={item.name} />
-            <div className="absolute top-6 left-6 flex gap-2">
-              <span className="bg-primary text-white font-label-sm text-label-sm px-3 py-1 rounded-full shadow-lg">Bán Chạy</span>
-              <span className="bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-3 py-1 rounded-full shadow-lg">Cao Cấp</span>
-            </div>
-          </div>
-          {/* Additional Thumbnails / Details */}
-          <div className="mt-stack-md flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
-            <div className="w-20 h-20 rounded-xl bg-white border border-primary/10 overflow-hidden cursor-pointer hover:border-primary transition-all flex-shrink-0">
-              <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCuyi1CuWmk6DXnFjciKShiOsS8MKe655-8H-quG8gcgOzsOzJs_iQrj27lXSjbqvBrD968PvHGgWQw6nLbRCz0KN-788-qvek5llm4gyk2nqg4q56vJWo8Rk1CTGScf5wyYGYkO6iWe1k5YPExcWn4XnTRpS_XQcMaqfFMSQr6pvyE0Vun6NcW-EI5XjjG-kAyugNsFHazwMnbbwuApq5nW2fFk7JCltSOmTD1pPl8ZCN-tNpt5nFL" alt="Thumb 1" />
-            </div>
-            <div className="w-20 h-20 rounded-xl bg-white border border-primary/10 overflow-hidden cursor-pointer hover:border-primary transition-all flex-shrink-0">
-              <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCkmlidVNiLGWsYV5ZIb58oQLTETr-Vkz3h38K-Rg6hbQf3yXR8tYOJzwvUJvMlznLxoYYRHmNmxrdgOHdakJy8ze_HVeO1zXOhXB_dpdhG-j7lt4auTcEZQy8Xn-asxA-R1WED41J7MQ1OELVuD9zbxj1I26QrnSAGQlkJth-hu2dOzELB0Rm7B3Pru5p7v3MLyYXBm0OSw_KuaccguORklobFPGGQrQYcdWhhD2WOH6BwcepRV2Y" alt="Thumb 2" />
+      {/* Main Content Layout */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-container-margin py-4 sm:py-8 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-start flex-grow pb-28 lg:pb-12">
+        
+        {/* Left Column: Product Visuals (RELATIVE on mobile, STICKY only on Desktop) */}
+        <section className="relative lg:sticky lg:top-20 w-full space-y-3">
+          <div className="relative h-60 sm:h-80 lg:h-auto lg:aspect-square w-full rounded-3xl overflow-hidden shadow-md bg-surface-container-lowest">
+            <img 
+              alt={item.name} 
+              className="w-full h-full object-cover" 
+              src={item.image} 
+            />
+            <div className="absolute top-3 left-3 flex gap-2">
+              <span className="bg-primary/85 backdrop-blur-md text-white text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-xs">Bán Chạy</span>
+              <span className="bg-secondary-container/90 backdrop-blur-md text-on-secondary-container text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full shadow-xs">Cao Cấp</span>
             </div>
           </div>
         </section>
 
-        {/* Right: Content & Customization Section */}
-        <section className="w-full md:w-1/2 space-y-stack-lg">
+        {/* Right Column: Customization Details */}
+        <section className="space-y-5 w-full">
           {/* Header Info */}
-          <div className="space-y-stack-sm">
-            <nav className="flex text-on-surface-variant font-label-sm text-label-sm gap-2">
-              <Link to="/" className="hover:text-primary">Thực Đơn</Link>
+          <div className="space-y-2">
+            <nav className="flex text-on-surface-variant font-label-sm text-xs gap-1.5 items-center flex-wrap">
+              <Link to="/" className="hover:text-primary font-semibold">Thực Đơn</Link>
               <span>/</span>
-              <a className="hover:text-primary" href="#">Trà Sữa</a>
+              <span className="hover:text-primary font-semibold">{item.categoryName || item.categoryId || 'Đồ Uống'}</span>
               <span>/</span>
               <span className="text-primary font-bold">{item.name}</span>
             </nav>
-            <h1 className="font-headline-lg text-headline-lg text-on-background">{item.name}</h1>
-            <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-on-background">{item.name}</h1>
+            <p className="text-sm sm:text-base text-on-surface-variant leading-relaxed">
               {item.description}
             </p>
-            <div className="pt-2">
-              <span className="font-headline-md text-headline-md text-primary font-bold">{item.price.toLocaleString()}đ</span>
+            <div className="pt-1">
+              <span className="text-xl sm:text-2xl text-primary font-extrabold">{item.price.toLocaleString('vi-VN')}đ</span>
             </div>
           </div>
 
           {/* Customization Options */}
-          <div className="space-y-stack-lg bg-white p-6 rounded-2xl shadow-sm border border-outline-variant/5">
+          <div className="space-y-5 bg-white p-4 sm:p-6 rounded-2xl shadow-xs border border-outline-variant/15">
             {/* Size Selector */}
-            <div className="space-y-stack-sm">
-              <label className="font-label-md text-label-md text-on-background block">Chọn Kích Cỡ</label>
-              <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs sm:text-sm font-bold text-on-background block">Chọn Kích Cỡ</label>
+              <div className="grid grid-cols-2 gap-3">
                 <button 
-                  onClick={() => setSize('Vừa')}
-                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all interactive-press ${size === 'Vừa' ? 'border-primary bg-secondary-container/20 text-primary font-bold' : 'border-outline text-on-surface-variant hover:border-primary'}`}>
-                  <span className="flex items-center gap-2">
-                    <span className="material-symbols-outlined">coffee</span> Medium
+                  type="button"
+                  onClick={() => setSize('Medium')}
+                  className={`flex items-center justify-between p-3.5 sm:p-4 rounded-xl border-2 transition-all active:scale-[0.98] ${size === 'Medium' ? 'border-primary bg-secondary-container/20 text-primary font-bold shadow-xs' : 'border-outline-variant/30 text-on-surface-variant hover:border-primary'}`}>
+                  <span className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <span className="material-symbols-outlined text-lg">coffee</span> Medium
                   </span>
-                  <span className="text-label-sm">+0đ</span>
+                  <span className="text-xs font-semibold">+0đ</span>
                 </button>
                 <button 
-                  onClick={() => setSize('Lớn')}
-                  className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all interactive-press ${size === 'Lớn' ? 'border-primary bg-secondary-container/20 text-primary font-bold' : 'border-outline text-on-surface-variant hover:border-primary'}`}>
-                  <span className="flex items-center gap-2">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'opsz' 32" }}>coffee</span> Large
+                  type="button"
+                  onClick={() => setSize('Large')}
+                  className={`flex items-center justify-between p-3.5 sm:p-4 rounded-xl border-2 transition-all active:scale-[0.98] ${size === 'Large' ? 'border-primary bg-secondary-container/20 text-primary font-bold shadow-xs' : 'border-outline-variant/30 text-on-surface-variant hover:border-primary'}`}>
+                  <span className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <span className="material-symbols-outlined text-lg">coffee</span> Large
                   </span>
-                  <span className="text-label-sm">+15.000đ</span>
+                  <span className="text-xs font-semibold">+15.000đ</span>
                 </button>
               </div>
             </div>
 
             {/* Sliders for Sugar and Ice */}
-            <div className="space-y-stack-md">
+            <div className="space-y-4 pt-1">
               {/* Sugar */}
-              <div className="space-y-stack-sm">
+              <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="font-label-md text-label-md text-on-background">Lượng Đường</label>
-                  <span className="text-primary font-bold">{sugar}%</span>
+                  <label className="text-xs sm:text-sm font-bold text-on-background">Lượng Đường</label>
+                  <span className="text-primary font-bold text-xs sm:text-sm">{sugar}%</span>
                 </div>
                 <input 
                   className="w-full h-2 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary" 
@@ -176,10 +177,10 @@ export default function ProductDetail() {
               </div>
               
               {/* Ice */}
-              <div className="space-y-stack-sm pt-4">
+              <div className="space-y-1.5 pt-2">
                 <div className="flex justify-between items-center">
-                  <label className="font-label-md text-label-md text-on-background">Lượng Đá</label>
-                  <span className="text-primary font-bold">{ice}%</span>
+                  <label className="text-xs sm:text-sm font-bold text-on-background">Lượng Đá</label>
+                  <span className="text-primary font-bold text-xs sm:text-sm">{ice}%</span>
                 </div>
                 <input 
                   className="w-full h-2 bg-surface-variant rounded-lg appearance-none cursor-pointer accent-primary" 
@@ -192,11 +193,11 @@ export default function ProductDetail() {
             </div>
 
             {/* Special Instructions */}
-            <div className="space-y-stack-sm pt-2">
-              <label className="font-label-md text-label-md text-on-background">Ghi Chú Đặc Biệt</label>
+            <div className="space-y-1.5 pt-1">
+              <label className="text-xs sm:text-sm font-bold text-on-background">Ghi Chú Đặc Biệt</label>
               <textarea 
-                className="w-full bg-surface border border-outline-variant rounded-xl p-4 text-body-md focus:ring-2 focus:ring-primary focus:outline-none min-h-[100px] resize-none transition-all" 
-                placeholder="VD: Ít đá, thêm trân châu..."
+                className="w-full bg-surface border border-outline-variant/30 rounded-xl p-3 text-xs sm:text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary focus:outline-none min-h-[80px] sm:min-h-[100px] resize-none transition-all" 
+                placeholder="VD: Ít đá, thêm trân châu, không quá ngọt..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               ></textarea>
@@ -204,42 +205,41 @@ export default function ProductDetail() {
           </div>
 
           {/* Bottom Actions */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center pt-stack-md border-t border-outline-variant/10">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center pt-3 border-t border-outline-variant/15">
             {/* Quantity Selector */}
-            <div className="flex items-center bg-surface-variant/30 p-1 rounded-full border border-outline-variant/20">
-              <button onClick={handleDecrement} className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-primary hover:text-white transition-all interactive-press">
-                <span className="material-symbols-outlined text-sm">remove</span>
+            <div className="flex items-center justify-between w-full sm:w-auto bg-surface-variant/40 p-1 rounded-2xl border border-outline-variant/20">
+              <button 
+                onClick={handleDecrement} 
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-xs hover:bg-primary hover:text-white transition-colors text-primary"
+              >
+                <span className="material-symbols-outlined text-base font-bold">remove</span>
               </button>
-              <span className="w-12 text-center font-bold text-headline-md">{quantity}</span>
-              <button onClick={handleIncrement} className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm hover:bg-primary hover:text-white transition-all interactive-press">
-                <span className="material-symbols-outlined text-sm">add</span>
+              <span className="w-14 text-center font-bold text-lg text-primary">{quantity}</span>
+              <button 
+                onClick={handleIncrement} 
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-xs hover:bg-primary hover:text-white transition-colors text-primary"
+              >
+                <span className="material-symbols-outlined text-base font-bold">add</span>
               </button>
             </div>
+
             {/* Add to Cart */}
-            <button onClick={handleAddToCart} className={`flex-grow w-full sm:w-auto text-white py-4 px-8 rounded-full font-bold text-label-md flex items-center justify-center gap-2 transition-all shadow-lg interactive-press ${isAdded ? 'bg-tertiary-container shadow-tertiary-container/20' : 'bg-primary hover:bg-primary-container shadow-primary/20'}`}>
-              <span className="material-symbols-outlined">{isAdded ? 'check_circle' : 'shopping_bag'}</span>
-              {isAdded ? 'Đã Thêm!' : `Thêm vào Giỏ • ${totalPrice.toLocaleString()}đ`}
+            <button 
+              onClick={handleAddToCart} 
+              className={`w-full sm:flex-grow text-white py-3.5 sm:py-4 px-6 rounded-2xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${isAdded ? 'bg-green-600 shadow-green-600/20' : 'bg-primary hover:bg-primary-container shadow-primary/20'}`}
+            >
+              <span className="material-symbols-outlined text-lg">{isAdded ? 'check_circle' : 'shopping_bag'}</span>
+              {isAdded ? 'Đã Thêm Vào Giỏ!' : `Thêm vào Giỏ • ${totalPrice.toLocaleString('vi-VN')}đ`}
             </button>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="w-full mt-auto bg-surface-container-highest dark:bg-surface-container border-t border-outline-variant/20">
-        <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-stack-lg max-w-7xl mx-auto gap-stack-md">
-          <div className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</div>
-          <div className="flex flex-wrap justify-center gap-6 text-on-surface-variant font-label-sm text-label-sm">
-            <a className="hover:text-primary transition-opacity" href="#">Chính Sách Bảo Mật</a>
-            <a className="hover:text-primary transition-opacity" href="#">Điều Khoản</a>
-            <a className="hover:text-primary transition-opacity" href="#">Bền Vững</a>
-            <a className="hover:text-primary transition-opacity" href="#">Tuyển Dụng</a>
-            <a className="hover:text-primary transition-opacity" href="#">Liên Hệ</a>
-          </div>
-          <p className="text-on-surface-variant font-label-sm text-label-sm text-center md:text-right">
-            © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
-          </p>
-        </div>
+      <footer className="w-full mt-auto bg-surface-container-highest dark:bg-surface-container border-t border-outline-variant/20 py-6 px-4 text-center text-xs text-on-surface-variant hidden md:block">
+        © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
       </footer>
+      
       <MobileBottomNav />
     </div>
   );

@@ -1,7 +1,15 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
+import { menuApi, orderApi, authApi } from '../api/apis';
+import { signalRService } from '../api/signalr';
+import type { 
+  MenuItemDto, 
+  OrderDto, 
+  LoginResponse,
+  StoreMenuResponse 
+} from '../types/apiTypes';
 
-// --- Types ---
-export type OrderStatus = 'pending' | 'preparing' | 'done' | 'paid';
+// --- UI Compatible Types ---
+export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'done' | 'served' | 'paid' | 'cancelled';
 
 export interface MenuItem {
   id: string;
@@ -10,145 +18,419 @@ export interface MenuItem {
   price: number;
   image: string;
   categoryId: string;
+  categoryName?: string;
+  rating?: number;
+  rawDto?: MenuItemDto;
 }
 
 export interface Category {
   id: string;
   name: string;
+  icon?: string;
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
+  sizeId?: number;
+  sizeName?: string;
+  toppingIds?: number[];
+  toppingNames?: string[];
+  sugarLevel?: string;
+  iceLevel?: string;
+  note?: string;
 }
 
 export interface Order {
   id: string;
+  orderCode?: string;
   tableNumber: string;
   items: CartItem[];
   total: number;
   status: OrderStatus;
   createdAt: string;
+  rawDto?: OrderDto;
 }
 
 interface StoreState {
-  // Mock Data
+  // Data
   menuItems: MenuItem[];
   categories: Category[];
   orders: Order[];
+  activeOrder: Order | null;
+  storeInfo: StoreMenuResponse | null;
+  user: LoginResponse | null;
   
   // Customer State
+  currentStoreId: number;
   currentTable: string | null;
   cart: CartItem[];
+  appliedVoucherCode: string | null;
+  voucherDiscount: number;
+  isLoading: boolean;
   
   // Actions
+  setStoreId: (storeId: number) => void;
   setTable: (table: string) => void;
-  addToCart: (item: MenuItem) => void;
-  removeFromCart: (itemId: string) => void;
-  clearCart: () => void;
-  placeOrder: () => void;
-  createOrder: (tableId: string) => string;
-  updateQuantity: (id: string, quantity: number) => void;
+  fetchMenu: (storeId?: number) => Promise<void>;
+  fetchOrders: (storeId?: number) => Promise<void>;
   
-  // Staff/Admin Actions
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  addToCart: (item: any, options?: {
+    quantity?: number;
+    sizeId?: number;
+    sizeName?: string;
+    sizeExtra?: number;
+    toppingIds?: number[];
+    toppingNames?: string[];
+    toppingExtra?: number;
+    sugarLevel?: string;
+    iceLevel?: string;
+    note?: string;
+  }) => void;
+  removeFromCart: (itemId: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
+  clearCart: () => void;
+  setVoucher: (code: string, discount: number) => void;
+  
+  placeOrder: () => void;
+  createOrder: (tableId: string, customerPhone?: string, customerName?: string, note?: string) => Promise<Order>;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+  
+  initRealtime: (storeId?: number) => void;
+  loginStaff: (username: string, password: string) => Promise<void>;
+  logout: () => void;
   addMenuItem: (item: MenuItem) => void;
   updateMenuItem: (item: MenuItem) => void;
   deleteMenuItem: (id: string) => void;
 }
 
 const mockCategories: Category[] = [
-  { id: 'c1', name: 'Coffee' },
-  { id: 'c2', name: 'Tea' },
-  { id: 'c3', name: 'Milk Tea' },
-  { id: 'c4', name: 'Cake' },
+  { id: 'Cà Phê Pha Máy', name: 'Cà Phê Pha Máy', icon: 'coffee' },
+  { id: 'Sinh Tố & Trà Sữa', name: 'Sinh Tố & Trà Sữa', icon: 'bubble_chart' },
+  { id: 'Trà & Trái Cây', name: 'Trà & Trái Cây', icon: 'energy_savings_leaf' },
+  { id: 'Bánh Ngọt', name: 'Bánh Ngọt', icon: 'bakery_dining' }
 ];
 
-const mockMenuItems: MenuItem[] = [
-  { id: 'm1', name: 'Espresso', description: 'Strong and bold coffee', price: 35000, image: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=500&q=80', categoryId: 'c1' },
-  { id: 'm2', name: 'Cappuccino', description: 'Espresso with steamed milk and foam', price: 45000, image: 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=500&q=80', categoryId: 'c1' },
-  { id: 'm3', name: 'Matcha Latte', description: 'Premium matcha with milk', price: 50000, image: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=500&q=80', categoryId: 'c2' },
-  { id: 'm4', name: 'Brown Sugar Milk Tea', description: 'Boba with brown sugar syrup', price: 45000, image: 'https://images.unsplash.com/photo-1626082895617-2c6ad361a86a?w=500&q=80', categoryId: 'c3' },
-  { id: 'm5', name: 'Cheesecake', description: 'Classic NY style cheesecake', price: 60000, image: 'https://images.unsplash.com/photo-1524351199678-941a58a3df50?w=500&q=80', categoryId: 'c4' },
-];
-
-const mockOrders: Order[] = [
-  { id: 'o1', tableNumber: 'T01', items: [{ ...mockMenuItems[0], quantity: 2 }], total: 70000, status: 'pending', createdAt: new Date().toISOString() },
-  { id: 'o2', tableNumber: 'T05', items: [{ ...mockMenuItems[1], quantity: 1 }, { ...mockMenuItems[4], quantity: 1 }], total: 105000, status: 'preparing', createdAt: new Date().toISOString() }
-];
-
-export const useStore = create<StoreState>((set) => ({
-  menuItems: mockMenuItems,
+export const useStore = create<StoreState>((set, get) => ({
+  menuItems: [],
   categories: mockCategories,
-  orders: mockOrders,
-  
+  orders: [],
+  activeOrder: null,
+  storeInfo: null,
+  user: null,
+
+  currentStoreId: 1,
   currentTable: null,
   cart: [],
+  appliedVoucherCode: null,
+  voucherDiscount: 0,
+  isLoading: false,
 
+  setStoreId: (storeId) => set({ currentStoreId: storeId }),
   setTable: (table) => set({ currentTable: table }),
-  
-  addToCart: (item) => set((state) => {
-    const existing = state.cart.find(i => i.id === item.id);
-    if (existing) {
-      return { cart: state.cart.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i) };
+
+  fetchMenu: async (storeId) => {
+    const sId = storeId || get().currentStoreId;
+    try {
+      set({ isLoading: true });
+      const data = await menuApi.getStoreMenu(sId);
+      
+      // Filter out 'Quà Lưu Niệm'
+      const mappedCategories: Category[] = data.categories
+        .filter(c => !c.name.toLowerCase().includes('quà') && !c.name.toLowerCase().includes('lưu niệm'))
+        .map(c => ({
+          id: c.name,
+          name: c.name,
+          icon: c.icon || 'coffee',
+        }));
+
+      const mappedItems: MenuItem[] = data.menuItems
+        .filter(m => !m.categoryName?.toLowerCase().includes('quà') && !m.categoryName?.toLowerCase().includes('lưu niệm'))
+        .map(m => ({
+          id: m.menuItemId.toString(),
+          name: m.name,
+          description: m.description || '',
+          price: m.basePrice,
+          image: m.imageUrl || 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?w=500&q=80',
+          categoryId: m.categoryName || 'Cà Phê Pha Máy',
+          categoryName: m.categoryName,
+          rating: m.rating || 4.8,
+          rawDto: m,
+        }));
+
+      set({
+        storeInfo: data,
+        categories: mappedCategories.length > 0 ? mappedCategories : mockCategories,
+        menuItems: mappedItems,
+        isLoading: false
+      });
+    } catch (err) {
+      console.warn('API menu fetch failed, using fallback UI state:', err);
+      set({ isLoading: false });
     }
-    return { cart: [...state.cart, { ...item, quantity: 1 }] };
+  },
+
+  fetchOrders: async (storeId) => {
+    const sId = storeId || get().currentStoreId;
+    try {
+      const orders = await orderApi.getActiveOrders(sId);
+      const mappedOrders: Order[] = orders.map((o: OrderDto) => ({
+        id: o.orderId.toString(),
+        orderCode: o.orderCode,
+        tableNumber: o.tableNumber || 'Mang về',
+        total: o.totalAmount,
+        status: (o.status as OrderStatus) || 'pending',
+        createdAt: o.createdAt,
+        rawDto: o,
+        items: o.items.map(i => ({
+          id: i.menuItemId.toString(),
+          name: i.menuItemName,
+          description: '',
+          price: i.unitPrice,
+          image: i.imageUrl || '',
+          categoryId: '',
+          quantity: i.quantity,
+          sizeName: i.sizeName || undefined,
+          toppingNames: i.toppings?.map(t => t.toppingName),
+          sugarLevel: i.sugarLevel,
+          iceLevel: i.iceLevel,
+          note: i.note || undefined,
+        })),
+      }));
+
+      set({ orders: mappedOrders });
+    } catch (err) {
+      console.warn('Failed to fetch orders from API:', err);
+    }
+  },
+
+  addToCart: (item, options = {}) => {
+    const itemId = item.id?.toString() || item.menuItemId?.toString() || '1';
+    const itemName = item.name;
+    const itemPrice = item.price || item.basePrice || 0;
+    const itemImage = item.image || item.imageUrl || '';
+    const categoryId = item.categoryId || '';
+
+    const sizeExtra = options.sizeExtra || 0;
+    const toppingExtra = options.toppingExtra || 0;
+    const finalUnitPrice = itemPrice + sizeExtra + toppingExtra;
+
+    const existingIndex = get().cart.findIndex(i => 
+      i.id === itemId && 
+      i.sizeId === options.sizeId && 
+      (i.sizeName || '') === (options.sizeName || '') &&
+      JSON.stringify(i.toppingIds || []) === JSON.stringify(options.toppingIds || [])
+    );
+
+    if (existingIndex > -1) {
+      const updatedCart = [...get().cart];
+      updatedCart[existingIndex].quantity += (options.quantity || 1);
+      set({ cart: updatedCart });
+    } else {
+      const newCartItem: CartItem = {
+        id: itemId,
+        name: itemName,
+        description: item.description || '',
+        price: finalUnitPrice,
+        image: itemImage,
+        categoryId: categoryId,
+        quantity: options.quantity || 1,
+        sizeId: options.sizeId,
+        sizeName: options.sizeName,
+        toppingIds: options.toppingIds,
+        toppingNames: options.toppingNames,
+        sugarLevel: options.sugarLevel || '100%',
+        iceLevel: options.iceLevel || '100%',
+        note: options.note,
+        rawDto: item.rawDto || item,
+      };
+      set({ cart: [...get().cart, newCartItem] });
+    }
+  },
+
+  removeFromCart: (itemId) => set({
+    cart: get().cart.filter(i => i.id !== itemId)
   }),
 
-  removeFromCart: (itemId) => set((state) => ({
-    cart: state.cart.filter(i => i.id !== itemId)
-  })),
+  updateQuantity: (id, quantity) => {
+    if (quantity <= 0) {
+      get().removeFromCart(id);
+      return;
+    }
+    set({
+      cart: get().cart.map(i => i.id === id ? { ...i, quantity } : i)
+    });
+  },
 
-  clearCart: () => set({ cart: [] }),
+  clearCart: () => set({ cart: [], appliedVoucherCode: null, voucherDiscount: 0 }),
 
-  placeOrder: () => set((state) => {
-    if (state.cart.length === 0 || !state.currentTable) return state;
+  setVoucher: (code, discount) => set({ appliedVoucherCode: code, voucherDiscount: discount }),
+
+  placeOrder: () => {
+    const { cart, currentTable } = get();
+    if (cart.length === 0) return;
     
-    const total = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const newOrder: Order = {
       id: `o${Math.random().toString(36).substr(2, 9)}`,
-      tableNumber: state.currentTable,
-      items: state.cart,
+      orderCode: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+      tableNumber: currentTable || 'T01',
+      items: [...cart],
       total,
       status: 'pending',
       createdAt: new Date().toISOString()
     };
     
-    return { orders: [newOrder, ...state.orders], cart: [] };
-  }),
+    set({ orders: [newOrder, ...get().orders], activeOrder: newOrder, cart: [] });
+  },
 
-  createOrder: (tableId) => {
-    let newOrderId = '';
-    set((state) => {
-      const total = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      newOrderId = `o${Math.random().toString(36).substr(2, 9)}`;
+  createOrder: async (tableId, customerPhone, customerName, note) => {
+    const { cart, currentStoreId, currentTable, appliedVoucherCode } = get();
+    if (cart.length === 0) throw new Error('Giỏ hàng trống');
+
+    const tableStr = tableId || currentTable || 'T01';
+    let tableNumId: number | undefined = undefined;
+    const match = tableStr.match(/\d+/);
+    if (match) tableNumId = parseInt(match[0]);
+
+    try {
+      const payload = {
+        storeId: currentStoreId,
+        tableId: tableNumId,
+        customerPhone: customerPhone || undefined,
+        customerName: customerName || undefined,
+        voucherCode: appliedVoucherCode || undefined,
+        pointsToUse: 0,
+        note: note || undefined,
+        items: cart.map(i => {
+          const numId = parseInt(i.id);
+          return {
+            menuItemId: isNaN(numId) ? 5 : numId,
+            sizeId: i.sizeId || undefined,
+            quantity: i.quantity,
+            sugarLevel: i.sugarLevel || '100%',
+            iceLevel: i.iceLevel || '100%',
+            note: i.note,
+            toppings: (i.toppingIds || []).map(tId => ({ toppingId: tId })),
+          };
+        }),
+      };
+
+      const res = await orderApi.createOrder(payload);
+      
       const newOrder: Order = {
-        id: newOrderId,
-        tableNumber: tableId,
-        items: state.cart,
+        id: res.orderId.toString(),
+        orderCode: res.orderCode,
+        tableNumber: res.tableNumber || tableStr,
+        total: res.totalAmount,
+        status: 'pending',
+        createdAt: res.createdAt,
+        rawDto: res,
+        items: [...cart],
+      };
+
+      set({
+        orders: [newOrder, ...get().orders],
+        activeOrder: newOrder,
+        cart: [],
+        appliedVoucherCode: null,
+        voucherDiscount: 0,
+      });
+
+      return newOrder;
+    } catch (err) {
+      console.warn('API createOrder failed, fallback local order:', err);
+      const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const fallbackOrder: Order = {
+        id: `o${Math.random().toString(36).substr(2, 9)}`,
+        orderCode: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+        tableNumber: tableStr,
+        items: [...cart],
         total,
         status: 'pending',
         createdAt: new Date().toISOString()
       };
-      return { orders: [newOrder, ...state.orders], cart: [] };
-    });
-    return newOrderId;
+      set({ orders: [fallbackOrder, ...get().orders], activeOrder: fallbackOrder, cart: [] });
+      return fallbackOrder;
+    }
   },
 
-  updateQuantity: (id, quantity) => set((state) => ({
-    cart: state.cart.map(item => item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item)
-  })),
+  updateOrderStatus: async (orderId, newStatus) => {
+    let mappedStatus = newStatus;
+    if (newStatus === 'done') mappedStatus = 'ready';
+    
+    const numId = parseInt(orderId);
+    if (!isNaN(numId)) {
+      try {
+        await orderApi.updateStatus(numId, mappedStatus);
+      } catch (err) {
+        console.warn('API updateStatus failed:', err);
+      }
+    }
 
-  updateOrderStatus: (orderId, status) => set((state) => ({
-    orders: state.orders.map(o => o.id === orderId ? { ...o, status } : o)
-  })),
+    set({
+      orders: get().orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+    });
+  },
 
-  addMenuItem: (item) => set((state) => ({ menuItems: [...state.menuItems, item] })),
-  
-  updateMenuItem: (item) => set((state) => ({
-    menuItems: state.menuItems.map(m => m.id === item.id ? item : m)
-  })),
+  initRealtime: (storeId) => {
+    const sId = storeId || get().currentStoreId;
+    signalRService.startConnection(sId);
 
-  deleteMenuItem: (id) => set((state) => ({
-    menuItems: state.menuItems.filter(m => m.id !== id)
-  }))
+    signalRService.onNewOrder((newDto) => {
+      const mapped: Order = {
+        id: newDto.orderId.toString(),
+        orderCode: newDto.orderCode,
+        tableNumber: newDto.tableNumber || 'Mang về',
+        total: newDto.totalAmount,
+        status: (newDto.status as OrderStatus) || 'pending',
+        createdAt: newDto.createdAt,
+        rawDto: newDto,
+        items: newDto.items.map(i => ({
+          id: i.menuItemId.toString(),
+          name: i.menuItemName,
+          description: '',
+          price: i.unitPrice,
+          image: i.imageUrl || '',
+          categoryId: '',
+          quantity: i.quantity,
+          sizeName: i.sizeName || undefined,
+          toppingNames: i.toppings?.map(t => t.toppingName),
+          sugarLevel: i.sugarLevel,
+          iceLevel: i.iceLevel,
+          note: i.note || undefined,
+        })),
+      };
+
+      set({
+        orders: [mapped, ...get().orders.filter(o => o.id !== mapped.id)]
+      });
+    });
+
+    signalRService.onOrderStatusChanged((orderId, status) => {
+      set({
+        orders: get().orders.map(o => o.id === orderId.toString() ? { ...o, status: status as OrderStatus } : o)
+      });
+    });
+  },
+
+  loginStaff: async (username, password) => {
+    const res = await authApi.loginStaff({ username, password });
+    localStorage.setItem('token', res.token);
+    localStorage.setItem('user', JSON.stringify(res));
+    set({ user: res, currentStoreId: res.storeId || 1 });
+  },
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    set({ user: null });
+  },
+
+  addMenuItem: (item) => set({ menuItems: [...get().menuItems, item] }),
+  updateMenuItem: (item) => set({
+    menuItems: get().menuItems.map(m => m.id === item.id ? item : m)
+  }),
+  deleteMenuItem: (id) => set({
+    menuItems: get().menuItems.filter(m => m.id !== id)
+  })
 }));

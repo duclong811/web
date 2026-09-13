@@ -1,160 +1,173 @@
-import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useStore, type OrderStatus } from '../../store/useStore';
 
 export default function OrderDashboard() {
-  const { orders, updateOrderStatus } = useStore();
+  const { orders, updateOrderStatus, fetchOrders, initRealtime, currentStoreId } = useStore();
   const [filter, setFilter] = useState('All');
+
+  useEffect(() => {
+    fetchOrders(currentStoreId);
+    initRealtime(currentStoreId);
+  }, [currentStoreId]);
 
   const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
     updateOrderStatus(orderId, newStatus);
   };
 
-  const filteredOrders = orders.filter(o => filter === 'All' || o.status === filter.toLowerCase());
+  const filteredOrders = orders.filter(o => {
+    if (filter === 'All') return true;
+    if (filter === 'pending') return o.status === 'pending';
+    if (filter === 'preparing') return o.status === 'preparing';
+    if (filter === 'done') return o.status === 'ready' || o.status === 'done' || o.status === 'served';
+    if (filter === 'paid') return o.status === 'paid';
+    return true;
+  });
 
   const getStatusStyles = (status: OrderStatus) => {
     switch(status) {
       case 'pending':
         return {
-          card: "glass-card rounded-2xl p-6 shadow-sm flex flex-col transition-all hover:shadow-md",
-          badge: "bg-tertiary-fixed text-on-tertiary-fixed",
-          badgeText: "Chờ xác nhận",
-          btn: "bg-primary text-on-primary shadow-primary/20",
-          btnText: "Bắt đầu pha chế",
+          card: "bg-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col transition-all hover:shadow-md border border-outline-variant/30",
+          badge: "bg-amber-100 text-amber-900 font-bold px-2.5 py-0.5 rounded-full text-[11px]",
+          badgeText: "Chờ Xác Nhận",
+          btn: "bg-primary text-white shadow-primary/20 hover:bg-primary-container",
+          btnText: "Bắt đầu pha chế ➔",
           nextStatus: "preparing" as OrderStatus
         };
       case 'preparing':
         return {
-          card: "glass-card rounded-2xl p-6 shadow-sm border-2 border-primary/10 flex flex-col transition-all hover:shadow-md relative overflow-hidden",
-          badge: "bg-primary-container text-on-primary-container",
-          badgeText: "Đang pha chế",
-          btn: "bg-secondary text-on-secondary shadow-md",
-          btnText: "Hoàn tất",
+          card: "bg-white rounded-2xl p-4 sm:p-5 shadow-xs border-2 border-primary/20 flex flex-col transition-all hover:shadow-md relative overflow-hidden",
+          badge: "bg-[#85532a] text-white font-bold px-2.5 py-0.5 rounded-full text-[11px] animate-pulse",
+          badgeText: "Đang Pha Chế",
+          btn: "bg-secondary text-white shadow-xs hover:opacity-90",
+          btnText: "Đã pha chế xong ➔",
           nextStatus: "done" as OrderStatus
         };
+      case 'ready':
       case 'done':
+      case 'served':
         return {
-          card: "glass-card rounded-2xl p-6 shadow-sm flex flex-col transition-all hover:shadow-md opacity-90",
-          badge: "bg-secondary-fixed text-on-secondary-fixed-variant flex items-center gap-1",
-          badgeText: "Hoàn thành",
-          btn: "bg-surface-container-highest text-on-surface-variant hover:bg-outline-variant",
-          btnText: "Đã giao / Thanh toán",
+          card: "bg-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col transition-all hover:shadow-md border border-green-200",
+          badge: "bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full text-[11px] flex items-center gap-1",
+          badgeText: "Món Đã Sẵn Sàng",
+          btn: "bg-surface-container-highest text-on-surface hover:bg-outline-variant/50",
+          btnText: "Đã giao / Thu tiền ➔",
           nextStatus: "paid" as OrderStatus
         };
       case 'paid':
         return {
-          card: "glass-card rounded-2xl p-6 shadow-sm flex flex-col transition-all opacity-60 grayscale-[0.2]",
-          badge: "bg-outline-variant text-on-surface-variant",
-          badgeText: "Đã thanh toán",
+          card: "bg-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col transition-all opacity-60 grayscale-[0.2] border border-outline-variant/20",
+          badge: "bg-gray-100 text-gray-700 font-bold px-2.5 py-0.5 rounded-full text-[11px]",
+          badgeText: "Đã Thanh Toán",
           btn: "hidden",
           btnText: "",
           nextStatus: "paid" as OrderStatus
         };
       default:
-        return { card: "", badge: "", badgeText: "", btn: "", btnText: "", nextStatus: "pending" as OrderStatus };
+        return { card: "bg-white", badge: "", badgeText: "", btn: "", btnText: "", nextStatus: "pending" as OrderStatus };
     }
   };
 
   return (
-    <>
-      <header className="flex justify-between items-end mb-stack-lg">
+    <div className="max-w-7xl mx-auto space-y-4">
+      {/* Header Bar */}
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4 rounded-2xl border border-outline-variant/15 shadow-xs">
         <div>
-          <h1 className="font-headline-lg text-headline-lg text-primary mb-1">Live Orders</h1>
-          <p className="font-body-md text-body-md text-on-surface-variant">Manage and track your customer orders in real-time.</p>
+          <h1 className="text-lg sm:text-2xl font-black text-primary tracking-tight">
+            Đơn Hàng Trực Tiếp (Live Orders)
+          </h1>
+          <p className="text-xs text-on-surface-variant">
+            Tự động đồng bộ và nhận đơn mới qua WebSocket SignalR.
+          </p>
         </div>
-        <div className="flex gap-2">
-          <div className="flex items-center bg-white border border-outline-variant px-3 py-1.5 rounded-lg shadow-sm">
-            <span className="font-label-sm text-label-sm text-on-surface-variant mr-2">Trạng thái:</span>
+        
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center bg-surface-container-low px-3 py-1.5 rounded-xl border border-outline-variant/20 text-xs w-full sm:w-auto">
+            <span className="font-bold text-on-surface-variant mr-2 whitespace-nowrap">Lọc:</span>
             <select 
-              className="bg-transparent border-none focus:ring-0 font-label-md text-label-md text-primary py-0 cursor-pointer outline-none"
+              className="bg-transparent border-none font-bold text-primary cursor-pointer outline-none w-full sm:w-auto"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             >
-              <option value="All">Tất cả</option>
-              <option value="Pending">Chờ xác nhận</option>
-              <option value="Preparing">Đang pha chế</option>
-              <option value="Done">Hoàn thành</option>
+              <option value="All">Tất Cả Đơn ({orders.length})</option>
+              <option value="pending">Chờ Xác Nhận</option>
+              <option value="preparing">Đang Pha Chế</option>
+              <option value="done">Sẵn Sàng / Đã Giao</option>
+              <option value="paid">Đã Thanh Toán</option>
             </select>
           </div>
         </div>
       </header>
 
-      {/* Bento-inspired Grid for Orders */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-gutter">
+      {/* Orders Bento Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-5">
         {filteredOrders.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-on-surface-variant">No orders found.</div>
+          <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-outline-variant/20 p-6 shadow-xs">
+            <span className="material-symbols-outlined text-4xl text-outline-variant mb-2">assignment_turned_in</span>
+            <h3 className="text-sm sm:text-base font-bold text-on-surface mb-1">Hiện không có đơn hàng nào</h3>
+            <p className="text-xs text-on-surface-variant">Khi khách hàng đặt món tại bàn, đơn mới sẽ tự động hiển thị tại đây.</p>
+          </div>
         ) : (
           filteredOrders.map(order => {
             const styles = getStatusStyles(order.status);
-            
             return (
               <div key={order.id} className={styles.card}>
-                {order.status === 'preparing' && (
-                  <div className="absolute top-0 right-0 p-2">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                  </div>
-                )}
-                
-                <div className="flex justify-between items-start mb-4">
+                <div className="flex justify-between items-start mb-3">
                   <div>
-                    <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider block mb-1">Order ID</span>
-                    <h3 className="font-headline-md text-headline-md text-primary">#{order.id.slice(-5)}</h3>
+                    <span className="text-[11px] font-black text-primary uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded-md">
+                      Bàn: {order.tableNumber}
+                    </span>
+                    <h3 className="text-base font-bold text-on-surface mt-1">
+                      Đơn #{order.orderCode || order.id}
+                    </h3>
+                    <span className="text-[11px] text-on-surface-variant">
+                      {order.createdAt ? new Date(order.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Vừa xong'}
+                    </span>
                   </div>
-                  <span className={`px-3 py-1 text-label-sm font-label-sm rounded-full ${styles.badge}`}>
-                    {order.status === 'done' && <span className="material-symbols-outlined text-[14px]">check_circle</span>}
-                    {styles.badgeText}
-                  </span>
+                  <span className={styles.badge}>{styles.badgeText}</span>
                 </div>
-                
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center font-bold text-primary">
-                    T{order.tableNumber.replace('table-', '')}
-                  </div>
+
+                {/* Items List */}
+                <div className="space-y-2.5 mb-4 flex-grow border-y border-outline-variant/10 py-2.5">
+                  {order.items?.map((item, index) => (
+                    <div key={index} className="flex justify-between items-start text-xs sm:text-sm">
+                      <div className="pr-2">
+                        <p className="font-bold text-on-surface">
+                          {item.quantity}x {item.name} {item.sizeName ? `(${item.sizeName})` : ''}
+                        </p>
+                        <p className="text-[11px] text-on-surface-variant leading-tight mt-0.5">
+                          {[item.sugarLevel ? `Đường ${item.sugarLevel}` : '', item.iceLevel ? `Đá ${item.iceLevel}` : '', item.note ? `"${item.note}"` : ''].filter(Boolean).join(', ')}
+                        </p>
+                      </div>
+                      <span className="font-bold text-xs text-primary whitespace-nowrap">
+                        {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer Action */}
+                <div className="flex justify-between items-center mt-auto pt-1">
                   <div>
-                    <p className="font-label-md text-label-md text-on-surface">Table {order.tableNumber.replace('table-', '')}</p>
-                    <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70">Just now</p>
+                    <p className="text-[10px] text-on-surface-variant uppercase font-bold">Tổng tiền</p>
+                    <p className="text-sm sm:text-base font-extrabold text-primary">
+                      {order.total.toLocaleString('vi-VN')}đ
+                    </p>
                   </div>
+                  {styles.btn !== "hidden" && (
+                    <button 
+                      onClick={() => handleStatusChange(order.id, styles.nextStatus)}
+                      className={`px-3.5 py-2 rounded-xl font-bold text-xs shadow-xs transition-all active:scale-95 whitespace-nowrap ${styles.btn}`}
+                    >
+                      {styles.btnText}
+                    </button>
+                  )}
                 </div>
-                
-                <div className="flex-1 mb-6 py-4 border-t border-b border-outline-variant/20">
-                  <ul className="space-y-2">
-                    {order.items.map((item, idx) => (
-                      <li key={idx} className="flex justify-between font-body-md text-body-md">
-                        <span className={order.status === 'paid' ? 'opacity-80' : ''}>{item.quantity}x {item.name}</span>
-                        {order.status !== 'paid' && <span className="font-label-md">{(item.price * item.quantity).toLocaleString()}đ</span>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div className="flex justify-between items-center mb-6">
-                  <span className="font-label-md text-label-md text-on-surface-variant">Tổng cộng</span>
-                  <span className="font-headline-md text-headline-md text-primary">{order.total.toLocaleString()}đ</span>
-                </div>
-                
-                {order.status !== 'paid' && (
-                  <button 
-                    onClick={() => handleStatusChange(order.id, styles.nextStatus)}
-                    className={`w-full py-3 rounded-xl font-label-md text-label-md transition-all active:scale-95 shadow-lg ${styles.btn}`}
-                  >
-                    {styles.btnText}
-                  </button>
-                )}
               </div>
             );
           })
         )}
-
-        {/* Placeholder for Empty State/Add */}
-        <div className="border-2 border-dashed border-outline-variant rounded-2xl p-6 flex flex-col items-center justify-center text-on-surface-variant/40 hover:text-on-surface-variant/60 hover:border-outline-variant/60 transition-all cursor-pointer min-h-[300px]">
-          <span className="material-symbols-outlined text-4xl mb-2">post_add</span>
-          <p className="font-label-md text-label-md">Tạo đơn mới tại quầy</p>
-        </div>
       </div>
-
-      {/* Task FAB */}
-      <button className="fixed bottom-8 right-8 w-14 h-14 bg-primary-container text-on-primary-container rounded-2xl shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 z-50">
-        <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>add</span>
-      </button>
-    </>
+    </div>
   );
 }

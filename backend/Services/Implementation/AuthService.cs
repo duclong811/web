@@ -1,0 +1,108 @@
+﻿using Microsoft.EntityFrameworkCore;
+using WebCafe.Backend.Common.Constants;
+using WebCafe.Backend.Common.Exceptions;
+using WebCafe.Backend.Common.Helper;
+using WebCafe.Backend.Infrastructure.Data;
+using WebCafe.Backend.Models.DTOs.Auth;
+using WebCafe.Backend.Services.Abstraction;
+
+namespace WebCafe.Backend.Services.Implementation
+{
+    public class AuthService : IAuthService
+    {
+        private readonly WebCafeDbContext _db;
+        private readonly IConfiguration _config;
+
+        public AuthService(WebCafeDbContext db, IConfiguration config)
+        {
+            _db = db;
+            _config = config;
+        }
+
+        public async Task<LoginResponse> LoginStaffAsync(LoginRequest request)
+        {
+            var staff = await _db.Staff
+                .Include(s => s.Store)
+                    .ThenInclude(st => st!.Tenant)
+                .Include(s => s.Role)
+                .FirstOrDefaultAsync(s => s.Username == request.Username && s.IsActive);
+
+            if (staff == null || !SecurityHelper.VerifyPassword(request.Password, staff.PasswordHash))
+            {
+                throw new AppException("Tên đăng nhập hoặc mật khẩu không chính xác.");
+            }
+
+            var roleName = staff.Role?.Name ?? AppRoles.Staff;
+            var tenantId = staff.Store?.TenantId ?? 0;
+            var storeId = staff.StoreId;
+
+            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
+            var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
+
+            var token = JwtHelper.GenerateToken(
+                staff.StaffId.ToString(),
+                staff.Username,
+                roleName,
+                tenantId,
+                storeId,
+                jwtKey,
+                jwtIssuer,
+                jwtAudience
+            );
+
+            return new LoginResponse
+            {
+                Token = token,
+                Username = staff.Username,
+                FullName = staff.FullName,
+                Role = roleName,
+                TenantId = tenantId,
+                StoreId = storeId,
+                StoreName = staff.Store?.Name,
+                BrandName = staff.Store?.Tenant?.Name
+            };
+        }
+
+        public async Task<LoginResponse> LoginTenantOwnerAsync(LoginRequest request)
+        {
+            var tenant = await _db.Tenants
+                .Include(t => t.Stores)
+                .FirstOrDefaultAsync(t => (t.OwnerEmail == request.Username || t.OwnerPhone == request.Username) && t.IsActive);
+
+            if (tenant == null || !SecurityHelper.VerifyPassword(request.Password, tenant.OwnerPasswordHash))
+            {
+                throw new AppException("Tên đăng nhập hoặc mật khẩu chủ quán không chính xác.");
+            }
+
+            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
+            var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
+
+            var defaultStore = tenant.Stores.FirstOrDefault(s => s.IsActive);
+
+            var token = JwtHelper.GenerateToken(
+                tenant.TenantId.ToString(),
+                tenant.OwnerEmail,
+                AppRoles.TenantOwner,
+                tenant.TenantId,
+                defaultStore?.StoreId,
+                jwtKey,
+                jwtIssuer,
+                jwtAudience
+            );
+
+            return new LoginResponse
+            {
+                Token = token,
+                Username = tenant.OwnerEmail,
+                FullName = tenant.OwnerName,
+                Role = AppRoles.TenantOwner,
+                TenantId = tenant.TenantId,
+                StoreId = defaultStore?.StoreId,
+                StoreName = defaultStore?.Name,
+                BrandName = tenant.Name
+            };
+        }
+    }
+}

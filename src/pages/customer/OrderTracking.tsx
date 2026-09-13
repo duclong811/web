@@ -1,26 +1,72 @@
-import { Link } from 'react-router-dom';
-import { useEffect } from 'react';
+﻿import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
-import { useStore } from '../../store/useStore';
+import { useStore, type Order } from '../../store/useStore';
 import { ShoppingCart } from 'lucide-react';
+import { orderApi } from '../../api/apis';
 
 export default function OrderTracking() {
-  const { cart } = useStore();
+  const [searchParams] = useSearchParams();
+  const codeParam = searchParams.get('code');
+  const { activeOrder, orders, cart, initRealtime, currentStoreId } = useStore();
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(activeOrder || null);
   const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
 
   useEffect(() => {
-    // Add small hover effects to list items
-    const listItems = document.querySelectorAll('.flex.justify-between.items-center.p-2');
-    listItems.forEach(item => {
-      const htmlItem = item as HTMLElement;
-      item.addEventListener('mouseenter', () => {
-        htmlItem.style.transform = 'translateX(4px)';
-      });
-      item.addEventListener('mouseleave', () => {
-        htmlItem.style.transform = 'translateX(0)';
-      });
-    });
-  }, []);
+    initRealtime(currentStoreId);
+  }, [currentStoreId]);
+
+  useEffect(() => {
+    if (activeOrder) {
+      setCurrentOrder(activeOrder);
+      return;
+    }
+
+    if (codeParam) {
+      const match = orders.find(o => o.orderCode === codeParam || o.id === codeParam);
+      if (match) {
+        setCurrentOrder(match);
+      } else {
+        // Fetch from API
+        orderApi.getOrderByCode(codeParam).then(dto => {
+          if (dto) {
+            const mapped: Order = {
+              id: dto.orderId.toString(),
+              orderCode: dto.orderCode,
+              tableNumber: dto.tableNumber || 'Tại bàn',
+              total: dto.totalAmount,
+              status: (dto.status as any) || 'pending',
+              createdAt: dto.createdAt,
+              rawDto: dto,
+              items: dto.items.map(i => ({
+                id: i.menuItemId.toString(),
+                name: i.menuItemName,
+                description: '',
+                price: i.unitPrice,
+                image: i.imageUrl || '',
+                categoryId: '',
+                quantity: i.quantity,
+                sizeName: i.sizeName || undefined,
+                toppingNames: i.toppings?.map(t => t.toppingName),
+                sugarLevel: i.sugarLevel,
+                iceLevel: i.iceLevel,
+                note: i.note || undefined,
+              })),
+            };
+            setCurrentOrder(mapped);
+          }
+        }).catch(() => {});
+      }
+    } else if (orders.length > 0) {
+      setCurrentOrder(orders[0]);
+    }
+  }, [codeParam, activeOrder, orders]);
+
+  const status = currentOrder?.status || 'pending';
+  const isStep1 = true;
+  const isStep2 = status === 'preparing' || status === 'ready' || status === 'served' || status === 'paid' || status === 'done';
+  const isStep3 = status === 'ready' || status === 'served' || status === 'paid' || status === 'done';
+  const isStep4 = status === 'served' || status === 'paid' || status === 'done';
 
   return (
     <div className="min-h-screen flex flex-col font-body-md text-body-md bg-background text-on-surface">
@@ -37,11 +83,6 @@ export default function OrderTracking() {
         }
         .stepper-line-active {
           background: #553722;
-        }
-        .glass-card {
-          background: rgba(255, 255, 255, 0.8);
-          backdrop-filter: blur(8px);
-          border: 1px solid rgba(255, 255, 255, 0.3);
         }
       `}</style>
 
@@ -75,168 +116,161 @@ export default function OrderTracking() {
       </nav>
 
       <main className="flex-grow max-w-7xl mx-auto w-full px-container-margin py-stack-lg">
-        {/* Order Header & Status Bento Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-          
-          {/* Tracking Card */}
-          <div className="lg:col-span-8 space-y-gutter">
-            <div className="bg-surface-container-lowest p-stack-lg rounded-xl shadow-sm border border-outline-variant/30">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-stack-lg">
-                <div>
-                  <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-widest">Đang xử lý</span>
-                  <h2 className="font-headline-lg text-headline-lg text-primary mt-1 font-bold">Đơn hàng #WB-8892</h2>
+        {!currentOrder ? (
+          <div className="py-20 text-center flex flex-col items-center justify-center gap-4 bg-white rounded-3xl border border-outline-variant/20 p-8 shadow-sm">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-primary text-4xl">receipt_long</span>
+            </div>
+            <h2 className="font-headline-md text-headline-md text-on-surface font-bold">Bạn chưa có đơn hàng nào đang xử lý</h2>
+            <p className="text-on-surface-variant max-w-md text-sm">
+              Hãy chọn những món thức uống tuyệt hảo từ thực đơn của chúng tôi để bắt đầu trải nghiệm nhé!
+            </p>
+            <Link to="/" className="mt-2 px-8 py-3 bg-primary text-white rounded-full font-label-md font-bold shadow-md hover:bg-primary-container transition-all active:scale-95">
+              Khám Phá Thực Đơn
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+            {/* Tracking Card */}
+            <div className="lg:col-span-8 space-y-gutter">
+              <div className="bg-surface-container-lowest p-stack-lg rounded-xl shadow-sm border border-outline-variant/30">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-stack-lg">
+                  <div>
+                    <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-widest font-bold">
+                      {status === 'pending' ? 'Đã Tiếp Nhận' : status === 'preparing' ? 'Đang Pha Chế' : (status === 'ready' || status === 'served') ? 'Món Đã Sẵn Sàng' : 'Hoàn Thành'}
+                    </span>
+                    <h2 className="font-headline-lg text-headline-lg text-primary mt-1 font-bold">
+                      Đơn hàng #{currentOrder.orderCode || currentOrder.id}
+                    </h2>
+                  </div>
+                  <div className="bg-primary-fixed px-4 py-2 rounded-full">
+                    <span className="text-on-primary-fixed font-label-md text-label-md font-bold">
+                      {status === 'pending' ? 'Dự kiến: 10-15 phút' : status === 'preparing' ? 'Dự kiến: 5 phút nữa' : 'Đã chuẩn bị xong'}
+                    </span>
+                  </div>
                 </div>
-                <div className="bg-primary-fixed px-4 py-2 rounded-full">
-                  <span className="text-on-primary-fixed font-label-md text-label-md font-bold">Dự kiến: 12 phút nữa</span>
+                
+                {/* Order Timeline */}
+                <div className="relative py-4">
+                  <div className="flex justify-between items-start">
+                    {/* Step 1: Received */}
+                    <div className="flex flex-col items-center z-10 w-1/4 group">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white mb-3 shadow-md ${isStep1 ? 'bg-secondary' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                        <span className="material-symbols-outlined text-xl">check</span>
+                      </div>
+                      <span className={`text-label-md font-label-md text-center ${isStep1 ? 'text-secondary font-bold' : 'text-on-surface-variant'}`}>Đã tiếp nhận</span>
+                      <span className="text-xs text-on-surface-variant mt-1">Đã xác nhận</span>
+                    </div>
+
+                    {/* Step 2: Preparing */}
+                    <div className="flex flex-col items-center z-10 w-1/4 relative">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white mb-3 shadow-lg ${status === 'preparing' ? 'bg-primary brewing-pulse' : isStep2 ? 'bg-secondary' : 'bg-surface-container-high text-on-surface-variant border border-outline-variant'}`}>
+                        <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>coffee_maker</span>
+                      </div>
+                      <span className={`text-label-md font-label-md text-center ${status === 'preparing' ? 'text-primary font-bold' : isStep2 ? 'text-secondary' : 'text-on-surface-variant'}`}>Đang pha chế</span>
+                      <span className="text-xs text-primary font-semibold mt-1">{status === 'preparing' ? 'Hiện tại' : isStep2 ? 'Xong' : 'Chờ...'}</span>
+                    </div>
+
+                    {/* Step 3: Ready/Delivery */}
+                    <div className="flex flex-col items-center z-10 w-1/4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white mb-3 ${isStep3 ? 'bg-secondary shadow-md' : 'bg-surface-container-high text-on-surface-variant border border-outline-variant'}`}>
+                        <span className="material-symbols-outlined text-xl">room_service</span>
+                      </div>
+                      <span className={`text-label-md font-label-md text-center ${isStep3 ? 'text-secondary font-bold' : 'text-on-surface-variant'}`}>Chờ nhận món</span>
+                      <span className="text-xs text-on-surface-variant/50 mt-1">{isStep3 ? 'Sẵn sàng' : 'Chờ...'}</span>
+                    </div>
+
+                    {/* Step 4: Completed */}
+                    <div className="flex flex-col items-center z-10 w-1/4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white mb-3 ${isStep4 ? 'bg-primary shadow-md' : 'bg-surface-container-high text-on-surface-variant border border-outline-variant'}`}>
+                        <span className="material-symbols-outlined text-xl">done_all</span>
+                      </div>
+                      <span className={`text-label-md font-label-md text-center ${isStep4 ? 'text-primary font-bold' : 'text-on-surface-variant'}`}>Hoàn thành</span>
+                      <span className="text-xs text-on-surface-variant/50 mt-1">{isStep4 ? 'Đã giao' : 'Chờ...'}</span>
+                    </div>
+                    
+                    {/* Background Lines */}
+                    <div className="absolute top-9 left-[12.5%] right-[12.5%] h-0.5 flex">
+                      <div className={`w-1/3 h-full ${isStep2 ? 'bg-secondary' : 'stepper-line'}`}></div>
+                      <div className={`w-1/3 h-full ${isStep3 ? 'bg-secondary' : 'stepper-line'}`}></div>
+                      <div className={`w-1/3 h-full ${isStep4 ? 'bg-primary' : 'stepper-line'}`}></div>
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              {/* Order Timeline */}
-              <div className="relative py-4">
-                <div className="flex justify-between items-start">
-                  {/* Step 1: Received */}
-                  <div className="flex flex-col items-center z-10 w-1/4 group">
-                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white mb-3 shadow-md">
-                      <span className="material-symbols-outlined text-xl">check</span>
-                    </div>
-                    <span className="text-label-md font-label-md text-secondary text-center">Đã tiếp nhận</span>
-                    <span className="text-xs text-on-surface-variant mt-1">14:20</span>
+              {/* Visual Content (Barista / Pickup Notice) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+                <div className="relative rounded-xl overflow-hidden h-64 shadow-md group">
+                  <div className="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuC3hxd-jfwMD3YIX3VLUFcyyfMYWhFst6mfCZ7nwKdFgezcOvV8zm9t-1iZ0sxEUi9CRpNqNCNA0JJdyZPdtpE9AnghfDgmkFdkHMlMtP7oom2uFfNK3bCGIfUWxWpqZetZ5hXY9B5SgMeOuFJsmVemHqL735iW2i-VXh1WaqtdSG8VrrZVuPjXx3gu7kT_JHNG56pA00xH1c-Lc29bP7lM0_a9Yx2RdvBBwxzcegpkCstdnIv5aPdS')" }}></div>
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
+                    <p className="text-white font-label-md text-label-md font-bold">Barista đang chuẩn bị đồ uống tươi ngon cho bạn</p>
                   </div>
-                  {/* Step 2: Preparing */}
-                  <div className="flex flex-col items-center z-10 w-1/4 relative">
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white mb-3 shadow-lg brewing-pulse">
-                      <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>coffee_maker</span>
-                    </div>
-                    <span className="text-label-md font-label-md text-primary text-center">Đang pha chế</span>
-                    <span className="text-xs text-primary font-semibold mt-1">Hiện tại</span>
+                </div>
+                <div className="relative rounded-xl overflow-hidden h-64 shadow-md border border-outline-variant bg-surface-container-low flex flex-col items-center justify-center p-6 text-center">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                    <span className="material-symbols-outlined text-primary text-3xl">notifications_active</span>
                   </div>
-                  {/* Step 3: Ready/Delivery */}
-                  <div className="flex flex-col items-center z-10 w-1/4">
-                    <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant mb-3 border border-outline-variant">
-                      <span className="material-symbols-outlined text-xl">room_service</span>
-                    </div>
-                    <span className="text-label-md font-label-md text-on-surface-variant text-center">Chờ nhận món</span>
-                    <span className="text-xs text-on-surface-variant/50 mt-1">Chờ...</span>
-                  </div>
-                  {/* Step 4: Completed */}
-                  <div className="flex flex-col items-center z-10 w-1/4">
-                    <div className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant mb-3 border border-outline-variant">
-                      <span className="material-symbols-outlined text-xl">done_all</span>
-                    </div>
-                    <span className="text-label-md font-label-md text-on-surface-variant text-center">Hoàn thành</span>
-                    <span className="text-xs text-on-surface-variant/50 mt-1">Chờ...</span>
-                  </div>
-                  
-                  {/* Background Lines */}
-                  <div className="absolute top-9 left-[12.5%] right-[12.5%] h-0.5 flex">
-                    <div className="w-1/3 h-full bg-secondary"></div>
-                    <div className="w-1/3 h-full stepper-line"></div>
-                    <div className="w-1/3 h-full stepper-line"></div>
-                  </div>
+                  <h3 className="font-headline-md text-primary font-bold mb-2">Phục vụ tại bàn: {currentOrder.tableNumber}</h3>
+                  <p className="text-on-surface-variant font-body-md text-sm">Nhân viên sẽ mang đồ uống thơm ngon đến tận bàn của bạn ngay khi hoàn thành!</p>
                 </div>
               </div>
             </div>
             
-            {/* Visual Content (Barista / Map) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-              <div className="relative rounded-xl overflow-hidden h-64 shadow-md group">
-                <div className="w-full h-full bg-cover bg-center transition-transform duration-700 group-hover:scale-105" data-alt="Barista" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuC3hxd-jfwMD3YIX3VLUFcyyfMYWhFst6mfCZ7nwKdFgezcOvV8zm9t-1iZ0sxEUi9CRpNqNCNA0JJdyZPdtpE9AnghfDgmkFdkHMlMtP7oom2uFfNK3bCGIfUWxWpqZetZ5hXY9B5SgMeOuFJsmVemHqL735iW2i-VXh1WaqtdSG8VrrZVuPjXx3gu7kT_JHNG56pA00xH1c-Lc29bP7lM0_a9Yx2RdvBBwxzcegpkCstdnIv5aPdS')" }}></div>
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
-                  <p className="text-white font-label-md text-label-md">Barista Minh đang chuẩn bị đồ uống cho bạn</p>
-                </div>
-              </div>
-              <div className="relative rounded-xl overflow-hidden h-64 shadow-md border border-outline-variant bg-surface-container-low flex flex-col items-center justify-center p-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-primary text-3xl">notifications_active</span>
-                </div>
-                <h3 className="font-headline-md text-primary font-bold mb-2">Lấy đồ uống tại quầy</h3>
-                <p className="text-on-surface-variant font-body-md">Chúng tôi sẽ gọi tên hoặc số đơn hàng của bạn khi đồ uống sẵn sàng. Xin cảm ơn!</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Order Details Sidebar */}
-          <div className="lg:col-span-4 space-y-gutter">
-            <div className="bg-surface-container-lowest p-stack-md rounded-xl shadow-sm border border-outline-variant/30 h-full">
-              <h3 className="font-headline-md text-headline-md text-primary mb-stack-md font-bold">Chi tiết đơn hàng</h3>
-              
-              <div className="space-y-4 mb-stack-lg">
-                <div className="flex justify-between items-center p-2 hover:bg-surface-container-low rounded-lg transition-all cursor-default">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center">
-                      <span className="material-symbols-outlined text-primary">coffee</span>
+            {/* Order Details Sidebar */}
+            <div className="lg:col-span-4 space-y-gutter">
+              <div className="bg-surface-container-lowest p-stack-md rounded-xl shadow-sm border border-outline-variant/30 h-full">
+                <h3 className="font-headline-md text-headline-md text-primary mb-stack-md font-bold">Chi tiết đơn hàng</h3>
+                
+                <div className="space-y-4 mb-stack-lg max-h-96 overflow-y-auto pr-1">
+                  {currentOrder.items?.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-2 hover:bg-surface-container-low rounded-lg transition-all cursor-default">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-primary">coffee</span>
+                        </div>
+                        <div>
+                          <p className="font-label-md text-label-md text-on-surface font-bold">
+                            {item.name} {item.sizeName ? `(${item.sizeName})` : ''} x{item.quantity}
+                          </p>
+                          <p className="text-xs text-on-surface-variant">
+                            {[item.sugarLevel ? `Đường ${item.sugarLevel}` : '', item.iceLevel ? `Đá ${item.iceLevel}` : '', item.note ? `"${item.note}"` : ''].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="font-label-md text-label-md font-bold text-primary">
+                        {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                      </span>
                     </div>
-                    <div>
-                      <p className="font-label-md text-label-md text-on-surface font-bold">Latte Hạnh Nhân (L)</p>
-                      <p className="text-xs text-on-surface-variant">Ít đường, Đá viên</p>
-                    </div>
-                  </div>
-                  <span className="font-label-md text-label-md font-bold">65.000đ</span>
+                  ))}
                 </div>
                 
-                <div className="flex justify-between items-center p-2 hover:bg-surface-container-low rounded-lg transition-all cursor-default">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary-fixed flex items-center justify-center">
-                      <span className="material-symbols-outlined text-primary">bakery_dining</span>
-                    </div>
-                    <div>
-                      <p className="font-label-md text-label-md text-on-surface font-bold">Croissant Trứng Muối</p>
-                      <p className="text-xs text-on-surface-variant">Hâm nóng</p>
-                    </div>
+                <div className="border-t border-outline-variant/20 pt-stack-md space-y-2 text-sm">
+                  <div className="flex justify-between text-on-surface-variant">
+                    <span>Số lượng</span>
+                    <span>{currentOrder.items?.reduce((acc, i) => acc + i.quantity, 0) || 1} món</span>
                   </div>
-                  <span className="font-label-md text-label-md font-bold">45.000đ</span>
+                  <div className="flex justify-between font-bold text-base text-on-surface pt-2 border-t border-outline-variant/10">
+                    <span>Tổng tiền</span>
+                    <span className="text-primary text-lg font-bold">{currentOrder.total.toLocaleString('vi-VN')}đ</span>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="border-t border-dashed border-outline-variant py-4 space-y-2">
-                <div className="flex justify-between text-on-surface-variant">
-                  <span className="text-body-md">Tạm tính</span>
-                  <span>110.000đ</span>
+
+                <div className="mt-6">
+                  <Link to="/" className="w-full py-3 bg-secondary-container text-on-secondary-container rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    Đặt thêm món khác
+                  </Link>
                 </div>
-                <div className="flex justify-between text-primary font-bold text-lg pt-2">
-                  <span>Tổng cộng</span>
-                  <span>110.000đ</span>
-                </div>
-              </div>
-              
-              <div className="mt-stack-md p-4 bg-secondary-container rounded-lg flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
-                <div>
-                  <p className="text-xs text-on-secondary-fixed-variant uppercase font-bold tracking-tight">Phương thức thanh toán</p>
-                  <p className="text-label-md font-label-md text-on-secondary-fixed">Ví MoMo • • • 9902</p>
-                </div>
-              </div>
-              
-              {/* Help Section */}
-              <div className="mt-stack-lg pt-stack-lg border-t border-outline-variant">
-                <p className="text-on-surface-variant text-center mb-4">Cần hỗ trợ về đơn hàng?</p>
-                <button className="w-full py-3 px-6 rounded-full bg-primary text-white font-label-md text-label-md flex items-center justify-center gap-2 shadow-md hover:opacity-90 active:scale-[0.98] transition-all">
-                  <span className="material-symbols-outlined text-xl">forum</span>
-                  Chat với Barista ngay
-                </button>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-surface-container-low w-full mt-auto border-t border-outline-variant font-label-md text-label-md">
-        <div className="flex flex-col md:flex-row justify-between items-center w-full px-container-margin py-stack-lg gap-stack-md max-w-7xl mx-auto">
-          <div className="flex flex-col items-center md:items-start gap-2">
-            <span className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</span>
-            <p className="text-on-surface-variant">© 2024 AI-SMARTSERVE. All rights reserved.</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-stack-md">
-            <a className="text-on-surface-variant hover:underline hover:text-primary transition-all cursor-pointer">Privacy Policy</a>
-            <a className="text-on-surface-variant hover:underline hover:text-primary transition-all cursor-pointer">Terms of Service</a>
-            <a className="text-on-surface-variant hover:underline hover:text-primary transition-all cursor-pointer">Contact Us</a>
-            <a className="text-on-surface-variant hover:underline hover:text-primary transition-all cursor-pointer">Careers</a>
-          </div>
-        </div>
+      <footer className="w-full mt-auto bg-surface-container-highest border-t border-outline-variant/20 py-6 px-container-margin text-center text-xs text-on-surface-variant">
+        © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
       </footer>
-
-      {/* Mobile Bottom Navigation (Visible only on mobile) */}
       <MobileBottomNav />
     </div>
   );

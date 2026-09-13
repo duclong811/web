@@ -1,313 +1,93 @@
-import { Link } from 'react-router-dom';
+﻿import { Link, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import { ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 
-const MENU_CATEGORIES = [
-  { id: 'Cà Phê Pha Máy', icon: 'coffee' },
-  { id: 'Sinh Tố & Trà Sữa', icon: 'bubble_chart' },
-  { id: 'Trà & Trái Cây', icon: 'energy_savings_leaf' },
-  { id: 'Bánh Ngọt', icon: 'bakery_dining' },
-  { id: 'Quà Lưu Niệm', icon: 'local_mall' }
+const DEFAULT_CATEGORIES = [
+  { id: 'Cà Phê Pha Máy', name: 'Cà Phê Pha Máy', icon: 'coffee' },
+  { id: 'Sinh Tố & Trà Sữa', name: 'Sinh Tố & Trà Sữa', icon: 'bubble_chart' },
+  { id: 'Trà & Trái Cây', name: 'Trà & Trái Cây', icon: 'energy_savings_leaf' },
+  { id: 'Bánh Ngọt', name: 'Bánh Ngọt', icon: 'bakery_dining' }
 ];
 
-export const MENU_DATA: Record<string, any[]> = {
-  'Cà Phê Pha Máy': [
-    {
-      id: 'hc-1',
-      name: 'Caramel Cloud Macchiato',
-      price: 57500,
-      rating: 4.8,
-      description: 'Lớp bọt sữa lạnh mềm mịn phủ trên lớp espresso cùng hương vani và xốt caramel.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAb7dmU9p5ws6yiGWFQpEh-Vjo0PCA4sYcpCjINzCM3Te0tnsc9ffhxbMqhXwS7_UeEMCLtBftnxvaW-r--YOlDyGw_cqWmfbTrTi9x04jt5jvNm1zWxdQmgdxk0COUycCP_X3lzDPhldmC8jF2emQxsl_LjSU_wRlGYcAvL9KlYEpvc75GxsLaJyeJWoZdR3CyjB-3uLAfxuL5A33XycLc9p5gssh1z_k2p2uFU0nfU_ylV5jeljNf"
-    },
-    {
-      id: 'hc-2',
-      name: 'Nitro Velvet Brew',
-      price: 49500,
-      rating: 4.9,
-      description: 'Ủ lạnh 20 tiếng và kết hợp với khí nitơ để tạo nên kết cấu siêu mịn, béo ngậy.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBm3z4t9Q_erviq8V0f_xE0Kk5WKh-Gyct1TiA-sfVsueTSn9wSDN91lNfpzBCEoZlsVIuL3-LtwaoH9xfm45EfTaOmgDo4FaKA5jK8oGYyU6HEHjs7K0nh6zdw6ro5mjYFK6MgUBSb0y_0wBgcGekJdVZoFeYmxiJSH5tr9HHd0DXye5CvJ42Q2FvTvGyLN2dv5uxi4xC0LKNZUzwpe6JnCPG2J1N0h7RFNvSaw5ksNL1inKMpmiWc"
-    },
-    {
-      id: 'hc-3',
-      name: 'Classic Flat White',
-      price: 45000,
-      rating: 4.6,
-      description: 'Hai shot espresso được chiết xuất hoàn hảo với lớp bọt sữa mỏng và siêu mịn.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBnqJ2oXSFRtA0ryNB9aaYC2CyYGG_EVliGTodIT1ko3_4mwED6o3WhSyDUz4gFfHFuXMNcoZ8Ut3AdaYz2rooQIo8a5uU97WxsHKJPIgsWl1yZGv95X4meMJFTe0sY7VwXaEq69fFdtp0MBmW6Kuc42C4s1ELHt2s6-0v00VxRQ_-FfuBDTGLzpnwsa5BYYv00jS6frOt4pl4orUPlb8MunpQEEBTHVkKeL6_zDRRzsXfu8AleqBlc"
-    },
-    {
-      id: 'hc-4',
-      name: 'Winter Peppermint Mocha',
-      price: 59500,
-      rating: 4.9,
-      description: 'Espresso đậm đà kết hợp với sô-cô-la đắng, si-rô bạc hà và kem tươi.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC9-1leTygB-ItPyqGSVsiUhHGiA0NO8LiAGMH2RaXxZjF_IkvbelPHagclH3hVM2HQ2Kn77b6uoFQ1fWeBvLRhSab5mEXwEQc1Y119gPPQcjbejtNiF1ullU-5lJlzdHbqU6ZZtuSuba_yHqQ9aaWdzG6OWcldnuEy6Z3vbf3T0sL62dOocyli4ykfmAWeuF-xo4M_bxsFiR8J1wod-116FEzUjJC6ETgo01I3cf0ZNLQC3TY7tP1Z"
-    },
-    {
-      id: 'hc-5',
-      name: 'Hazelnut Praline Latte',
-      price: 52500,
-      rating: 4.7,
-      description: 'Espresso êm dịu và sữa hấp kết hợp với si-rô hạt phỉ ngọt ngào.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBm3z4t9Q_erviq8V0f_xE0Kk5WKh-Gyct1TiA-sfVsueTSn9wSDN91lNfpzBCEoZlsVIuL3-LtwaoH9xfm45EfTaOmgDo4FaKA5jK8oGYyU6HEHjs7K0nh6zdw6ro5mjYFK6MgUBSb0y_0wBgcGekJdVZoFeYmxiJSH5tr9HHd0DXye5CvJ42Q2FvTvGyLN2dv5uxi4xC0LKNZUzwpe6JnCPG2J1N0h7RFNvSaw5ksNL1inKMpmiWc"
-    },
-    {
-      id: 'hc-6',
-      name: 'Dark Mocha Truffle',
-      price: 55000,
-      rating: 4.8,
-      description: 'Sô-cô-la đen nguyên chất hòa quyện cùng hai shot espresso và sữa mịn.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuA1nN9BTg-bC-pjrTGkRvaJWBxgKbWIAaR19jPp0ddKGdTTVdzfib0wdsrk23ebzDYxwoZcha4uRik6TbQ0GX2OoCQvvlsGJaKrQreIR3IKjlJQ0pOX5UNQSBLMk5UcMQV9VsTAj68ooujXqRf_tRW22Rtv7lJKmnZR-8aa9UV9TWDDv9jJFW-3BwjZ4tWd9OZ35khknKXqgZfYBWvgOLxtkr3yvVlNZUuzU0Hwxk6cciuL4Yn_rdIH"
-    }
-  ],
-  'Trà & Trái Cây': [
-    {
-      id: 'tb-1',
-      name: 'Ceremonial Matcha Latte',
-      price: 52500,
-      rating: 4.7,
-      description: 'Matcha nguyên chất được nghiền mịn pha cùng loại sữa tùy chọn để tăng cường sự tập trung.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAJZyz4PNbdQQw05cZ4yPa11jXqJ-4RPVBwhgDTkCdAccQCJu23SzuePGANtTU7T926eOcygde9PJ-hwAIbbbA5AI7Ch2nWhGJYkk6fRNAPvJkc8WhLpnukQsDDcFoMRlX-EMC8XfXvrZFz7456k_jX_tqSYdZhDmCJjtVemUiQPdxC1YTGFuE5462f7abqrGcILDvTRgzsjT6eqRcqpY2heJtFteEYZXrg2b6nUJXuV8yBdVVong1S"
-    },
-    {
-      id: 'tb-2',
-      name: 'Iced Hibiscus Zen',
-      price: 42500,
-      rating: 4.5,
-      description: 'Hồng trà dâm bụt lắc tay với một chút hương chanh và vị ngọt dịu.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDsmg5WwGwQ6ZasKowi4EwiJgCRPnrou_8vsk79EXcOjHd2M_fntLBJlM2QBSg97zXHwKapV8b7EvTBvBErsIVCmSNZ56sdmJKzVPtqP7KpKjdm0-39q4Bqh6GfzGp6_w7kSk4X6ifzCJeFiNrrD-D4hLPEdGQJJcM9tsu6GcALjNz7wOwz9CfqMbeGKqRqlY0oyZiI6q1gsT6N7o1G4zBbhdgGG7Tz9pF2PDLNDsEcfkAEPX-p57av"
-    },
-    {
-      id: 'tb-3',
-      name: 'London Fog Earl Grey',
-      price: 39500,
-      rating: 4.8,
-      description: 'Sự hòa quyện êm ái giữa trà Earl Grey, sữa hấp cùng chút hương vani và hoa oải hương.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAlXk_e0Hn0zOqXzP1_Z3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1J3f1"
-    },
-    {
-      id: 'tb-4',
-      name: 'Honey Chamomile Dream',
-      price: 45000,
-      rating: 4.9,
-      description: 'Trà thảo mộc thư giãn từ hoa cúc nguyên bông pha chút mật ong cỏ dại hữu cơ.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB2nN9BTg-bC-pjrTGkRvaJWBxgKbWIAaR19jPp0ddKGdTTVdzfib0wdsrk23ebzDYxwoZcha4uRik6TbQ0GX2OoCQvvlsGJaKrQreIR3IKjlJQ0pOX5UNQSBLMk5UcMQV9VsTAj68ooujXqRf_tRW22Rtv7lJKmnZR-8aa9UV9TWDDv9jJFW-3BwjZ4tWd9OZ35khknKXqgZfYBWvgOLxtkr3yvVlNZUuzU0Hwxk6cciuL4Yn_rdIH"
-    },
-    {
-      id: 'tb-5',
-      name: 'Exotic Dragon Refresh',
-      price: 55000,
-      rating: 4.6,
-      description: 'Hỗn hợp tươi mát giữa thanh long, chanh dây và trà trắng, dùng với đá.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAb7dmU9p5ws6yiGWFQpEh-Vjo0PCA4sYcpCjINzCM3Te0tnsc9ffhxbMqhXwS7_UeEMCLtBftnxvaW-r--YOlDyGw_cqWmfbTrTi9x04jt5jvNm1zWxdQmgdxk0COUycCP_X3lzDPhldmC8jF2emQxsl_LjSU_wRlGYcAvL9KlYEpvc75GxsLaJyeJWoZdR3CyjB-3uLAfxuL5A33XycLc9p5gssh1z_k2p2uFU0nfU_ylV5jeljNf"
-    },
-    {
-      id: 'tb-6',
-      name: 'Golden Ginger Glow',
-      price: 47500,
-      rating: 4.4,
-      description: 'Thức uống thảo dược ấm áp từ gừng tươi, nghệ và tiêu đen, ngọt dịu vị mật ong.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBm3z4t9Q_erviq8V0f_xE0Kk5WKh-Gyct1TiA-sfVsueTSn9wSDN91lNfpzBCEoZlsVIuL3-LtwaoH9xfm45EfTaOmgDo4FaKA5jK8oGYyU6HEHjs7K0nh6zdw6ro5mjYFK6MgUBSb0y_0wBgcGekJdVZoFeYmxiJSH5tr9HHd0DXye5CvJ42Q2FvTvGyLN2dv5uxi4xC0LKNZUzwpe6JnCPG2J1N0h7RFNvSaw5ksNL1inKMpmiWc"
-    }
-  ],
-  'Sinh Tố & Trà Sữa': [
-    {
-      id: 'smt-1',
-      name: 'Oolong Milk Tea',
-      price: 48500,
-      rating: 4.8,
-      description: 'Trà Oolong rang cổ điển pha cùng sữa béo ngậy và chút đường đen.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuCOZn-rzgY3-0eTzFo51NLGFduXdcaJXtSTzb80iQQGWxC54cgzZS0N41q0Tqakdr9wAudUjTzfJrvKSyzEOayl861oFzYDfu_SYO2c-t2x92ORYFVQAIK0EMG9HyfGMOngsH5xCGdB86p6iaRzbWB_8PfVylIdjRL6ht1OmVVY0vlwzcy8qXH6PRENkxIgXLJQexWbsc8JveIYk1qkp0rJ4h4XioU1YA6JGaKksqCI8AIZf7vnUq1f"
-    },
-    {
-      id: 'smt-2',
-      name: 'Taro Coconut Cloud',
-      price: 55000,
-      rating: 4.7,
-      description: 'Khoai môn ngọt bùi kết hợp với nước cốt dừa, tạo nên một giấc mơ màu tím.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuB2nN9BTg-bC-pjrTGkRvaJWBxgKbWIAaR19jPp0ddKGdTTVdzfib0wdsrk23ebzDYxwoZcha4uRik6TbQ0GX2OoCQvvlsGJaKrQreIR3IKjlJQ0pOX5UNQSBLMk5UcMQV9VsTAj68ooujXqRf_tRW22Rtv7lJKmnZR-8aa9UV9TWDDv9jJFW-3BwjZ4tWd9OZ35khknKXqgZfYBWvgOLxtkr3yvVlNZUuzU0Hwxk6cciuL4Yn_rdIH"
-    },
-    {
-      id: 'smt-3',
-      name: 'Mango Sunrise Smoothie',
-      price: 62500,
-      rating: 4.9,
-      description: 'Xoài Alfonso tươi xay cùng sữa chua mang đến hương vị nhiệt đới mát lạnh.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDsmg5WwGwQ6ZasKowi4EwiJgCRPnrou_8vsk79EXcOjHd2M_fntLBJlM2QBSg97zXHwKapV8b7EvTBvBErsIVCmSNZ56sdmJKzVPtqP7KpKjdm0-39q4Bqh6GfzGp6_w7kSk4X6ifzCJeFiNrrD-D4hLPEdGQJJcM9tsu6GcALjNz7wOwz9CfqMbeGKqRqlY0oyZiI6q1gsT6N7o1G4zBbhdgGG7Tz9pF2PDLNDsEcfkAEPX-p57av"
-    },
-    {
-      id: 'smt-4',
-      name: 'Matcha Boba Frost',
-      price: 57500,
-      rating: 4.8,
-      description: 'Trà xanh matcha đá xay với trân châu dai ngon ở dưới đáy ly.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAJZyz4PNbdQQw05cZ4yPa11jXqJ-4RPVBwhgDTkCdAccQCJu23SzuePGANtTU7T926eOcygde9PJ-hwAIbbbA5AI7Ch2nWhGJYkk6fRNAPvJkc8WhLpnukQsDDcFoMRlX-EMC8XfXvrZFz7456k_jX_tqSYdZhDmCJjtVemUiQPdxC1YTGFuE5462f7abqrGcILDvTRgzsjT6eqRcqpY2heJtFteEYZXrg2b6nUJXuV8yBdVVong1S"
-    },
-    {
-      id: 'smt-5',
-      name: 'Strawberry Bliss',
-      price: 60000,
-      rating: 4.6,
-      description: 'Sự kết hợp béo ngậy giữa dâu tây tươi và sữa, hoàn hảo cho một ngày nắng đẹp.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC9-1leTygB-ItPyqGSVsiUhHGiA0NO8LiAGMH2RaXxZjF_IkvbelPHagclH3hVM2HQ2Kn77b6uoFQ1fWeBvLRhSab5mEXwEQc1Y119gPPQcjbejtNiF1ullU-5lJlzdHbqU6ZZtuSuba_yHqQ9aaWdzG6OWcldnuEy6Z3vbf3T0sL62dOocyli4ykfmAWeuF-xo4M_bxsFiR8J1wod-116FEzUjJC6ETgo01I3cf0ZNLQC3TY7tP1Z"
-    },
-    {
-      id: 'smt-6',
-      name: 'Hokkaido Milk Tea',
-      price: 51500,
-      rating: 4.9,
-      description: 'Hồng trà sữa caramel rang đậm đà lấy cảm hứng từ hương vị béo ngậy của Hokkaido.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBm3z4t9Q_erviq8V0f_xE0Kk5WKh-Gyct1TiA-sfVsueTSn9wSDN91lNfpzBCEoZlsVIuL3-LtwaoH9xfm45EfTaOmgDo4FaKA5jK8oGYyU6HEHjs7K0nh6zdw6ro5mjYFK6MgUBSb0y_0wBgcGekJdVZoFeYmxiJSH5tr9HHd0DXye5CvJ42Q2FvTvGyLN2dv5uxi4xC0LKNZUzwpe6JnCPG2J1N0h7RFNvSaw5ksNL1inKMpmiWc"
-    }
-  ],
-  'Bánh Ngọt': [
-    {
-      id: 'pas-1',
-      name: 'Almond Croissant',
-      price: 45000,
-      rating: 4.8,
-      description: 'Bánh ngàn lớp thơm mùi bơ, nhân kem hạnh nhân ngọt ngào và phủ hạnh nhân nướng.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBAlwhNX6VEn4w1bVqQuNP4PUn6Q2E4EJpS7Mpqgrd2OSfvPjEZvCHn4t8ywUAeAfoSgsNjiIJeJfYuRRGAEaF7BZmucXjsF_cHCyESl4UeEWOzc8Td9B_oGwhLagwLJn-u5e0L52t7AcC22VeNxjYmOxY58d-bY-quB2bZOQQBKSBmGonefSR9FSP3ejUE8Rn6wmpcqoveWKKO5jdvA9WG7MX81sq9371MSF_iGWKKbRA-nYfKd0gY"
-    },
-    {
-      id: 'pas-2',
-      name: 'Lavender Macaron',
-      price: 32500,
-      rating: 4.7,
-      description: 'Vỏ bánh macaron hạnh nhân giòn tan với nhân kem ganache hương hoa oải hương.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDDI2LFP7YTlf3W-DOmahNfhkeE0REOIwkRfAktI1kbdHD2DK0vqUqOO1NX7ea-dKF2oXfa1tXT89j6nrCHqkiBa5DHKBi5C1yl-c1d1cB5ZtC-FHi5MQsWVr5VS97cW6etQbfGBvzm73n1NvYWZH86mQ8higX0Li6GemA1RgpGQJicWWjzt-16tjecEePOQrA2S9mNGh8knNi6OFTvPR27SVcbAWYjBviiIJXgLOeLvL4k0YW0P_47"
-    },
-    {
-      id: 'pas-3',
-      name: 'Lemon Drizzle Cake',
-      price: 57500,
-      rating: 4.9,
-      description: 'Bánh bông lan chanh ẩm mịn tẩm si-rô cam chanh và phủ lớp đường bào ngọt ngào.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuD5PnNR9EJ9_C7qSwCOdp6yH1t5-DLWUqXtY4A5FMhwixIoOJyrBg3bK9e-_f1-tzeYsFanDAgNYJPf4VoznlqPppyyWKhfqWRSBYYn5TQaf3CfhjPggGJZGJx8ScOQik2WgFnbY1LzqDNtBXCIBehrlilZbnWITubGSTs5j-JrsLztnB5PrcdOqJe7-ZX-yOAwdYox_sfSDO1Wjg5TPhTGbVfBAhjQvmMRLZYHfjlgrIi7HSGnR0wd"
-    },
-    {
-      id: 'pas-4',
-      name: 'Butter Shortbread',
-      price: 40000,
-      rating: 4.8,
-      description: 'Bánh quy bơ giòn kiểu Scotland, thơm lừng bơ và tan chảy trong miệng.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDQmARlY698zgmUMPEQAyQyQi2X-Py-b6Ni4vHDZnB6JZq6CZaFYoxcEa3WHflpNIpEShXRYYllKUeYssnYg6p03XLfsbVPKP511ra2kOYQ84RlyWMi_Rsv-Q1BMIovtQ_3UvvgK3JJM81xrVVu0umKCdUbXyLbxPmpwO7orbW8rojKDeFEIlpqySzrjPVf74T0PinblMbp9HMq2NQUl0xqaKmX7Y140jvlQm_3-ERmJw6FK6Bcea0S"
-    },
-    {
-      id: 'pas-5',
-      name: 'Chocolate Babka',
-      price: 55000,
-      rating: 4.9,
-      description: 'Bánh mì ngọt cuộn nhiều lớp nhân chocolate đen đậm đặc.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBm3z4t9Q_erviq8V0f_xE0Kk5WKh-Gyct1TiA-sfVsueTSn9wSDN91lNfpzBCEoZlsVIuL3-LtwaoH9xfm45EfTaOmgDo4FaKA5jK8oGYyU6HEHjs7K0nh6zdw6ro5mjYFK6MgUBSb0y_0wBgcGekJdVZoFeYmxiJSH5tr9HHd0DXye5CvJ42Q2FvTvGyLN2dv5uxi4xC0LKNZUzwpe6JnCPG2J1N0h7RFNvSaw5ksNL1inKMpmiWc"
-    },
-    {
-      id: 'pas-6',
-      name: 'Blueberry Scone',
-      price: 42500,
-      rating: 4.6,
-      description: 'Bánh scone bơ mềm xốp đầy ắp việt quất tươi và lớp men chanh nhẹ.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC9-1leTygB-ItPyqGSVsiUhHGiA0NO8LiAGMH2RaXxZjF_IkvbelPHagclH3hVM2HQ2Kn77b6uoFQ1fWeBvLRhSab5mEXwEQc1Y119gPPQcjbejtNiF1ullU-5lJlzdHbqU6ZZtuSuba_yHqQ9aaWdzG6OWcldnuEy6Z3vbf3T0sL62dOocyli4ykfmAWeuF-xo4M_bxsFiR8J1wod-116FEzUjJC6ETgo01I3cf0ZNLQC3TY7tP1Z"
-    }
-  ],
-  'Quà Lưu Niệm': [
-    {
-      id: 'merch-1',
-      name: 'Ceramic Pour-Over Dripper',
-      price: 240000,
-      rating: 4.9,
-      description: 'Phễu pha cà phê bằng sứ chuyên dụng cho nghi thức buổi sáng hoàn hảo.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBm3z4t9Q_erviq8V0f_xE0Kk5WKh-Gyct1TiA-sfVsueTSn9wSDN91lNfpzBCEoZlsVIuL3-LtwaoH9xfm45EfTaOmgDo4FaKA5jK8oGYyU6HEHjs7K0nh6zdw6ro5mjYFK6MgUBSb0y_0wBgcGekJdVZoFeYmxiJSH5tr9HHd0DXye5CvJ42Q2FvTvGyLN2dv5uxi4xC0LKNZUzwpe6JnCPG2J1N0h7RFNvSaw5ksNL1inKMpmiWc"
-    },
-    {
-      id: 'merch-2',
-      name: 'Matte Black Tumbler',
-      price: 325000,
-      rating: 4.8,
-      description: 'Bình giữ nhiệt bằng thép không gỉ giúp giữ đồ uống nóng đến 12 giờ.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuA1nN9BTg-bC-pjrTGkRvaJWBxgKbWIAaR19jPp0ddKGdTTVdzfib0wdsrk23ebzDYxwoZcha4uRik6TbQ0GX2OoCQvvlsGJaKrQreIR3IKjlJQ0pOX5UNQSBLMk5UcMQV9VsTAj68ooujXqRf_tRW22Rtv7lJKmnZR-8aa9UV9TWDDv9jJFW-3BwjZ4tWd9OZ35khknKXqgZfYBWvgOLxtkr3yvVlNZUuzU0Hwxk6cciuL4Yn_rdIH"
-    },
-    {
-      id: 'merch-3',
-      name: 'Signature Canvas Tote',
-      price: 180000,
-      rating: 4.7,
-      description: 'Túi tote canvas dày dặn thân thiện với môi trường có in logo cổ điển của chúng tôi.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuC9-1leTygB-ItPyqGSVsiUhHGiA0NO8LiAGMH2RaXxZjF_IkvbelPHagclH3hVM2HQ2Kn77b6uoFQ1fWeBvLRhSab5mEXwEQc1Y119gPPQcjbejtNiF1ullU-5lJlzdHbqU6ZZtuSuba_yHqQ9aaWdzG6OWcldnuEy6Z3vbf3T0sL62dOocyli4ykfmAWeuF-xo4M_bxsFiR8J1wod-116FEzUjJC6ETgo01I3cf0ZNLQC3TY7tP1Z"
-    },
-    {
-      id: 'merch-4',
-      name: 'Artisan Whole Bean Blend',
-      price: 195000,
-      rating: 5.0,
-      description: 'Hỗn hợp cà phê espresso rang đặc trưng của quán trong túi 1lb.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDQmARlY698zgmUMPEQAyQyQi2X-Py-b6Ni4vHDZnB6JZq6CZaFYoxcEa3WHflpNIpEShXRYYllKUeYssnYg6p03XLfsbVPKP511ra2kOYQ84RlyWMi_Rsv-Q1BMIovtQ_3UvvgK3JJM81xrVVu0umKCdUbXyLbxPmpwO7orbW8rojKDeFEIlpqySzrjPVf74T0PinblMbp9HMq2NQUl0xqaKmX7Y140jvlQm_3-ERmJw6FK6Bcea0S"
-    },
-    {
-      id: 'merch-5',
-      name: 'Glass Teapot with Infuser',
-      price: 380000,
-      rating: 4.9,
-      description: 'Ấm trà bằng thủy tinh borosilicate thanh lịch với lõi lọc bằng thép không gỉ.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuDDI2LFP7YTlf3W-DOmahNfhkeE0REOIwkRfAktI1kbdHD2DK0vqUqOO1NX7ea-dKF2oXfa1tXT89j6nrCHqkiBa5DHKBi5C1yl-c1d1cB5ZtC-FHi5MQsWVr5VS97cW6etQbfGBvzm73n1NvYWZH86mQ8higX0Li6GemA1RgpGQJicWWjzt-16tjecEePOQrA2S9mNGh8knNi6OFTvPR27SVcbAWYjBviiIJXgLOeLvL4k0YW0P_47"
-    },
-    {
-      id: 'merch-6',
-      name: 'Bamboo Matcha Whisk',
-      price: 150000,
-      rating: 4.6,
-      description: 'Chổi khuấy matcha bằng tre truyền thống với 100 ngạnh giúp đánh bọt hoàn hảo.',
-      image: "https://lh3.googleusercontent.com/aida-public/AB6AXuAJZyz4PNbdQQw05cZ4yPa11jXqJ-4RPVBwhgDTkCdAccQCJu23SzuePGANtTU7T926eOcygde9PJ-hwAIbbbA5AI7Ch2nWhGJYkk6fRNAPvJkc8WhLpnukQsDDcFoMRlX-EMC8XfXvrZFz7456k_jX_tqSYdZhDmCJjtVemUiQPdxC1YTGFuE5462f7abqrGcILDvTRgzsjT6eqRcqpY2heJtFteEYZXrg2b6nUJXuV8yBdVVong1S"
-    }
-  ]
-};
-
 export default function Menu() {
-  const { cart, addToCart } = useStore();
+  const [searchParams] = useSearchParams();
+  const storeIdParam = searchParams.get('storeId') ? parseInt(searchParams.get('storeId')!) : 1;
+  const tableParam = searchParams.get('table') || null;
+
+  const { 
+    menuItems, 
+    categories, 
+    fetchMenu, 
+    setStoreId, 
+    setTable, 
+    cart, 
+    addToCart, 
+    activeOrder 
+  } = useStore();
+
   const [activeCategory, setActiveCategory] = useState<string>('Cà Phê Pha Máy');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    setStoreId(storeIdParam);
+    if (tableParam) setTable(tableParam);
+    fetchMenu(storeIdParam);
+  }, [storeIdParam, tableParam]);
+
+  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
+
+  // Filter out Quà Lưu Niệm
+  const displayCategories = (categories && categories.length > 0 ? categories : DEFAULT_CATEGORIES)
+    .filter(c => !c.name.toLowerCase().includes('quà') && !c.name.toLowerCase().includes('lưu niệm'));
+
+  useEffect(() => {
+    if (displayCategories.length > 0 && (!activeCategory || activeCategory === 'Cà Phê Pha Máy')) {
+      setActiveCategory(displayCategories[0].name || displayCategories[0].id);
+    }
+  }, [categories]);
+
+  // Filter items matching activeCategory or search
+  const activeItems = menuItems
+    .filter(m => !m.categoryName?.toLowerCase().includes('quà') && !m.categoryName?.toLowerCase().includes('lưu niệm'))
+    .filter(item => {
+      const itemCat = (item.categoryId || item.categoryName || '').toLowerCase();
+      const activeCat = activeCategory.toLowerCase();
+      const matchCat = activeCategory === 'Tất Cả' || itemCat.includes(activeCat) || activeCat.includes(itemCat);
+      const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchSearch;
+    });
 
   const handleAddToCart = (id: string, name: string, price: number, image: string) => {
-    addToCart({
+    const fullItem = menuItems.find(i => i.id === id) || {
       id,
       name,
       price,
+      image,
       categoryId: activeCategory,
       description: '',
-      image
-    });
+    };
+    addToCart(fullItem, { quantity: 1 });
   };
-
-  useEffect(() => {
-    const cards = document.querySelectorAll('.group.bg-white');
-    cards.forEach((card: any, index) => {
-      card.style.opacity = '0';
-      card.style.transform = 'translateY(20px)';
-      setTimeout(() => {
-        card.style.transition = 'all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        card.style.opacity = '1';
-        card.style.transform = 'translateY(0)';
-      }, 100 * index);
-    });
-  }, [activeCategory]);
-
-  const activeItems = MENU_DATA[activeCategory] || [];
 
   return (
     <div className="font-body-md text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed min-h-screen bg-background animate-in fade-in duration-500">
       {/* TopNavBar */}
-      <nav className="w-full sticky top-0 z-50 bg-surface dark:bg-surface-dim border-b border-outline-variant/10 shadow-sm dark:shadow-none glass-header">
-        <div className="flex justify-between items-center px-container-margin py-4 max-w-7xl mx-auto">
-          <div className="flex items-center gap-stack-lg">
-            <button className="lg:hidden p-2 -ml-2 text-primary hover:bg-primary/10 rounded-full transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-              <span className="material-symbols-outlined">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+      <nav className="w-full sticky top-0 z-40 bg-surface/95 dark:bg-surface-dim backdrop-blur-md border-b border-outline-variant/10 shadow-sm dark:shadow-none glass-header">
+        <div className="flex justify-between items-center px-4 sm:px-container-margin py-3.5 max-w-7xl mx-auto">
+          <div className="flex items-center gap-3 sm:gap-stack-lg">
+            <button 
+              className="lg:hidden p-2 -ml-1 text-primary hover:bg-primary/10 rounded-full transition-colors flex items-center justify-center" 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label="Toggle Navigation Drawer"
+            >
+              <span className="material-symbols-outlined text-2xl">{isMobileMenuOpen ? 'close' : 'menu'}</span>
             </button>
-            <Link to="/" className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">AI-SMARTSERVE</Link>
+            <Link to="/" className="text-lg sm:text-2xl font-black text-primary dark:text-primary-fixed-dim whitespace-nowrap tracking-tight">
+              AI-SMARTSERVE
+            </Link>
             <div className="hidden md:flex gap-gutter items-center">
               <Link to="/" className="font-label-md text-label-md text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1">Thực Đơn</Link>
               <a className="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors cursor-pointer">Ưu Đãi</a>
@@ -315,9 +95,14 @@ export default function Menu() {
               <a className="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary transition-colors cursor-pointer">Cửa Hàng</a>
             </div>
           </div>
-          <div className="flex items-center gap-stack-md">
+          <div className="flex items-center gap-2 sm:gap-stack-md">
+            {tableParam && (
+              <span className="px-2.5 py-1 bg-primary/10 text-primary text-[11px] sm:text-xs font-bold rounded-full border border-primary/20 whitespace-nowrap">
+                Bàn: {tableParam}
+              </span>
+            )}
             <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
-              <ShoppingCart className="text-primary" size={24} />
+              <ShoppingCart className="text-primary" size={22} />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
                   {cartCount}
@@ -325,177 +110,302 @@ export default function Menu() {
               )}
             </Link>
             <Link to="/staff/login" className="p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95" title="Staff Login">
-              <span className="material-symbols-outlined text-primary">person</span>
+              <span className="material-symbols-outlined text-primary text-xl">person</span>
             </Link>
           </div>
         </div>
       </nav>
-      
-      <div className="max-w-7xl mx-auto flex min-h-screen">
-        {/* SideNavBar */}
-        <aside className={`h-[calc(100vh-73px)] w-64 ${isMobileMenuOpen ? 'fixed left-0 top-[73px] flex bg-surface shadow-2xl z-50' : 'hidden sticky top-[73px]'} lg:flex flex-col gap-stack-md px-4 py-8 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10 lg:z-40 overflow-y-auto`}>
-          <div className="mb-stack-lg px-2">
-            <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70 uppercase tracking-widest">Danh Mục</p>
+
+      {/* Mobile Drawer Backdrop Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 lg:hidden transition-opacity animate-in fade-in duration-300"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Mobile Drawer (Trượt mượt mà từ trái sang) */}
+      <div className={`fixed top-0 left-0 bottom-0 w-72 max-w-[85vw] bg-surface z-50 shadow-2xl flex flex-col p-5 lg:hidden transform transition-transform duration-300 ease-out ${
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex items-center justify-between pb-4 mb-2 border-b border-outline-variant/10">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_cafe</span>
+            <span className="font-headline-md text-base font-bold text-primary">Danh Mục Món</span>
           </div>
-          <nav className="flex flex-col gap-2">
-            {MENU_CATEGORIES.map(category => (
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+        </div>
+
+        <nav className="flex flex-col gap-1.5 overflow-y-auto flex-1 py-2">
+          <button 
+            onClick={() => { setActiveCategory('Tất Cả'); setIsMobileMenuOpen(false); }}
+            className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all text-left ${
+              activeCategory === 'Tất Cả' 
+              ? 'bg-secondary-container text-on-secondary-container font-bold shadow-xs' 
+              : 'text-on-surface-variant hover:bg-surface-variant/30'
+            }`}
+          >
+            <span className="material-symbols-outlined text-xl" style={activeCategory === 'Tất Cả' ? { fontVariationSettings: "'FILL' 1" } : {}}>
+              auto_awesome
+            </span>
+            <span className="font-label-md text-sm">Tất Cả Món</span>
+          </button>
+
+          {displayCategories.map(category => {
+            const catId = category.name || category.id;
+            const isCurrent = activeCategory === catId;
+            return (
               <button 
-                key={category.id}
-                onClick={() => { setActiveCategory(category.id); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-transform active:translate-x-1 ${
-                  activeCategory === category.id 
-                  ? 'bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary font-bold' 
-                  : 'text-on-surface-variant dark:text-surface-variant hover:bg-surface-variant/30'
+                key={catId}
+                onClick={() => { setActiveCategory(catId); setIsMobileMenuOpen(false); }}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all text-left ${
+                  isCurrent 
+                  ? 'bg-secondary-container text-on-secondary-container font-bold shadow-xs' 
+                  : 'text-on-surface-variant hover:bg-surface-variant/30'
                 }`}
               >
-                <span className="material-symbols-outlined" style={activeCategory === category.id ? { fontVariationSettings: "'FILL' 1" } : {}}>
-                  {category.icon}
+                <span className="material-symbols-outlined text-xl" style={isCurrent ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                  {category.icon || 'coffee'}
                 </span>
-                <span className="font-label-md text-label-md">{category.id}</span>
+                <span className="font-label-md text-sm">{catId}</span>
               </button>
-            ))}
+            );
+          })}
+        </nav>
+
+        <div className="pt-4 border-t border-outline-variant/10 mt-auto">
+          <Link 
+            to="/ai-suggest" 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:opacity-90 active:scale-95 transition-all text-center block shadow-xs"
+          >
+            Gợi Ý Món Với AI ✨
+          </Link>
+        </div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto flex min-h-screen">
+        {/* Desktop SideNavBar */}
+        <aside className="hidden lg:flex sticky top-[65px] h-[calc(100vh-65px)] w-64 flex-col gap-stack-md px-4 py-8 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant/10 z-30 overflow-y-auto shrink-0">
+          <div className="mb-2 px-2">
+            <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70 uppercase tracking-widest font-bold">Danh Mục</p>
+          </div>
+          <nav className="flex flex-col gap-2">
+            <button 
+              onClick={() => setActiveCategory('Tất Cả')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-transform active:translate-x-1 ${
+                activeCategory === 'Tất Cả' 
+                ? 'bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary font-bold shadow-sm' 
+                : 'text-on-surface-variant dark:text-surface-variant hover:bg-surface-variant/30'
+              }`}
+            >
+              <span className="material-symbols-outlined text-xl" style={activeCategory === 'Tất Cả' ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                auto_awesome
+              </span>
+              <span className="font-label-md text-label-md text-left">Tất Cả Món</span>
+            </button>
+
+            {displayCategories.map(category => {
+              const catId = category.name || category.id;
+              const isCurrent = activeCategory === catId;
+              return (
+                <button 
+                  key={catId}
+                  onClick={() => setActiveCategory(catId)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-transform active:translate-x-1 ${
+                    isCurrent 
+                    ? 'bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary font-bold shadow-sm' 
+                    : 'text-on-surface-variant dark:text-surface-variant hover:bg-surface-variant/30'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xl" style={isCurrent ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                    {category.icon || 'coffee'}
+                  </span>
+                  <span className="font-label-md text-label-md text-left">{catId}</span>
+                </button>
+              );
+            })}
           </nav>
           <div className="mt-auto p-4 bg-primary/5 rounded-2xl border border-primary/10">
-            <p className="font-label-sm text-label-sm text-primary mb-1">Chào mừng trở lại</p>
-            <p className="font-body-md text-on-surface mb-stack-md">Sẵn sàng nạp năng lượng chưa?</p>
-            <button className="w-full py-2 bg-primary text-on-primary rounded-full font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all">
+            <p className="font-label-sm text-label-sm text-primary mb-1 font-bold">Chào mừng trở lại</p>
+            <p className="font-body-md text-on-surface mb-stack-md text-sm">Sẵn sàng nạp năng lượng chưa?</p>
+            <Link to="/ai-suggest" className="w-full py-2 bg-primary text-on-primary rounded-full font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all text-center block">
                 Order Favorite
-            </button>
+            </Link>
           </div>
         </aside>
         
         {/* Main Content Area */}
-        <main className="flex-1 px-container-margin py-stack-lg w-0">
+        <main className="flex-1 px-4 sm:px-container-margin py-4 sm:py-stack-lg w-full max-w-full overflow-hidden">
           
-          {/* Hero Banner (Restored per HTML Request) */}
-          <section className="relative h-[400px] rounded-3xl overflow-hidden mb-stack-lg group">
+          {/* Hero Banner */}
+          <section className="relative min-h-[260px] sm:h-[400px] rounded-3xl overflow-hidden mb-6 sm:mb-stack-lg group shadow-md">
             <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105" 
-                 data-alt="A high-end, atmospheric shot of a creamy vanilla latte..." 
                  style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuA1nN9BTg-bC-pjrTGkRvaJWBxgKbWIAaR19jPp0ddKGdTTVdzfib0wdsrk23ebzDYxwoZcha4uRik6TbQ0GX2OoCQvvlsGJaKrQreIR3IKjlJQ0pOX5UNQSBLMk5UcMQV9VsTAj68ooujXqRf_tRW22Rtv7lJKmnZR-8aa9UV9TWDDv9jJFW-3BwjZ4tWd9OZ35khknKXqgZfYBWvgOLxtkr3yvVlNZUuzU0Hwxk6cciuL4Yn_rdIH')" }}>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent flex flex-col justify-center px-12">
-              <span className="inline-block px-4 py-1 bg-tertiary text-on-tertiary rounded-full font-label-sm text-label-sm mb-4 self-start">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent flex flex-col justify-center px-6 sm:px-12 py-6">
+              <span className="inline-block px-3.5 py-1 bg-tertiary text-on-tertiary rounded-full font-label-sm text-xs mb-3 self-start font-bold">
                   Ưu Đãi Giới Hạn
               </span>
-              <h1 className="font-headline-lg text-headline-lg text-white max-w-lg mb-4 leading-tight">
+              <h1 className="text-xl sm:text-4xl font-extrabold text-white max-w-lg mb-2 sm:mb-4 leading-tight">
                   Đánh thức giác quan với <span className="text-primary-fixed">Honey-Oak Latte</span>
               </h1>
-              <p className="text-white/80 font-body-lg text-body-lg max-w-md mb-8">
+              <p className="text-white/85 text-xs sm:text-base max-w-md mb-5 sm:mb-8 line-clamp-2 sm:line-clamp-none">
                   Trải nghiệm sự cân bằng tinh tế của mật ong hoa cỏ dại và espresso ủ gỗ sồi.
               </p>
-              <button className="w-fit px-8 py-3 bg-primary-fixed text-on-primary-fixed rounded-full font-label-md text-label-md hover:bg-primary-fixed-dim transition-all active:scale-95">
+              <Link to="/ai-suggest" className="w-fit px-6 sm:px-8 py-2.5 sm:py-3 bg-primary-fixed text-on-primary-fixed rounded-full font-label-md text-xs sm:text-sm font-bold hover:bg-primary-fixed-dim transition-all active:scale-95 shadow-sm">
                   Khám Phá Menu Theo Mùa
-              </button>
+              </Link>
             </div>
           </section>
 
           {/* AI Combo Banner */}
-          <section className="mb-stack-lg p-8 rounded-3xl bg-primary-container text-on-primary-container flex flex-col md:flex-row items-center justify-between gap-6 shadow-md border border-primary/10">
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-16 bg-primary-fixed rounded-2xl flex items-center justify-center shadow-inner">
-                <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+          <section className="mb-6 sm:mb-stack-lg p-5 sm:p-8 rounded-3xl bg-primary-container text-on-primary-container flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 shadow-md border border-primary/10">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="w-12 sm:w-16 h-12 sm:h-16 bg-primary-fixed rounded-2xl flex items-center justify-center shadow-inner shrink-0">
+                <span className="material-symbols-outlined text-primary text-2xl sm:text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
               </div>
               <div>
-                <h2 className="font-headline-md text-headline-md mb-1">Khám phá Combo dành riêng cho bạn</h2>
-                <p className="font-body-md opacity-90">Sử dụng trí tuệ nhân tạo để tìm ra hương vị hoàn hảo cho ngày hôm nay của bạn.</p>
+                <h2 className="text-base sm:text-xl font-bold mb-0.5">Khám phá Combo dành riêng cho bạn</h2>
+                <p className="text-xs sm:text-sm opacity-90">Sử dụng AI để tìm ra hương vị hoàn hảo cho ngày hôm nay của bạn.</p>
               </div>
             </div>
-            <Link to="/ai-suggest" className="whitespace-nowrap px-8 py-3 bg-primary-fixed text-on-primary-fixed rounded-full font-label-md text-label-md hover:bg-primary-fixed-dim transition-all active:scale-95 shadow-sm inline-flex items-center justify-center">
+            <Link to="/ai-suggest" className="w-full md:w-auto text-center px-6 py-2.5 sm:py-3 bg-primary-fixed text-on-primary-fixed rounded-full text-xs sm:text-sm font-bold hover:bg-primary-fixed-dim transition-all active:scale-95 shadow-sm inline-flex items-center justify-center shrink-0">
                 Thử ngay với AI
             </Link>
           </section>
 
           {/* Search and Filter Bar */}
-          <section className="flex flex-col md:flex-row items-center justify-between gap-gutter mb-stack-lg">
-            <div className="relative w-full max-w-md group focus-within:scale-[1.02] transition-transform">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-              <input className="w-full pl-12 pr-4 py-3 bg-white border border-primary/10 rounded-full focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none font-body-md text-on-surface shadow-sm" placeholder="Tìm món đồ uống yêu thích..." type="text" />
+          <section className="flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-gutter mb-6 sm:mb-stack-lg">
+            <div className="relative w-full max-w-md group focus-within:scale-[1.01] transition-transform">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
+              <input 
+                className="w-full pl-11 pr-4 py-2.5 sm:py-3 bg-white border border-primary/10 rounded-full focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-xs sm:text-sm text-on-surface shadow-xs" 
+                placeholder="Tìm món đồ uống yêu thích..." 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar w-full md:w-auto">
-              <button className="whitespace-nowrap px-4 py-2 bg-primary text-on-primary rounded-full font-label-sm text-label-sm">Tất Cả</button>
-              <button className="whitespace-nowrap px-4 py-2 bg-white border border-primary/10 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:bg-primary/5">Phổ Biến</button>
-              <button className="whitespace-nowrap px-4 py-2 bg-white border border-primary/10 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:bg-primary/5">Món Mới</button>
-              <button className="whitespace-nowrap px-4 py-2 bg-white border border-primary/10 rounded-full font-label-sm text-label-sm text-on-surface-variant hover:bg-primary/5">Không Sữa</button>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar w-full md:w-auto">
+              <button 
+                onClick={() => setActiveCategory('Tất Cả')}
+                className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                  activeCategory === 'Tất Cả' ? 'bg-primary text-on-primary shadow-xs' : 'bg-white border border-primary/10 text-on-surface-variant hover:bg-primary/5'
+                }`}
+              >
+                Tất Cả
+              </button>
+              {displayCategories.map(c => {
+                const catName = c.name || c.id;
+                return (
+                  <button 
+                    key={catName}
+                    onClick={() => setActiveCategory(catName)}
+                    className={`whitespace-nowrap px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                      activeCategory === catName ? 'bg-primary text-on-primary shadow-xs' : 'bg-white border border-primary/10 text-on-surface-variant hover:bg-primary/5'
+                    }`}
+                  >
+                    {catName}
+                  </button>
+                );
+              })}
             </div>
           </section>
 
           {/* Dynamic Menu Grid */}
-          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-stack-lg">
-            {activeItems.map((item) => (
-              <div key={item.id} className="group bg-white rounded-2xl overflow-hidden border border-primary/5 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col">
-                <Link to={`/product/${item.id}`} className="relative h-64 overflow-hidden block">
-                  <div className="absolute inset-0 bg-cover bg-center group-hover:scale-110 transition-transform duration-500" 
-                       style={{ backgroundImage: `url('${item.image}')` }}>
-                  </div>
-                  <div className="absolute bottom-3 right-3 px-3 py-1 bg-primary text-on-primary rounded-lg font-bold text-label-md">
-                      {item.price.toLocaleString()}đ
-                  </div>
-                  <div className="absolute top-3 left-3 px-2 py-1 bg-white/90 backdrop-blur shadow-sm rounded-md flex items-center gap-1">
-                    <span className="material-symbols-outlined text-tertiary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                    <span className="font-label-sm text-label-sm text-on-surface">{item.rating}</span>
-                  </div>
-                </Link>
-                <div className="p-stack-md flex-1 flex flex-col">
-                  <Link to={`/product/${item.id}`} className="block group-hover:opacity-80 transition-opacity">
-                    <h3 className="font-headline-md text-headline-md text-on-surface mb-1">{item.name}</h3>
-                    <p className="font-body-md text-on-surface-variant text-sm line-clamp-2 mb-4">
-                        {item.description}
-                    </p>
+          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-stack-lg">
+            {activeItems.length === 0 ? (
+              <div className="col-span-full py-16 text-center text-on-surface-variant font-medium bg-white rounded-2xl border border-outline-variant/10 p-6">
+                Không tìm thấy món nào trong danh mục này.
+              </div>
+            ) : (
+              activeItems.map((item) => (
+                <div key={item.id} className="group bg-white rounded-2xl overflow-hidden border border-primary/5 shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col">
+                  <Link to={`/product/${item.id}`} className="relative h-52 sm:h-64 overflow-hidden block bg-surface-container-low">
+                    <div className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-500" 
+                         style={{ backgroundImage: `url('${item.image}')` }}>
+                    </div>
+                    <div className="absolute bottom-3 right-3 px-3 py-1 bg-primary text-on-primary rounded-lg font-bold text-xs sm:text-label-md shadow-md">
+                        {item.price.toLocaleString('vi-VN')}đ
+                    </div>
+                    <div className="absolute top-3 left-3 px-2 py-0.5 bg-white/95 backdrop-blur-md shadow-xs rounded-md flex items-center gap-1">
+                      <span className="material-symbols-outlined text-amber-500 text-xs sm:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      <span className="text-[11px] sm:text-xs font-bold text-on-surface">{item.rating || 4.8}</span>
+                    </div>
                   </Link>
-                  <div className="flex items-center justify-between mt-auto">
-                    <Link to={`/product/${item.id}`} className="px-4 py-2 border-[1.5px] border-primary text-primary rounded-full font-label-sm text-label-sm hover:bg-primary/5 transition-colors">Tùy Chỉnh</Link>
-                    <button 
-                      className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-all active:scale-90"
-                      onClick={() => handleAddToCart(item.id, item.name, item.price, item.image)}
-                    >
-                      <span className="material-symbols-outlined">add</span>
-                    </button>
+                  <div className="p-4 sm:p-stack-md flex-1 flex flex-col">
+                    <Link to={`/product/${item.id}`} className="block group-hover:opacity-80 transition-opacity">
+                      <h3 className="text-base sm:text-lg font-bold text-on-surface mb-1 line-clamp-1">{item.name}</h3>
+                      <p className="text-xs sm:text-sm text-on-surface-variant line-clamp-2 mb-4 leading-relaxed">
+                          {item.description || 'Hương vị hảo hạng được pha chế tươi ngon mỗi ngày.'}
+                      </p>
+                    </Link>
+                    <div className="flex items-center justify-between mt-auto pt-2 border-t border-surface-variant/40">
+                      <Link to={`/product/${item.id}`} className="px-3.5 py-1.5 border-[1.5px] border-primary text-primary rounded-full text-xs font-bold hover:bg-primary/5 transition-colors">Tùy Chỉnh</Link>
+                      <button 
+                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-primary text-on-primary flex items-center justify-center hover:bg-primary-container transition-all active:scale-90 shadow-sm"
+                        onClick={() => handleAddToCart(item.id, item.name, item.price, item.image)}
+                        title="Thêm nhanh vào giỏ"
+                      >
+                        <span className="material-symbols-outlined text-lg sm:text-xl">add</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </section>
 
           {/* Active Order Status Card */}
-          <section className="mt-stack-lg p-stack-md bg-secondary-container/30 border border-primary/20 rounded-2xl flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-white animate-pulse">coffee</span>
+          {activeOrder && (
+            <section className="mt-6 p-4 sm:p-stack-md bg-secondary-container/30 border border-primary/20 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-primary rounded-full flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-white text-lg sm:text-xl animate-pulse">coffee</span>
+                </div>
+                <div>
+                  <p className="text-[10px] sm:text-label-sm text-primary uppercase tracking-wider font-bold">
+                    {activeOrder.status === 'pending' ? 'Chờ Xác Nhận' : activeOrder.status === 'preparing' ? 'Đang Chuẩn Bị' : 'Món Đã Sẵn Sàng'}
+                  </p>
+                  <h4 className="text-xs sm:text-label-md font-bold text-on-surface line-clamp-1">
+                    Đơn #{activeOrder.orderCode} ({activeOrder.items?.length || 1} món)
+                  </h4>
+                </div>
               </div>
-              <div>
-                <p className="font-label-sm text-label-sm text-primary uppercase tracking-tighter font-bold">Đang Chuẩn Bị</p>
-                <h4 className="font-headline-md text-label-md text-on-surface">Món Vanilla Cold Brew của bạn đang được pha chế</h4>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-secondary text-on-secondary rounded-full font-label-sm text-label-sm">Thời gian: 4 phút</span>
-              <Link to="/tracking" className="text-primary font-label-md text-label-md hover:underline">Xem Chi Tiết</Link>
-            </div>
-          </section>
+              <Link to={`/tracking?code=${activeOrder.orderCode}`} className="text-primary text-xs sm:text-label-md hover:underline font-bold whitespace-nowrap ml-2">
+                Chi Tiết ➔
+              </Link>
+            </section>
+          )}
+
         </main>
       </div>
 
       {/* Footer */}
       <footer className="w-full mt-auto bg-surface-container-highest dark:bg-surface-container border-t border-outline-variant/20 relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-stack-lg max-w-7xl mx-auto gap-stack-md">
-          <div className="flex flex-col gap-2 items-center md:items-start">
-            <span className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</span>
-            <p className="font-label-sm text-label-sm text-on-surface-variant">© 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.</p>
+        <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-6 sm:py-stack-lg max-w-7xl mx-auto gap-4">
+          <div className="flex flex-col gap-1 items-center md:items-start text-center md:text-left">
+            <span className="font-headline-md text-base sm:text-xl text-primary font-bold">AI-SMARTSERVE</span>
+            <p className="font-label-sm text-xs text-on-surface-variant">© 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.</p>
           </div>
-          <div className="flex flex-wrap justify-center gap-gutter">
-            <a className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">Chính Sách Bảo Mật</a>
-            <a className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">Điều Khoản</a>
-            <a className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">Bền Vững</a>
-            <a className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">Tuyển Dụng</a>
-            <a className="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer" href="#">Liên Hệ</a>
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-on-surface-variant">
+            <a className="hover:text-primary transition-colors cursor-pointer">Chính Sách</a>
+            <a className="hover:text-primary transition-colors cursor-pointer">Điều Khoản</a>
+            <a className="hover:text-primary transition-colors cursor-pointer">Liên Hệ</a>
           </div>
         </div>
       </footer>
 
       {/* Floating Action Button */}
-      <Link to="/ai-suggest" className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-50 flex items-center gap-2 px-6 py-4 bg-primary text-on-primary rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 group">
-        <span className="material-symbols-outlined group-hover:rotate-12 transition-transform">auto_awesome</span>
-        <span className="font-label-md text-label-md">AI Gợi Ý</span>
+      <Link to="/ai-suggest" className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-30 flex items-center gap-2 px-5 py-3.5 bg-primary text-on-primary rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 group text-xs sm:text-sm font-bold">
+        <span className="material-symbols-outlined text-lg group-hover:rotate-12 transition-transform">auto_awesome</span>
+        <span>AI Gợi Ý</span>
       </Link>
       
       <MobileBottomNav />

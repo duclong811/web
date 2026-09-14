@@ -44,7 +44,43 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       onClose();
       window.location.reload(); // Reload để update UI
     } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      console.error('Login error:', err);
+      console.log('Full error response data:', err.response?.data);
+      
+      // Handle specific error cases with user-friendly Vietnamese messages
+      if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        const message = data?.message; // Backend format: { success: false, message: "..." }
+        
+        if (status === 401) {
+          // Unauthorized - wrong credentials
+          setError('❌ Tên đăng nhập hoặc mật khẩu không đúng.\n\nVui lòng kiểm tra lại.');
+        } else if (status === 404) {
+          // Not found - user doesn't exist
+          setError('❌ Tài khoản không tồn tại.\n\nVui lòng đăng ký tài khoản mới.');
+        } else if (status === 400) {
+          // Bad request
+          if (message) {
+            setError(`❌ ${message}`);
+          } else {
+            setError('❌ Thông tin đăng nhập không hợp lệ.');
+          }
+        } else if (status === 500) {
+          setError('⚠️ Lỗi máy chủ.\n\nVui lòng thử lại sau ít phút.');
+        } else {
+          if (message) {
+            setError(`❌ ${message}`);
+          } else {
+            setError('❌ Đăng nhập thất bại.\n\nVui lòng thử lại.');
+          }
+        }
+      } else if (err.code === 'ERR_NETWORK') {
+        setError('🌐 Không thể kết nối đến máy chủ.\n\nVui lòng kiểm tra kết nối mạng.');
+      } else {
+        const fallbackMessage = err.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+        setError(`❌ ${fallbackMessage}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -68,7 +104,73 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       onClose();
       window.location.reload();
     } catch (err: any) {
-      setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      console.error('Register error:', err);
+      console.log('Full error response data:', err.response?.data);
+      
+      // Handle specific error cases with user-friendly Vietnamese messages
+      if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        // Backend trả về format: { success: false, message: "...", errors: {...} }
+        const message = data?.message;
+        const errors = data?.errors; // Validation errors object from backend (ASP.NET ModelState)
+        
+        console.log('Parsed - status:', status);
+        console.log('Parsed - message:', message);
+        console.log('Parsed - errors:', errors);
+        
+        if (status === 400) {
+          // Bad Request - validation errors
+          if (errors && typeof errors === 'object') {
+            // Backend trả về object errors: { "Email": ["error1", "error2"], "Password": ["error"] }
+            const errorMessages: string[] = [];
+            Object.keys(errors).forEach(field => {
+              const fieldErrors = errors[field];
+              if (Array.isArray(fieldErrors)) {
+                fieldErrors.forEach(msg => errorMessages.push(`❌ ${msg}`));
+              } else if (typeof fieldErrors === 'string') {
+                errorMessages.push(`❌ ${fieldErrors}`);
+              }
+            });
+            
+            if (errorMessages.length > 0) {
+              setError(errorMessages.join('\n'));
+            } else if (message) {
+              setError(`❌ ${message}`);
+            } else {
+              setError('❌ Dữ liệu không hợp lệ.\n\nVui lòng kiểm tra lại thông tin đã nhập.');
+            }
+          } else if (message) {
+            // Backend trả về message trực tiếp (từ AppException)
+            setError(`❌ ${message}`);
+          } else {
+            setError('❌ Dữ liệu không hợp lệ.\n\nVui lòng kiểm tra lại thông tin đã nhập.');
+          }
+        } else if (status === 409) {
+          // Conflict - duplicate data (thường từ AppException với StatusCode 409)
+          if (message) {
+            setError(`❌ ${message}`);
+          } else {
+            setError('❌ Thông tin đã tồn tại trong hệ thống.\n\nVui lòng kiểm tra lại.');
+          }
+        } else if (status === 500) {
+          setError('⚠️ Lỗi máy chủ.\n\nVui lòng thử lại sau ít phút.');
+        } else {
+          // Fallback cho các status code khác
+          if (message) {
+            setError(`❌ ${message}`);
+          } else {
+            setError('❌ Đăng ký thất bại.\n\nVui lòng thử lại.');
+          }
+        }
+      } else if (err.code === 'ERR_NETWORK') {
+        setError('🌐 Không thể kết nối đến máy chủ.\n\nVui lòng kiểm tra kết nối mạng của bạn.');
+      } else {
+        // Fallback: show any message we can get
+        const fallbackMessage = err.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+        setError(`❌ ${fallbackMessage}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -110,7 +212,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {/* Error Message */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm">{error}</p>
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div className="text-red-600 text-sm whitespace-pre-line">{error}</div>
+            </div>
           </div>
         )}
 

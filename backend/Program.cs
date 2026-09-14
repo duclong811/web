@@ -1,5 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Middleware;
+using WebCafe.Backend.Common.Models;
 using WebCafe.Backend.Hubs;
 using WebCafe.Backend.Infrastructure.Data;
 using WebCafe.Backend.Infrastructure.DependencyInjection;
@@ -8,7 +10,31 @@ using WebCafe.Backend.Infrastructure.Seeder;
 var builder = WebApplication.CreateBuilder(args);
 
 // Register Controllers & Custom Services through Extension
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // Custom Model Validation Error Response để format nhất quán với ApiResponse
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+                );
+
+            var response = new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đã nhập.",
+                Data = null,
+                Errors = errors
+            };
+
+            return new BadRequestObjectResult(response);
+        };
+    });
+
 builder.Services.RegisterApplicationServices(builder.Configuration);
 
 var app = builder.Build();

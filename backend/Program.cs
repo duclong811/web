@@ -42,22 +42,22 @@ using (var scope = app.Services.CreateScope())
 //     var owners = await db.Tenants.ToListAsync();
 //     var staff = await db.Staff.Include(s => s.Store).ToListAsync();
 //     
-//     Console.WriteLine("\n📋 DANH SÁCH TẤT CẢ USER:");
+//     Console.WriteLine("\n DANH SÁCH TẤT CẢ USER:");
 //     if (admins.Any())
 //     {
-//         Console.WriteLine("\n🔑 SYSTEM ADMINS:");
+//         Console.WriteLine("\n SYSTEM ADMINS:");
 //         foreach (var a in admins)
 //             Console.WriteLine($"  • Username: {a.Username} | Email: {a.Email} | Name: {a.FullName}");
 //     }
 //     if (owners.Any())
 //     {
-//         Console.WriteLine("\n👑 OWNERS:");
+//         Console.WriteLine("\n OWNERS:");
 //         foreach (var o in owners)
 //             Console.WriteLine($"  • Email: {o.OwnerEmail} | Name: {o.OwnerName} | Brand: {o.Name}");
 //     }
 //     if (staff.Any())
 //     {
-//         Console.WriteLine("\n👤 STAFF:");
+//         Console.WriteLine("\n STAFF:");
 //         foreach (var s in staff)
 //             Console.WriteLine($"  • Username: {s.Username} | Email: {s.Email} | Name: {s.FullName}");
 //     }
@@ -68,11 +68,11 @@ using (var scope = app.Services.CreateScope())
 //     
 //     if (string.IsNullOrEmpty(usernameOrEmail))
 //     {
-//         Console.WriteLine("❌ Vui lòng nhập username/email!");
+//         Console.WriteLine(" Vui lòng nhập username/email!");
 //         return;
 //     }
 //     
-//     Console.Write("🔒 Nhập password mới (Enter = 'Password@123'): ");
+//     Console.Write(" Nhập password mới (Enter = 'Password@123'): ");
 //     var newPassword = Console.ReadLine()?.Trim();
 //     if (string.IsNullOrEmpty(newPassword)) newPassword = "Password@123";
 //     

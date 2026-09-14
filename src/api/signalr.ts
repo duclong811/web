@@ -61,4 +61,8 @@ class SignalRService {
   }
 }
 
+// Default export
+export default new SignalRService();
+
+// Named export
 export const signalRService = new SignalRService();

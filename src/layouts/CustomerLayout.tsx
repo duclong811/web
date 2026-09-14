@@ -51,14 +51,21 @@ export default function CustomerLayout() {
               </div>
             )}
 
-            {/* Login/User Button */}
-            <button
-              onClick={handleUserIconClick}
-              className="relative p-2 sm:p-2.5 rounded-full hover:bg-surface-container-high transition-all text-primary flex items-center justify-center"
-              aria-label={isAuthenticated ? 'Menu người dùng' : 'Đăng nhập'}
-            >
-              <User className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
+            {/* Login/User Button Container */}
+            <div className="relative">
+              <button
+                onClick={handleUserIconClick}
+                className="p-2 sm:p-2.5 rounded-full hover:bg-surface-container-high transition-all text-primary flex items-center justify-center"
+                aria-label={isAuthenticated ? 'Menu người dùng' : 'Đăng nhập'}
+              >
+                <User className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+
+              {/* User Menu Dropdown */}
+              {isAuthenticated && (
+                <UserMenu isOpen={isUserMenuOpen} onClose={() => setIsUserMenuOpen(false)} />
+              )}
+            </div>
 
             {/* Cart Button */}
             <Link 
@@ -99,11 +106,6 @@ export default function CustomerLayout() {
 
       {/* Auth Modal */}
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
-
-      {/* User Menu Dropdown */}
-      {isAuthenticated && isUserMenuOpen && (
-        <UserMenu onClose={() => setIsUserMenuOpen(false)} />
-      )}
     </div>
   );
 }

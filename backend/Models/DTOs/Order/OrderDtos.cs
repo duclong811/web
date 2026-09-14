@@ -24,6 +24,12 @@ namespace WebCafe.Backend.Models.DTOs.Order
         public int? TableId { get; set; }
         public string? CustomerPhone { get; set; }
         public string? CustomerName { get; set; }
+        
+        // Guest Order Support
+        public string? GuestId { get; set; }
+        public string? GuestName { get; set; }
+        public string? GuestPhone { get; set; }
+        
         public string? VoucherCode { get; set; }
         public int PointsToUse { get; set; } = 0;
         public string? Note { get; set; }
@@ -69,6 +75,12 @@ namespace WebCafe.Backend.Models.DTOs.Order
         public int? CustomerId { get; set; }
         public string? CustomerName { get; set; }
         public string? CustomerPhone { get; set; }
+        
+        // Guest Order Fields
+        public string? GuestId { get; set; }
+        public string? GuestName { get; set; }
+        public string? GuestPhone { get; set; }
+        
         public string Status { get; set; } = "pending";
         public decimal SubTotal { get; set; }
         public decimal DiscountAmount { get; set; }

@@ -208,6 +208,16 @@ namespace WebCafe.Backend.Models.Entities
         public int? CustomerId { get; set; }
         public int? StaffId { get; set; }
 
+        // Guest Order Fields (for customers without account)
+        [MaxLength(100)]
+        public string? GuestId { get; set; }
+
+        [MaxLength(100)]
+        public string? GuestName { get; set; }
+
+        [MaxLength(15)]
+        public string? GuestPhone { get; set; }
+
         [Required, MaxLength(20)]
         public string Status { get; set; } = "pending"; // pending, confirmed, preparing, ready, served, paid, cancelled
 

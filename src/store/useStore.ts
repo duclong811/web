@@ -51,6 +51,16 @@ export interface Order {
   rawDto?: OrderDto;
 }
 
+// Guest Session Interface
+export interface GuestSession {
+  guestId: string; // UUID for tracking
+  storeId: number;
+  tableId: string;
+  guestName?: string;
+  guestPhone?: string;
+  timestamp: string;
+}
+
 interface StoreState {
   // Data
   menuItems: MenuItem[];
@@ -68,11 +78,19 @@ interface StoreState {
   voucherDiscount: number;
   isLoading: boolean;
   
+  // Guest Session State
+  guestSession: GuestSession | null;
+  
   // Actions
   setStoreId: (storeId: number) => void;
   setTable: (table: string) => void;
   fetchMenu: (storeId?: number) => Promise<void>;
   fetchOrders: (storeId?: number) => Promise<void>;
+  
+  // Guest Session Actions
+  initGuestSession: (storeId: number, tableId: string) => void;
+  updateGuestInfo: (name?: string, phone?: string) => void;
+  clearGuestSession: () => void;
   
   addToCart: (item: any, options?: {
     quantity?: number;
@@ -124,9 +142,44 @@ export const useStore = create<StoreState>((set, get) => ({
   appliedVoucherCode: null,
   voucherDiscount: 0,
   isLoading: false,
+  guestSession: null,
 
   setStoreId: (storeId) => set({ currentStoreId: storeId }),
   setTable: (table) => set({ currentTable: table }),
+
+  // Guest Session Management
+  initGuestSession: (storeId, tableId) => {
+    const guestId = `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const session: GuestSession = {
+      guestId,
+      storeId,
+      tableId,
+      timestamp: new Date().toISOString(),
+    };
+    
+    // Persist to localStorage
+    localStorage.setItem('guestSession', JSON.stringify(session));
+    
+    set({ 
+      guestSession: session,
+      currentStoreId: storeId,
+      currentTable: tableId,
+    });
+  },
+
+  updateGuestInfo: (name, phone) => {
+    const { guestSession } = get();
+    if (!guestSession) return;
+    
+    const updated = { ...guestSession, guestName: name, guestPhone: phone };
+    localStorage.setItem('guestSession', JSON.stringify(updated));
+    set({ guestSession: updated });
+  },
+
+  clearGuestSession: () => {
+    localStorage.removeItem('guestSession');
+    set({ guestSession: null });
+  },
 
   fetchMenu: async (storeId) => {
     const sId = storeId || get().currentStoreId;
@@ -284,7 +337,7 @@ export const useStore = create<StoreState>((set, get) => ({
   },
 
   createOrder: async (tableId, customerPhone, customerName, note) => {
-    const { cart, currentStoreId, currentTable, appliedVoucherCode } = get();
+    const { cart, currentStoreId, currentTable, appliedVoucherCode, guestSession } = get();
     if (cart.length === 0) throw new Error('Giỏ hàng trống');
 
     const tableStr = tableId || currentTable || 'T01';
@@ -298,6 +351,12 @@ export const useStore = create<StoreState>((set, get) => ({
         tableId: tableNumId,
         customerPhone: customerPhone || undefined,
         customerName: customerName || undefined,
+        
+        // Guest Session Support
+        guestId: guestSession?.guestId || undefined,
+        guestName: guestSession?.guestName || customerName || undefined,
+        guestPhone: guestSession?.guestPhone || customerPhone || undefined,
+        
         voucherCode: appliedVoucherCode || undefined,
         pointsToUse: 0,
         note: note || undefined,

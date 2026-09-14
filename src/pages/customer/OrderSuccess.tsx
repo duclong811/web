@@ -1,19 +1,53 @@
-import { Link } from 'react-router-dom';
-import { useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { useStore } from '../../store/useStore';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Copy, Check } from 'lucide-react';
 
 export default function OrderSuccess() {
-  const { cart } = useStore();
+  const [searchParams] = useSearchParams();
+  const orderCode = searchParams.get('code') || searchParams.get('orderCode');
+  const orderId = searchParams.get('orderId');
+  
+  const { cart, activeOrder, guestSession } = useStore();
   const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
+  
+  const [copied, setCopied] = useState(false);
+  
+  // Get order details from activeOrder or construct from params
+  const displayOrder = activeOrder || {
+    orderCode: orderCode || 'N/A',
+    total: 0,
+    items: []
+  };
+
+  // Generate VietQR URL
+  const generateVietQR = () => {
+    const bankId = '970422'; // MB Bank
+    const accountNo = '0123456789'; // Replace with actual account
+    const accountName = 'THECOFFEEHOUSE';
+    const amount = Math.round(displayOrder.total || 50000);
+    const description = `Thanh toan ${displayOrder.orderCode}`.replace(/\s/g, '%20');
+    
+    return `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${description}&accountName=${accountName}`;
+  };
+
+  const trackingUrl = guestSession 
+    ? `${window.location.origin}/tracking?guestId=${guestSession.guestId}`
+    : `${window.location.origin}/tracking?code=${displayOrder.orderCode}`;
+
+  const copyTrackingLink = () => {
+    navigator.clipboard.writeText(trackingUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     const createConfetti = () => {
       const container = document.getElementById('confetti-container');
       if (!container) return;
       
-      const colors = ['#553722', '#79573f', '#eabda0', '#60603e'];
+      const colors = ['#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE'];
       
       for (let i = 0; i < 30; i++) {
         const confetto = document.createElement('div');
@@ -107,22 +141,88 @@ export default function OrderSuccess() {
           
           {/* Title Section */}
           <div className="space-y-stack-sm">
-            <h2 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface font-bold">Cảm ơn bạn! Đơn hàng của bạn đã được tiếp nhận</h2>
-            <div className="flex items-center justify-center gap-2">
+            <h2 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface font-bold">
+              Đặt Món Thành Công! 🎉
+            </h2>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
               <span className="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Mã đơn hàng:</span>
-              <span className="font-label-md text-label-md text-primary bg-primary-fixed px-3 py-1 rounded-full">#WB-8892</span>
+              <span className="font-label-md text-label-md text-primary bg-primary-fixed px-3 py-1 rounded-full font-bold">
+                {displayOrder.orderCode}
+              </span>
             </div>
+            {guestSession?.tableId && (
+              <div className="flex items-center justify-center gap-2">
+                <span className="material-symbols-outlined text-secondary text-sm">table_restaurant</span>
+                <span className="text-sm text-on-surface-variant">Bàn {guestSession.tableId}</span>
+              </div>
+            )}
+          </div>
+          
+          {/* VietQR Payment Section */}
+          <div className="bg-white rounded-2xl p-6 border-2 border-primary/20 shadow-lg space-y-4 relative z-10">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-bold text-lg text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">qr_code_2</span>
+                Quét Mã Thanh Toán
+              </h3>
+              <span className="text-xl font-black text-primary">
+                {(displayOrder.total || 50000).toLocaleString('vi-VN')}đ
+              </span>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-center">
+              <img 
+                src={generateVietQR()} 
+                alt="VietQR Payment" 
+                className="w-64 h-64 object-contain"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://placehold.co/300x300/8B5CF6/white?text=VietQR';
+                }}
+              />
+            </div>
+            
+            <div className="text-center space-y-2">
+              <p className="text-xs text-on-surface-variant">
+                Mở app Ngân hàng → Quét QR → Thanh toán
+              </p>
+              <p className="text-xs font-bold text-primary">
+                Nội dung: Thanh toan {displayOrder.orderCode}
+              </p>
+            </div>
+          </div>
+          
+          {/* Tracking Link */}
+          <div className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/30 space-y-3 relative z-10">
+            <p className="text-sm font-bold text-on-surface">Lưu link theo dõi đơn hàng:</p>
+            <div className="flex items-center gap-2">
+              <input 
+                type="text" 
+                readOnly 
+                value={trackingUrl}
+                className="flex-1 px-3 py-2 bg-surface border border-outline-variant rounded-lg text-xs text-on-surface-variant"
+              />
+              <button
+                onClick={copyTrackingLink}
+                className="p-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                title="Sao chép link"
+              >
+                {copied ? <Check size={18} /> : <Copy size={18} />}
+              </button>
+            </div>
+            <p className="text-xs text-on-surface-variant italic">
+              💡 Lưu link này để theo dõi trạng thái đơn hàng bất cứ lúc nào!
+            </p>
           </div>
           
           {/* Summary Card */}
           <div className="bg-surface-container-lowest rounded-xl p-stack-md border border-outline-variant/30 shadow-sm text-left space-y-stack-md relative z-10">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-secondary-container rounded-lg">
-                <span className="material-symbols-outlined text-primary" data-icon="schedule">schedule</span>
+                <span className="material-symbols-outlined text-primary">schedule</span>
               </div>
               <div>
-                <p className="font-label-sm text-label-sm text-on-surface-variant">Thời gian giao hàng dự kiến</p>
-                <p className="font-body-lg text-body-lg text-on-surface font-bold">15-20 phút</p>
+                <p className="font-label-sm text-label-sm text-on-surface-variant">Thời gian chuẩn bị</p>
+                <p className="font-body-lg text-body-lg text-on-surface font-bold">10-15 phút</p>
               </div>
             </div>
             
@@ -130,22 +230,26 @@ export default function OrderSuccess() {
             
             <div className="flex items-start gap-4">
               <div className="p-3 bg-primary-fixed rounded-lg">
-                <span className="material-symbols-outlined text-primary" data-icon="restaurant_menu">restaurant_menu</span>
+                <span className="material-symbols-outlined text-primary">restaurant_menu</span>
               </div>
               <p className="font-body-md text-body-md text-on-surface-variant">
-                  Barista của chúng tôi đang bắt đầu pha chế món <span className="text-primary font-semibold">Iced Signature Latte</span> và chuẩn bị bánh <span className="text-primary font-semibold">Almond Croissant</span> cho bạn.
+                Barista của chúng tôi đang bắt đầu pha chế món ngon cho bạn. 
+                Vui lòng thanh toán qua VietQR bên trên để xác nhận đơn hàng nhé!
               </p>
             </div>
           </div>
           
           {/* Call to Action Cluster */}
           <div className="flex flex-col md:flex-row gap-4 pt-stack-md relative z-10">
-            <Link to="/tracking" className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-4 rounded-full shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+            <Link 
+              to={guestSession ? `/tracking?guestId=${guestSession.guestId}` : `/tracking?code=${displayOrder.orderCode}`}
+              className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-4 rounded-full shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined">receipt_long</span>
               Theo dõi đơn hàng
             </Link>
-            <Link to="/" className="flex-1 border-2 border-primary text-primary font-label-md text-label-md py-4 rounded-full hover:bg-surface-container-low transition-colors active:scale-[0.98] flex items-center justify-center">
-              Quay lại thực đơn
+            <Link to="/menu" className="flex-1 border-2 border-primary text-primary font-label-md text-label-md py-4 rounded-full hover:bg-surface-container-low transition-colors active:scale-[0.98] flex items-center justify-center">
+              Tiếp tục đặt món
             </Link>
           </div>
         </div>

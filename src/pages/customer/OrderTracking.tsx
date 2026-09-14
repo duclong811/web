@@ -8,7 +8,9 @@ import { orderApi } from '../../api/apis';
 export default function OrderTracking() {
   const [searchParams] = useSearchParams();
   const codeParam = searchParams.get('code');
-  const { activeOrder, orders, cart, initRealtime, currentStoreId } = useStore();
+  const guestIdParam = searchParams.get('guestId');
+  
+  const { activeOrder, orders, cart, initRealtime, currentStoreId, guestSession } = useStore();
   const [currentOrder, setCurrentOrder] = useState<Order | null>(activeOrder || null);
   const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
 
@@ -17,11 +19,24 @@ export default function OrderTracking() {
   }, [currentStoreId]);
 
   useEffect(() => {
+    // Priority 1: Active order in store
     if (activeOrder) {
       setCurrentOrder(activeOrder);
       return;
     }
 
+    // Priority 2: Guest tracking by guestId
+    if (guestIdParam || guestSession?.guestId) {
+      const trackingGuestId = guestIdParam || guestSession?.guestId;
+      const guestOrder = orders.find(o => o.rawDto?.guestId === trackingGuestId);
+      if (guestOrder) {
+        setCurrentOrder(guestOrder);
+        return;
+      }
+      // TODO: Could add API call to fetch guest orders by guestId
+    }
+
+    // Priority 3: Order code lookup
     if (codeParam) {
       const match = orders.find(o => o.orderCode === codeParam || o.id === codeParam);
       if (match) {
@@ -60,7 +75,7 @@ export default function OrderTracking() {
     } else if (orders.length > 0) {
       setCurrentOrder(orders[0]);
     }
-  }, [codeParam, activeOrder, orders]);
+  }, [codeParam, guestIdParam, activeOrder, orders, guestSession]);
 
   const status = currentOrder?.status || 'pending';
   const isStep1 = true;

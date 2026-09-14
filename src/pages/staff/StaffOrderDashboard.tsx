@@ -44,13 +44,34 @@ export default function StaffOrderDashboard() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
+      setError('');
       const storeId = 1; // TODO: Get from auth store or context
       const response = await apiClient.get(`/orders/active/store/${storeId}`);
+      console.log('📥 Raw API response:', response.data);
+      
       const ordersData = response.data.data || [];
-      setOrders(ordersData);
-      filterOrders(ordersData, activeFilter);
+      console.log('📦 Mapped orders data:', ordersData);
+      
+      // Map backend DTO to frontend Order interface
+      const mappedOrders: Order[] = ordersData.map((dto: any) => ({
+        orderId: dto.orderId,
+        orderCode: dto.orderCode,
+        tableNumber: dto.tableNumber || 'Mang về',
+        customerName: dto.customerName || dto.guestName || 'Khách',
+        status: dto.status,
+        subTotal: dto.subTotal,
+        totalAmount: dto.totalAmount,
+        items: dto.items || [],
+        createdAt: dto.createdAt,
+        note: dto.note,
+      }));
+      
+      setOrders(mappedOrders);
+      filterOrders(mappedOrders, activeFilter);
+      console.log(`✅ Loaded ${mappedOrders.length} orders`);
     } catch (err: any) {
-      setError(err.message || 'Không thể tải danh sách đơn hàng');
+      const errorMsg = err.message || 'Không thể tải danh sách đơn hàng';
+      setError(errorMsg);
       console.error('❌ Error fetching orders:', err);
     } finally {
       setLoading(false);
@@ -138,6 +159,11 @@ export default function StaffOrderDashboard() {
     };
   }, [soundEnabled]);
 
+  // Auto-filter orders when orders or activeFilter changes
+  useEffect(() => {
+    filterOrders(orders, activeFilter);
+  }, [orders, activeFilter]);
+
   // Filter orders by status
   const filterOrders = (ordersList: Order[], status: OrderStatus) => {
     if (status === 'all') {
@@ -174,7 +200,7 @@ export default function StaffOrderDashboard() {
           : order
       )
     );
-    filterOrders(orders, activeFilter);
+    // No need to call filterOrders - useEffect will handle it
   };
 
   const toggleSound = () => {

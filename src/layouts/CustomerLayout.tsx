@@ -1,11 +1,27 @@
 import { Outlet, Link } from 'react-router-dom';
-import { Coffee, ShoppingCart } from 'lucide-react';
+import { Coffee, ShoppingCart, User } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useAuthStore } from '../store/authStore';
+import { useState } from 'react';
+import AuthModal from '../components/AuthModal';
+import UserMenu from '../components/UserMenu';
 
 export default function CustomerLayout() {
   const cart = useStore(state => state.cart);
   const guestSession = useStore(state => state.guestSession);
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  
+  const { isAuthenticated, user } = useAuthStore();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const handleUserIconClick = () => {
+    if (isAuthenticated) {
+      setIsUserMenuOpen(!isUserMenuOpen);
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background font-body-md text-on-surface">
@@ -25,7 +41,7 @@ export default function CustomerLayout() {
             </h1>
           </Link>
 
-          {/* Right: Table Badge + Cart */}
+          {/* Right: Table Badge + Login/User + Cart */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Table Badge */}
             {guestSession?.tableId && (
@@ -34,6 +50,15 @@ export default function CustomerLayout() {
                 <span className="text-xs font-bold">Bàn {guestSession.tableId}</span>
               </div>
             )}
+
+            {/* Login/User Button */}
+            <button
+              onClick={handleUserIconClick}
+              className="relative p-2 sm:p-2.5 rounded-full hover:bg-surface-container-high transition-all text-primary flex items-center justify-center"
+              aria-label={isAuthenticated ? 'Menu người dùng' : 'Đăng nhập'}
+            >
+              <User className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
 
             {/* Cart Button */}
             <Link 
@@ -71,6 +96,14 @@ export default function CustomerLayout() {
           </div>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+
+      {/* User Menu Dropdown */}
+      {isAuthenticated && isUserMenuOpen && (
+        <UserMenu onClose={() => setIsUserMenuOpen(false)} />
+      )}
     </div>
   );
 }

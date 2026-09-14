@@ -525,11 +525,13 @@ namespace WebCafe.Backend.Services.Implementation
     {
         private readonly WebCafeDbContext _db;
         private readonly IOrderService _orderService;
+        private readonly IInventoryService _inventoryService;
 
-        public PaymentService(WebCafeDbContext db, IOrderService orderService)
+        public PaymentService(WebCafeDbContext db, IOrderService orderService, IInventoryService inventoryService)
         {
             _db = db;
             _orderService = orderService;
+            _inventoryService = inventoryService;
         }
 
         public async Task<PaymentResultDto> ProcessPaymentAsync(CreatePaymentDto dto, int? staffId = null)
@@ -557,6 +559,18 @@ namespace WebCafe.Backend.Services.Implementation
 
             // Cập nhật trạng thái đơn sang Paid
             await _orderService.UpdateStatusAsync(order.OrderId, OrderStatus.Paid, staffId);
+
+            // TỰ ĐỘNG TRỪ KHO KHI THANH TOÁN THÀNH CÔNG
+            try
+            {
+                await _inventoryService.DeductInventoryForOrderAsync(order.OrderId, staffId);
+            }
+            catch (Exception ex)
+            {
+                // Log lỗi nhưng không block thanh toán
+                // Có thể gửi notification để staff xử lý thủ công
+                Console.WriteLine($"Warning: Failed to deduct inventory for order {order.OrderCode}: {ex.Message}");
+            }
 
             string? qrUrl = null;
             if (dto.Method == PaymentMethods.VietQR && order.Store != null)
@@ -647,6 +661,126 @@ namespace WebCafe.Backend.Services.Implementation
                 TopProducts = topProducts,
                 RevenueChart = revenueChart
             };
+        }
+
+        public async Task<RevenueReportDto> GetRevenueReportAsync(int storeId, DateTime fromDate, DateTime toDate)
+        {
+            var orders = await _db.Orders
+                .Where(o => o.StoreId == storeId && 
+                           o.Status == OrderStatus.Paid &&
+                           o.CreatedAt >= fromDate && 
+                           o.CreatedAt <= toDate)
+                .ToListAsync();
+
+            var totalRevenue = orders.Sum(o => o.TotalAmount);
+            var totalOrders = orders.Count;
+            var totalDiscount = orders.Sum(o => o.DiscountAmount);
+            var avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+            // Revenue by day
+            var dailyRevenue = orders
+                .GroupBy(o => o.CreatedAt.Date)
+                .Select(g => new DailyRevenueDto
+                {
+                    Date = g.Key.ToString("dd/MM/yyyy"),
+                    Revenue = g.Sum(o => o.TotalAmount),
+                    OrdersCount = g.Count()
+                })
+                .OrderBy(x => x.Date)
+                .ToList();
+
+            // Revenue by payment method
+            var paymentMethods = await _db.Payments
+                .Where(p => orders.Select(o => o.OrderId).Contains(p.OrderId) && 
+                           p.Status == PaymentStatuses.Completed)
+                .GroupBy(p => p.Method)
+                .Select(g => new PaymentMethodStatsDto
+                {
+                    Method = g.Key,
+                    Count = g.Count(),
+                    TotalAmount = g.Sum(p => p.Amount)
+                })
+                .ToListAsync();
+
+            return new RevenueReportDto
+            {
+                FromDate = fromDate,
+                ToDate = toDate,
+                TotalRevenue = totalRevenue,
+                TotalOrders = totalOrders,
+                TotalDiscount = totalDiscount,
+                AverageOrderValue = avgOrderValue,
+                DailyRevenue = dailyRevenue,
+                PaymentMethodStats = paymentMethods
+            };
+        }
+
+        public async Task<CustomerAnalyticsDto> GetCustomerAnalyticsAsync(int tenantId, DateTime fromDate, DateTime toDate)
+        {
+            var customers = await _db.Customers
+                .Where(c => c.TenantId == tenantId)
+                .ToListAsync();
+
+            var newCustomers = customers.Count(c => c.CreatedAt >= fromDate && c.CreatedAt <= toDate);
+            var activeCustomers = customers.Count(c => c.LastVisitAt >= fromDate && c.LastVisitAt <= toDate);
+
+            // Top customers by spending
+            var topCustomers = customers
+                .Where(c => c.TotalSpent > 0)
+                .OrderByDescending(c => c.TotalSpent)
+                .Take(10)
+                .Select(c => new TopCustomerDto
+                {
+                    CustomerId = c.CustomerId,
+                    Name = c.Name ?? "Khách hàng",
+                    Phone = c.Phone,
+                    TotalSpent = c.TotalSpent,
+                    VisitCount = c.VisitCount,
+                    TotalPoints = c.TotalPoints
+                })
+                .ToList();
+
+            // Customer retention rate
+            var totalCustomers = customers.Count;
+            var retentionRate = totalCustomers > 0 ? (double)activeCustomers / totalCustomers * 100 : 0;
+
+            return new CustomerAnalyticsDto
+            {
+                TotalCustomers = totalCustomers,
+                NewCustomers = newCustomers,
+                ActiveCustomers = activeCustomers,
+                RetentionRate = Math.Round(retentionRate, 2),
+                TopCustomers = topCustomers
+            };
+        }
+
+        public async Task<List<CategoryPerformanceDto>> GetCategoryPerformanceAsync(int tenantId, DateTime fromDate, DateTime toDate)
+        {
+            var categoryPerformance = await _db.OrderItems
+                .Include(oi => oi.Order)
+                .Include(oi => oi.MenuItem)
+                    .ThenInclude(mi => mi!.Category)
+                .Where(oi => oi.Order!.TenantId == tenantId &&
+                            oi.Order.Status == OrderStatus.Paid &&
+                            oi.Order.CreatedAt >= fromDate &&
+                            oi.Order.CreatedAt <= toDate)
+                .GroupBy(oi => new 
+                { 
+                    CategoryId = oi.MenuItem!.CategoryId, 
+                    CategoryName = oi.MenuItem.Category!.Name 
+                })
+                .Select(g => new CategoryPerformanceDto
+                {
+                    CategoryId = g.Key.CategoryId,
+                    CategoryName = g.Key.CategoryName,
+                    TotalSold = g.Sum(x => x.Quantity),
+                    TotalRevenue = g.Sum(x => x.SubTotal),
+                    OrderCount = g.Select(x => x.OrderId).Distinct().Count()
+                })
+                .OrderByDescending(x => x.TotalRevenue)
+                .ToListAsync();
+
+            return categoryPerformance;
         }
     }
 }

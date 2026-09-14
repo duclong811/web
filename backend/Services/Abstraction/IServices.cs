@@ -6,6 +6,7 @@ using WebCafe.Backend.Models.DTOs.Order;
 using WebCafe.Backend.Models.DTOs.Payment;
 using WebCafe.Backend.Models.DTOs.Table;
 using WebCafe.Backend.Models.DTOs.Voucher;
+using WebCafe.Backend.Services.Implementation;
 
 namespace WebCafe.Backend.Services.Abstraction
 {
@@ -13,6 +14,7 @@ namespace WebCafe.Backend.Services.Abstraction
     {
         Task<LoginResponse> LoginStaffAsync(LoginRequest request);
         Task<LoginResponse> LoginTenantOwnerAsync(LoginRequest request);
+        Task<LoginResponse> LoginSystemAdminAsync(LoginRequest request);
     }
 
     public interface ICategoryService
@@ -77,5 +79,17 @@ namespace WebCafe.Backend.Services.Abstraction
     public interface IAnalyticsService
     {
         Task<DashboardStatsDto> GetDashboardStatsAsync(int storeId);
+        Task<RevenueReportDto> GetRevenueReportAsync(int storeId, DateTime fromDate, DateTime toDate);
+        Task<CustomerAnalyticsDto> GetCustomerAnalyticsAsync(int tenantId, DateTime fromDate, DateTime toDate);
+        Task<List<CategoryPerformanceDto>> GetCategoryPerformanceAsync(int tenantId, DateTime fromDate, DateTime toDate);
+    }
+
+    public interface IInventoryService
+    {
+        Task DeductInventoryForOrderAsync(int orderId, int? staffId = null);
+        Task ImportInventoryAsync(int storeId, int ingredientId, decimal quantity, int? staffId, string? note);
+        Task AdjustInventoryAsync(int storeId, int ingredientId, decimal newQuantity, int? staffId, string? note);
+        Task<List<InventoryStockDto>> GetInventoryByStoreAsync(int storeId);
+        Task<List<InventoryTransactionDto>> GetTransactionHistoryAsync(int storeId, int? ingredientId = null, DateTime? fromDate = null, DateTime? toDate = null);
     }
 }

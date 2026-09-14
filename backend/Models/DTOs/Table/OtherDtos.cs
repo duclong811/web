@@ -58,51 +58,10 @@ namespace WebCafe.Backend.Models.DTOs.Voucher
 
 namespace WebCafe.Backend.Models.DTOs.Payment
 {
-    public class CreatePaymentDto
-    {
-        public int OrderId { get; set; }
-        [Required]
-        public string Method { get; set; } = "cash"; // cash, vietqr, momo, bank_transfer
-        public decimal Amount { get; set; }
-        public string? TransactionRef { get; set; }
-    }
-
-    public class PaymentResultDto
-    {
-        public int PaymentId { get; set; }
-        public int OrderId { get; set; }
-        public string Method { get; set; } = string.Empty;
-        public decimal Amount { get; set; }
-        public string Status { get; set; } = "completed";
-        public string? QrCodeUrl { get; set; }
-    }
+    // Moved to Models/DTOs/Payment/PaymentDtos.cs
 }
 
 namespace WebCafe.Backend.Models.DTOs.Analytics
 {
-    public class DashboardStatsDto
-    {
-        public decimal TodayRevenue { get; set; }
-        public int TodayOrders { get; set; }
-        public int TotalCustomers { get; set; }
-        public int AvailableTables { get; set; }
-        public int OccupiedTables { get; set; }
-        public List<TopProductDto> TopProducts { get; set; } = new();
-        public List<DailyRevenueDto> RevenueChart { get; set; } = new();
-    }
-
-    public class TopProductDto
-    {
-        public int MenuItemId { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public int SoldCount { get; set; }
-        public decimal TotalRevenue { get; set; }
-    }
-
-    public class DailyRevenueDto
-    {
-        public string Date { get; set; } = string.Empty;
-        public decimal Revenue { get; set; }
-        public int OrdersCount { get; set; }
-    }
+    // Moved to Models/DTOs/Analytics/AnalyticsDtos.cs
 }

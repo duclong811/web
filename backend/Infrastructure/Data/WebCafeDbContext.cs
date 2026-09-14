@@ -34,6 +34,13 @@ namespace WebCafe.Backend.Infrastructure.Data
         public DbSet<Payment> Payments => Set<Payment>();
         public DbSet<LoyaltyPoint> LoyaltyPoints => Set<LoyaltyPoint>();
 
+        // Inventory Management
+        public DbSet<Ingredient> Ingredients => Set<Ingredient>();
+        public DbSet<InventoryStock> InventoryStocks => Set<InventoryStock>();
+        public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
+        public DbSet<MenuItemRecipe> MenuItemRecipes => Set<MenuItemRecipe>();
+        public DbSet<ToppingRecipe> ToppingRecipes => Set<ToppingRecipe>();
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -53,6 +60,12 @@ namespace WebCafe.Backend.Infrastructure.Data
             modelBuilder.Entity<Customer>().HasIndex(c => new { c.TenantId, c.Phone }).IsUnique();
             modelBuilder.Entity<Voucher>().HasIndex(v => new { v.TenantId, v.Code }).IsUnique();
             modelBuilder.Entity<Order>().HasIndex(o => new { o.TenantId, o.OrderCode }).IsUnique();
+
+            // Inventory constraints
+            modelBuilder.Entity<Ingredient>().HasIndex(i => new { i.TenantId, i.Name }).IsUnique();
+            modelBuilder.Entity<InventoryStock>().HasIndex(s => new { s.StoreId, s.IngredientId }).IsUnique();
+            modelBuilder.Entity<MenuItemRecipe>().HasIndex(r => new { r.MenuItemId, r.IngredientId, r.SizeId }).IsUnique();
+            modelBuilder.Entity<ToppingRecipe>().HasIndex(tr => new { tr.ToppingId, tr.IngredientId }).IsUnique();
 
             // Disable cascade delete globally or specifically to eliminate SQL Server cycle errors (1785)
             foreach (var relationship in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))

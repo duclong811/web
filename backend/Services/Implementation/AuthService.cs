@@ -104,5 +104,44 @@ namespace WebCafe.Backend.Services.Implementation
                 BrandName = tenant.Name
             };
         }
+
+        public async Task<LoginResponse> LoginSystemAdminAsync(LoginRequest request)
+        {
+            var admin = await _db.SystemAdmins
+                .FirstOrDefaultAsync(a => a.Username == request.Username && a.IsActive);
+
+            if (admin == null || !SecurityHelper.VerifyPassword(request.Password, admin.PasswordHash))
+            {
+                throw new AppException("Tên đăng nhập hoặc mật khẩu quản trị viên không chính xác.");
+            }
+
+            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
+            var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
+
+            var token = JwtHelper.GenerateToken(
+                admin.AdminId.ToString(),
+                admin.Username,
+                AppRoles.SystemAdmin,
+                0, // SystemAdmin không thuộc tenant nào
+                null,
+                jwtKey,
+                jwtIssuer,
+                jwtAudience,
+                48 // SystemAdmin có token tồn tại lâu hơn
+            );
+
+            return new LoginResponse
+            {
+                Token = token,
+                Username = admin.Username,
+                FullName = admin.FullName,
+                Role = AppRoles.SystemAdmin,
+                TenantId = 0,
+                StoreId = null,
+                StoreName = null,
+                BrandName = "WebCafe System"
+            };
+        }
     }
 }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebCafe.Backend.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using WebCafe.Backend.Infrastructure.Data;
 namespace WebCafe.Backend.Migrations
 {
     [DbContext(typeof(WebCafeDbContext))]
-    partial class WebCafeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914070815_AddInventoryAndEnhancedFeatures")]
+    partial class AddInventoryAndEnhancedFeatures
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

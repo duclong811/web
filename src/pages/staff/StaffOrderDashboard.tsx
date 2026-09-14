@@ -44,12 +44,14 @@ export default function StaffOrderDashboard() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/orders'); // Adjust endpoint as needed
+      const storeId = 1; // TODO: Get from auth store or context
+      const response = await apiClient.get(`/orders/active/store/${storeId}`);
       const ordersData = response.data.data || [];
       setOrders(ordersData);
       filterOrders(ordersData, activeFilter);
     } catch (err: any) {
       setError(err.message || 'Không thể tải danh sách đơn hàng');
+      console.error('❌ Error fetching orders:', err);
     } finally {
       setLoading(false);
     }

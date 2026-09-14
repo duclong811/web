@@ -22,4 +22,31 @@ namespace WebCafe.Backend.Models.DTOs.Auth
         public string? StoreName { get; set; }
         public string? BrandName { get; set; }
     }
+
+    public class RegisterRequest
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [Phone]
+        public string Phone { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(6)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required]
+        public string FullName { get; set; } = string.Empty;
+    }
+
+    public class RegisterResponse
+    {
+        public int CustomerId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+    }
 }

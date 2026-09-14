@@ -46,6 +46,13 @@ namespace WebCafe.Backend.Controllers
             var res = await _authService.LoginSystemAdminAsync(request);
             return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập quản trị viên thành công."));
         }
+
+        [HttpPost("register")]
+        public async Task<ActionResult<ApiResponse<RegisterResponse>>> Register([FromBody] RegisterRequest request)
+        {
+            var res = await _authService.RegisterCustomerAsync(request);
+            return Ok(ApiResponse<RegisterResponse>.Ok(res, "Đăng ký tài khoản thành công."));
+        }
     }
 
     [ApiController]

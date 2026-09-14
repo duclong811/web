@@ -6,32 +6,48 @@ class SignalRService {
   private connection: signalR.HubConnection | null = null;
 
   public async startConnection(storeId?: number, tableId?: number) {
-    if (this.connection && this.connection.state === signalR.HubConnectionState.Connected) {
-      return;
+    // If already connected or connecting, skip
+    if (this.connection) {
+      const state = this.connection.state;
+      if (state === signalR.HubConnectionState.Connected || state === signalR.HubConnectionState.Connecting) {
+        console.log(`⏭️ SignalR already ${state}, skipping...`);
+        return;
+      }
     }
 
     const token = localStorage.getItem('token');
 
+    // Build connection with proper configuration
+    const hubOptions: signalR.IHttpConnectionOptions = {
+      skipNegotiation: false,
+      transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.ServerSentEvents | signalR.HttpTransportType.LongPolling,
+    };
+
+    if (token) {
+      hubOptions.accessTokenFactory = () => token;
+    }
+
     this.connection = new signalR.HubConnectionBuilder()
-      .withUrl(HUB_URL, {
-        accessTokenFactory: () => token || '',
-      })
+      .withUrl(HUB_URL, hubOptions)
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 
     try {
       await this.connection.start();
-      console.log('SignalR connected successfully');
+      console.log('✅ SignalR connected successfully');
 
       if (storeId) {
         await this.connection.invoke('JoinStoreGroup', storeId);
+        console.log(`✅ Joined store group: ${storeId}`);
       }
       if (tableId) {
         await this.connection.invoke('JoinTableGroup', tableId);
+        console.log(`✅ Joined table group: ${tableId}`);
       }
     } catch (err) {
-      console.error('SignalR connection error: ', err);
+      console.error('❌ SignalR connection error:', err);
+      // Don't throw - allow app to continue without realtime
     }
   }
 

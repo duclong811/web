@@ -40,29 +40,29 @@ export const menuApi = {
 // Order API
 export const orderApi = {
   createOrder: async (dto: CreateOrderDto) => {
-    const res = await apiClient.post<ApiResponse<OrderDto>>('/Orders', dto);
+    const res = await apiClient.post<ApiResponse<OrderDto>>('/orders', dto);
     return res.data.data;
   },
   getOrderById: async (id: number) => {
-    const res = await apiClient.get<ApiResponse<OrderDto>>(`/Orders/${id}`);
+    const res = await apiClient.get<ApiResponse<OrderDto>>(`/orders/${id}`);
     return res.data.data;
   },
   getOrderByCode: async (code: string) => {
-    const res = await apiClient.get<ApiResponse<OrderDto>>(`/Orders/code/${code}`);
+    const res = await apiClient.get<ApiResponse<OrderDto>>(`/orders/code/${code}`);
     return res.data.data;
   },
   getActiveOrders: async (storeId: number) => {
-    const res = await apiClient.get<ApiResponse<OrderDto[]>>(`/Orders/active/store/${storeId}`);
+    const res = await apiClient.get<ApiResponse<OrderDto[]>>(`/orders/active/store/${storeId}`);
     return res.data.data;
   },
   searchOrders: async (storeId: number, pageNumber = 1, pageSize = 20, status?: string) => {
-    const res = await apiClient.get<ApiResponse<PaginationRes<OrderDto>>>(`/Orders/store/${storeId}`, {
+    const res = await apiClient.get<ApiResponse<PaginationRes<OrderDto>>>(`/orders/store/${storeId}`, {
       params: { pageNumber, pageSize, status }
     });
     return res.data.data;
   },
   updateStatus: async (orderId: number, status: string) => {
-    const res = await apiClient.put<ApiResponse<OrderDto>>(`/Orders/${orderId}/status`, { status });
+    const res = await apiClient.put<ApiResponse<OrderDto>>(`/orders/${orderId}/status`, { status });
     return res.data.data;
   }
 };

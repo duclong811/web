@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient } from '../../api/apiClient';
 import OrderCard from '../../components/staff/OrderCard';
 import StatusFilter from '../../components/staff/StatusFilter';
-import { signalRService } from '../../api/signalr';
 import { notificationService } from '../../services/notificationService';
+import { useStore } from '../../store/useStore';
+import type { OrderStatus } from '../../store/useStore';
 
 interface Order {
   orderId: number;
@@ -29,27 +30,78 @@ interface OrderItem {
   note?: string;
 }
 
-type OrderStatus = 'all' | 'pending' | 'preparing' | 'ready' | 'paid';
+type LocalOrderStatus = 'all' | 'pending' | 'preparing' | 'ready' | 'paid';
 
 export default function StaffOrderDashboard() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { orders: storeOrders } = useStore();
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [activeFilter, setActiveFilter] = useState<OrderStatus>('all');
+  const [activeFilter, setActiveFilter] = useState<LocalOrderStatus>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Fetch orders
+  // Convert store orders to component format (memoized to prevent re-creation)
+  const orders: Order[] = useMemo(() => storeOrders.map(o => ({
+    orderId: parseInt(o.id),
+    orderCode: o.orderCode,
+    tableNumber: o.tableNumber || 'Mang về',
+    customerName: o.rawDto?.customerName || o.rawDto?.guestName || 'Khách',
+    status: o.status,
+    subTotal: o.rawDto?.subTotal || o.total,
+    totalAmount: o.total,
+    items: o.items.map(item => ({
+      menuItemName: item.name,
+      sizeName: item.sizeName,
+      quantity: item.quantity,
+      unitPrice: item.price,
+      sugarLevel: item.sugarLevel || '100%',
+      iceLevel: item.iceLevel || '100%',
+      toppings: item.toppingNames,
+      note: item.note,
+    })),
+    createdAt: o.createdAt,
+    note: o.rawDto?.note,
+  })), [storeOrders]);
+
+  // Fetch orders from API and update store
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/orders'); // Adjust endpoint as needed
+      setError('');
+      const storeId = 1;
+      const response = await apiClient.get(`/orders/active/store/${storeId}`);
       const ordersData = response.data.data || [];
-      setOrders(ordersData);
-      filterOrders(ordersData, activeFilter);
+      
+      // Map to store format
+      const mappedOrders = ordersData.map((dto: any) => ({
+        id: dto.orderId.toString(),
+        orderCode: dto.orderCode,
+        tableNumber: dto.tableNumber || 'Mang về',
+        total: dto.totalAmount,
+        status: dto.status as OrderStatus,
+        createdAt: dto.createdAt,
+        rawDto: dto,
+        items: (dto.items || []).map((item: any) => ({
+          id: item.menuItemId.toString(),
+          name: item.menuItemName,
+          description: '',
+          price: item.unitPrice,
+          image: item.imageUrl || '',
+          categoryId: '',
+          quantity: item.quantity,
+          sizeName: item.sizeName,
+          toppingNames: item.toppings?.map((t: any) => t.toppingName),
+          sugarLevel: item.sugarLevel,
+          iceLevel: item.iceLevel,
+          note: item.note,
+        })),
+      }));
+      
+      useStore.setState({ orders: mappedOrders });
+      console.log(`✅ Loaded ${mappedOrders.length} orders`);
     } catch (err: any) {
       setError(err.message || 'Không thể tải danh sách đơn hàng');
+      console.error('❌ Error fetching orders:', err);
     } finally {
       setLoading(false);
     }
@@ -57,70 +109,6 @@ export default function StaffOrderDashboard() {
 
   useEffect(() => {
     fetchOrders();
-    
-    // Connect to SignalR hub
-    const setupSignalR = async () => {
-      try {
-        // Start connection with storeId
-        const storeId = 1; // TODO: Get from auth or context
-        await signalRService.startConnection(storeId);
-        setIsConnected(true);
-
-        // Listen to new orders
-        signalRService.onNewOrder((order: any) => {
-          console.log('📦 New order received:', order);
-          const mappedOrder: Order = {
-            orderId: order.orderId,
-            orderCode: order.orderCode,
-            tableNumber: order.tableNumber,
-            customerName: order.customerName || order.guestName,
-            status: order.status,
-            subTotal: order.subTotal,
-            totalAmount: order.totalAmount,
-            items: order.items || [],
-            createdAt: order.createdAt,
-            note: order.note,
-          };
-          setOrders(prevOrders => [mappedOrder, ...prevOrders]);
-          
-          // Play notification sound
-          if (soundEnabled) {
-            notificationService.playNewOrderSound();
-          }
-
-          // Show browser notification if permitted
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('🔔 Đơn hàng mới!', {
-              body: `Đơn #${order.orderCode} - ${order.items?.length || 0} món`,
-              icon: '/favicon.ico',
-              tag: order.orderCode,
-            });
-          }
-        });
-
-        // Listen to order status changes
-        signalRService.onOrderStatusChanged((orderId: number, status: string, orderCode: string) => {
-          console.log('🔄 Order status changed:', { orderId, status, orderCode });
-          setOrders(prevOrders =>
-            prevOrders.map(order =>
-              order.orderId === orderId
-                ? { ...order, status }
-                : order
-            )
-          );
-          
-          if (soundEnabled) {
-            notificationService.playStatusChangeSound();
-          }
-        });
-
-      } catch (err) {
-        console.error('SignalR connection error:', err);
-        setIsConnected(false);
-      }
-    };
-
-    setupSignalR();
 
     // Refresh every 60 seconds as backup
     const interval = setInterval(fetchOrders, 60000);
@@ -132,22 +120,26 @@ export default function StaffOrderDashboard() {
 
     return () => {
       clearInterval(interval);
-      signalRService.stopConnection();
     };
-  }, [soundEnabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
-  // Filter orders by status
-  const filterOrders = (ordersList: Order[], status: OrderStatus) => {
+  // Filter orders by status (memoized to prevent infinite loops)
+  const filterOrders = useCallback((ordersList: Order[], status: LocalOrderStatus) => {
     if (status === 'all') {
       setFilteredOrders(ordersList);
     } else {
       setFilteredOrders(ordersList.filter(order => order.status === status));
     }
-  };
+  }, []);
 
-  const handleFilterChange = (status: OrderStatus) => {
+  // Auto-filter orders when orders or activeFilter changes
+  useEffect(() => {
+    filterOrders(orders, activeFilter);
+  }, [orders, activeFilter, filterOrders]);
+
+  const handleFilterChange = (status: LocalOrderStatus) => {
     setActiveFilter(status);
-    filterOrders(orders, status);
   };
 
   // Count orders by status
@@ -165,14 +157,14 @@ export default function StaffOrderDashboard() {
 
   // Handle order status update
   const handleOrderUpdate = (orderId: number, newStatus: string) => {
-    setOrders(prevOrders =>
-      prevOrders.map(order =>
-        order.orderId === orderId
-          ? { ...order, status: newStatus }
-          : order
-      )
-    );
-    filterOrders(orders, activeFilter);
+    // Update in store
+    useStore.setState((state) => ({
+      orders: state.orders.map(o =>
+        parseInt(o.id) === orderId
+          ? { ...o, status: newStatus as OrderStatus }
+          : o
+      ),
+    }));
   };
 
   const toggleSound = () => {
@@ -190,12 +182,6 @@ export default function StaffOrderDashboard() {
               <h1 className="text-2xl font-bold text-gray-900">Quản Lý Đơn Hàng</h1>
               <p className="text-sm text-gray-600 mt-1">
                 Tổng đơn: <span className="font-semibold text-orange-600">{orders.length}</span> đơn
-                {isConnected && (
-                  <span className="ml-3 inline-flex items-center gap-1 text-green-600">
-                    <span className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span>
-                    <span className="font-medium">Kết nối</span>
-                  </span>
-                )}
               </p>
             </div>
             <div className="flex items-center gap-2">

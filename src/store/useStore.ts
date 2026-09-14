@@ -431,10 +431,10 @@ export const useStore = create<StoreState>((set, get) => ({
     });
   },
 
-  initRealtime: (storeId) => {
+  initRealtime: async (storeId) => {
     const sId = storeId || get().currentStoreId;
-    signalRService.startConnection(sId);
-
+    
+    // Register event listeners first
     signalRService.onNewOrder((newDto) => {
       const mapped: Order = {
         id: newDto.orderId.toString(),
@@ -470,6 +470,14 @@ export const useStore = create<StoreState>((set, get) => ({
         orders: get().orders.map(o => o.id === orderId.toString() ? { ...o, status: status as OrderStatus } : o)
       });
     });
+
+    // Then start connection
+    try {
+      await signalRService.startConnection(sId);
+      console.log('✅ Realtime initialized for store:', sId);
+    } catch (err) {
+      console.error('❌ Failed to initialize realtime:', err);
+    }
   },
 
   loginStaff: async (username, password) => {

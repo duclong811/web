@@ -10,12 +10,14 @@ export const apiClient = axios.create({
   },
 });
 
-// Request Interceptor: Tự động gắn Bearer Token nếu có
+// Request Interceptor: Tự động gắn Bearer Token nếu có (NHƯNG không bắt buộc)
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+  // Chỉ gắn token nếu có, không throw error nếu không có
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Guest requests sẽ không có Authorization header → Backend cho phép
   return config;
 });
 
@@ -32,11 +34,19 @@ apiClient.interceptors.response.use(
     // Xử lý lỗi 401 Unauthorized
     if (error.response?.status === 401) {
       console.warn('Token hết hạn hoặc không hợp lệ. Chuyển về trang đăng nhập.');
-      localStorage.removeItem('token');
-      // Auto redirect về login
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      
+      // Chỉ xóa token và redirect nếu KHÔNG PHẢI là guest request
+      const isGuestRequest = !localStorage.getItem('token');
+      if (!isGuestRequest) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // Auto redirect về login (chỉ cho staff/authenticated users)
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
       }
+      // Guest requests nhận 401 → Không làm gì, để component xử lý
     }
 
     // Xử lý lỗi 403 Forbidden

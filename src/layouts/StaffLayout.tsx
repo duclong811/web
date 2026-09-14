@@ -7,17 +7,13 @@ export default function StaffLayout() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { orders, fetchOrders, initRealtime, currentStoreId } = useStore();
-  const [isRealtimeInitialized, setIsRealtimeInitialized] = useState(false);
 
+  // Initialize once on mount
   useEffect(() => {
     fetchOrders(currentStoreId);
-    
-    // Only initialize realtime once
-    if (!isRealtimeInitialized) {
-      initRealtime(currentStoreId);
-      setIsRealtimeInitialized(true);
-    }
-  }, [currentStoreId, isRealtimeInitialized]);
+    initRealtime(currentStoreId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
   // Realtime pending/preparing orders count
   const pendingCount = orders.filter(o => o.status === 'pending').length;
@@ -147,21 +143,25 @@ export default function StaffLayout() {
             <span>Bán Hàng Tại Quầy (POS)</span>
           </Link>
 
-          <a 
-            onClick={() => { setIsMobileMenuOpen(false); navigate('/staff/dashboard'); }} 
-            className="flex items-center gap-3 text-on-surface-variant px-3.5 py-2.5 hover:bg-surface-variant/40 rounded-xl transition-all text-xs font-bold cursor-pointer"
+          {/* Temporarily disabled - Coming soon */}
+          <div 
+            className="flex items-center gap-3 text-on-surface-variant/50 px-3.5 py-2.5 rounded-xl text-xs font-bold cursor-not-allowed"
+            title="Tính năng đang phát triển"
           >
             <span className="material-symbols-outlined text-lg">inventory_2</span>
             <span>Kho & Trạng Thái Món</span>
-          </a>
+            <span className="ml-auto text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Sớm</span>
+          </div>
 
-          <a 
-            onClick={() => { setIsMobileMenuOpen(false); navigate('/staff/dashboard'); }} 
-            className="flex items-center gap-3 text-on-surface-variant px-3.5 py-2.5 hover:bg-surface-variant/40 rounded-xl transition-all text-xs font-bold cursor-pointer"
+          {/* Temporarily disabled - Coming soon */}
+          <div 
+            className="flex items-center gap-3 text-on-surface-variant/50 px-3.5 py-2.5 rounded-xl text-xs font-bold cursor-not-allowed"
+            title="Tính năng đang phát triển"
           >
             <span className="material-symbols-outlined text-lg">analytics</span>
             <span>Báo Cáo Doanh Thu</span>
-          </a>
+            <span className="ml-auto text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Sớm</span>
+          </div>
         </nav>
         
         <div className="pt-3 border-t border-outline-variant/15 mt-auto">
@@ -174,7 +174,14 @@ export default function StaffLayout() {
           </button>
           
           <button 
-            onClick={() => { setIsMobileMenuOpen(false); navigate('/staff/login'); }} 
+            onClick={() => { 
+              setIsMobileMenuOpen(false);
+              // Clear auth data
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              // Navigate to staff login
+              navigate('/staff/login');
+            }} 
             className="w-full flex items-center gap-2.5 text-error px-3 py-2 hover:bg-error/10 rounded-xl transition-all text-xs font-bold text-left"
           >
             <span className="material-symbols-outlined text-base">logout</span>

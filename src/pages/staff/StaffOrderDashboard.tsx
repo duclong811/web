@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient } from '../../api/apiClient';
 import OrderCard from '../../components/staff/OrderCard';
 import StatusFilter from '../../components/staff/StatusFilter';
@@ -40,8 +40,8 @@ export default function StaffOrderDashboard() {
   const [error, setError] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Convert store orders to component format
-  const orders: Order[] = storeOrders.map(o => ({
+  // Convert store orders to component format (memoized to prevent re-creation)
+  const orders: Order[] = useMemo(() => storeOrders.map(o => ({
     orderId: parseInt(o.id),
     orderCode: o.orderCode,
     tableNumber: o.tableNumber || 'Mang về',
@@ -61,7 +61,7 @@ export default function StaffOrderDashboard() {
     })),
     createdAt: o.createdAt,
     note: o.rawDto?.note,
-  }));
+  })), [storeOrders]);
 
   // Fetch orders from API and update store
   const fetchOrders = async () => {
@@ -121,21 +121,22 @@ export default function StaffOrderDashboard() {
     return () => {
       clearInterval(interval);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
-  // Auto-filter orders when orders or activeFilter changes
-  useEffect(() => {
-    filterOrders(orders, activeFilter);
-  }, [orders, activeFilter]);
-
-  // Filter orders by status
-  const filterOrders = (ordersList: Order[], status: LocalOrderStatus) => {
+  // Filter orders by status (memoized to prevent infinite loops)
+  const filterOrders = useCallback((ordersList: Order[], status: LocalOrderStatus) => {
     if (status === 'all') {
       setFilteredOrders(ordersList);
     } else {
       setFilteredOrders(ordersList.filter(order => order.status === status));
     }
-  };
+  }, []);
+
+  // Auto-filter orders when orders or activeFilter changes
+  useEffect(() => {
+    filterOrders(orders, activeFilter);
+  }, [orders, activeFilter, filterOrders]);
 
   const handleFilterChange = (status: LocalOrderStatus) => {
     setActiveFilter(status);

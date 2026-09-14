@@ -1,8 +1,7 @@
-﻿import { Link, useSearchParams } from 'react-router-dom';
+﻿import { useSearchParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { useStore, type Order } from '../../store/useStore';
-import { ShoppingCart } from 'lucide-react';
 import { orderApi } from '../../api/apis';
 
 export default function OrderTracking() {
@@ -12,7 +11,6 @@ export default function OrderTracking() {
   
   const { activeOrder, orders, cart, initRealtime, currentStoreId, guestSession } = useStore();
   const [currentOrder, setCurrentOrder] = useState<Order | null>(activeOrder || null);
-  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
 
   useEffect(() => {
     initRealtime(currentStoreId);
@@ -84,7 +82,7 @@ export default function OrderTracking() {
   const isStep4 = status === 'served' || status === 'paid' || status === 'done';
 
   return (
-    <div className="min-h-screen flex flex-col font-body-md text-body-md bg-background text-on-surface">
+    <div className="min-h-screen flex flex-col font-body-md text-body-md bg-background text-on-surface pb-24 md:pb-12">
       <style>{`
         .brewing-pulse {
           animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -101,36 +99,7 @@ export default function OrderTracking() {
         }
       `}</style>
 
-      {/* Top Navigation Bar */}
-      <nav className="bg-surface docked full-width top-0 sticky z-50 shadow-sm flex justify-between items-center w-full px-container-margin py-4 max-w-7xl mx-auto border-b border-outline-variant/10">
-        <div className="flex items-center gap-4">
-          <button className="md:hidden p-2 hover:bg-surface-container-low rounded-full transition-colors" onClick={() => window.history.back()}>
-            <span className="material-symbols-outlined text-primary">arrow_back</span>
-          </button>
-          <Link to="/" className="font-headline-md text-headline-md text-primary tracking-tight font-bold">AI-SMARTSERVE</Link>
-        </div>
-        <div className="hidden md:flex items-center gap-stack-lg">
-          <Link to="/" className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors">Menu</Link>
-          <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer">Rewards</a>
-          <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer">Our Story</a>
-          <a className="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors cursor-pointer">Locations</a>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
-            <ShoppingCart className="text-primary" size={24} />
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
-                {cartCount}
-              </span>
-            )}
-          </Link>
-          <Link to="/staff/login" className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">
-            <span className="material-symbols-outlined text-primary">person</span>
-          </Link>
-        </div>
-      </nav>
-
-      <main className="flex-grow max-w-7xl mx-auto w-full px-container-margin py-stack-lg">
+      <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 md:px-8 py-4 sm:py-6">
         {!currentOrder ? (
           <div className="py-20 text-center flex flex-col items-center justify-center gap-4 bg-white rounded-3xl border border-outline-variant/20 p-8 shadow-sm">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -283,9 +252,6 @@ export default function OrderTracking() {
         )}
       </main>
 
-      <footer className="w-full mt-auto bg-surface-container-highest border-t border-outline-variant/20 py-6 px-container-margin text-center text-xs text-on-surface-variant">
-        © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
-      </footer>
       <MobileBottomNav />
     </div>
   );

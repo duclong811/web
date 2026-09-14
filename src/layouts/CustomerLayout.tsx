@@ -1,60 +1,76 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Coffee, ShoppingCart } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { useGSAP } from '@gsap/react';
-import gsap from 'gsap';
-import { useRef } from 'react';
 
 export default function CustomerLayout() {
   const cart = useStore(state => state.cart);
+  const guestSession = useStore(state => state.guestSession);
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-  const container = useRef<HTMLDivElement>(null);
-
-  useGSAP(() => {
-    gsap.from('.top-nav', {
-      y: -50,
-      opacity: 0,
-      duration: 0.8,
-      ease: 'power3.out'
-    });
-    
-    gsap.from('.main-content', {
-      y: 20,
-      opacity: 0,
-      duration: 0.8,
-      delay: 0.2,
-      ease: 'power2.out'
-    });
-  }, { scope: container });
 
   return (
-    <div ref={container} className="app-layout" style={{ flexDirection: 'column' }}>
-      <header className="top-nav">
-        <Link to="/menu" style={{ textDecoration: 'none', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-hover))', padding: '0.5rem', borderRadius: '12px', boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)' }}>
-            <Coffee size={24} color="white" />
+    <div className="min-h-screen flex flex-col bg-background font-body-md text-on-surface">
+      {/* Header/TopAppBar - Responsive */}
+      <header className="sticky top-0 z-50 w-full bg-surface/95 backdrop-blur-md border-b border-outline-variant/10 shadow-sm">
+        <div className="flex justify-between items-center px-4 sm:px-6 md:px-8 py-4 max-w-7xl mx-auto">
+          {/* Left: Logo + Brand */}
+          <Link 
+            to="/menu" 
+            className="flex items-center gap-2 sm:gap-3 text-primary hover:opacity-90 transition-opacity"
+          >
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center shadow-md">
+              <Coffee size={24} className="text-white" />
+            </div>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight whitespace-nowrap">
+              AI-SMARTSERVE
+            </h1>
+          </Link>
+
+          {/* Right: Table Badge + Cart */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Table Badge */}
+            {guestSession?.tableId && (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-secondary-container text-on-secondary-container rounded-full">
+                <span className="material-symbols-outlined text-sm">table_restaurant</span>
+                <span className="text-xs font-bold">Bàn {guestSession.tableId}</span>
+              </div>
+            )}
+
+            {/* Cart Button */}
+            <Link 
+              to="/cart" 
+              className="relative p-2 sm:p-2.5 rounded-full hover:bg-surface-container-high transition-all text-primary flex items-center justify-center"
+              aria-label="Giỏ hàng"
+            >
+              <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-error text-white rounded-full w-5 h-5 sm:w-6 sm:h-6 text-[10px] sm:text-xs font-bold flex items-center justify-center shadow-md animate-pulse">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
           </div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '0.5px' }}>AI-SMARTSERVE</h1>
-        </Link>
-        <Link to="/cart" className="btn btn-secondary" style={{ position: 'relative', padding: '0.6rem 1.2rem', borderRadius: 'var(--radius-full)' }}>
-          <ShoppingCart size={20} />
-          {cartCount > 0 && (
-            <span style={{
-              position: 'absolute', top: '-6px', right: '-6px',
-              background: 'var(--error)', color: 'white',
-              borderRadius: '50%', width: '22px', height: '22px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '0.75rem', fontWeight: 'bold',
-              boxShadow: '0 4px 10px rgba(248, 113, 113, 0.4)'
-            }}>
-              {cartCount}
-            </span>
-          )}
-        </Link>
+        </div>
       </header>
-      <main className="main-content" style={{ padding: '2rem 1rem', maxWidth: '900px', margin: '0 auto', width: '100%' }}>
+
+      {/* Main Content - Full width responsive */}
+      <main className="flex-1 w-full">
         <Outlet />
       </main>
+
+      {/* Footer */}
+      <footer className="w-full mt-auto bg-surface-container-highest border-t border-outline-variant/20 py-6 px-4 sm:px-6 md:px-8">
+        <div className="flex flex-col md:flex-row justify-between items-center max-w-7xl mx-auto gap-4">
+          <div className="flex flex-col gap-1 items-center md:items-start text-center md:text-left">
+            <span className="text-base sm:text-xl text-primary font-bold">AI-SMARTSERVE</span>
+            <p className="text-xs text-on-surface-variant">© 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-on-surface-variant">
+            <a className="hover:text-primary transition-colors cursor-pointer">Chính Sách</a>
+            <a className="hover:text-primary transition-colors cursor-pointer">Điều Khoản</a>
+            <a className="hover:text-primary transition-colors cursor-pointer">Liên Hệ</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

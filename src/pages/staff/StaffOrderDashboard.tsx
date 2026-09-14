@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { apiClient } from '../../api/apiClient';
 import OrderCard from '../../components/staff/OrderCard';
 import StatusFilter from '../../components/staff/StatusFilter';
-import { connectToOrderHub, disconnectFromOrderHub } from '../../api/signalr';
+import { signalRService } from '../../api/signalr';
 import { notificationService } from '../../services/notificationService';
 
 interface Order {
@@ -39,7 +39,6 @@ export default function StaffOrderDashboard() {
   const [error, setError] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const connectionRef = useRef<any>(null);
 
   // Fetch orders
   const fetchOrders = async () => {
@@ -62,14 +61,27 @@ export default function StaffOrderDashboard() {
     // Connect to SignalR hub
     const setupSignalR = async () => {
       try {
-        const connection = await connectToOrderHub();
-        connectionRef.current = connection;
+        // Start connection with storeId
+        const storeId = 1; // TODO: Get from auth or context
+        await signalRService.startConnection(storeId);
         setIsConnected(true);
 
         // Listen to new orders
-        connection.on('NewOrder', (order: Order) => {
+        signalRService.onNewOrder((order: any) => {
           console.log('📦 New order received:', order);
-          setOrders(prevOrders => [order, ...prevOrders]);
+          const mappedOrder: Order = {
+            orderId: order.orderId,
+            orderCode: order.orderCode,
+            tableNumber: order.tableNumber,
+            customerName: order.customerName || order.guestName,
+            status: order.status,
+            subTotal: order.subTotal,
+            totalAmount: order.totalAmount,
+            items: order.items || [],
+            createdAt: order.createdAt,
+            note: order.note,
+          };
+          setOrders(prevOrders => [mappedOrder, ...prevOrders]);
           
           // Play notification sound
           if (soundEnabled) {
@@ -79,7 +91,7 @@ export default function StaffOrderDashboard() {
           // Show browser notification if permitted
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('🔔 Đơn hàng mới!', {
-              body: `Đơn #${order.orderCode} - ${order.items.length} món`,
+              body: `Đơn #${order.orderCode} - ${order.items?.length || 0} món`,
               icon: '/favicon.ico',
               tag: order.orderCode,
             });
@@ -87,12 +99,12 @@ export default function StaffOrderDashboard() {
         });
 
         // Listen to order status changes
-        connection.on('OrderStatusChanged', (data: { orderId: number; newStatus: string }) => {
-          console.log('🔄 Order status changed:', data);
+        signalRService.onOrderStatusChanged((orderId: number, status: string, orderCode: string) => {
+          console.log('🔄 Order status changed:', { orderId, status, orderCode });
           setOrders(prevOrders =>
             prevOrders.map(order =>
-              order.orderId === data.orderId
-                ? { ...order, status: data.newStatus }
+              order.orderId === orderId
+                ? { ...order, status }
                 : order
             )
           );
@@ -100,18 +112,6 @@ export default function StaffOrderDashboard() {
           if (soundEnabled) {
             notificationService.playStatusChangeSound();
           }
-        });
-
-        // Listen to order cancellation
-        connection.on('OrderCancelled', (orderId: number) => {
-          console.log('❌ Order cancelled:', orderId);
-          setOrders(prevOrders =>
-            prevOrders.map(order =>
-              order.orderId === orderId
-                ? { ...order, status: 'cancelled' }
-                : order
-            )
-          );
         });
 
       } catch (err) {
@@ -132,9 +132,7 @@ export default function StaffOrderDashboard() {
 
     return () => {
       clearInterval(interval);
-      if (connectionRef.current) {
-        disconnectFromOrderHub();
-      }
+      signalRService.stopConnection();
     };
   }, [soundEnabled]);
 

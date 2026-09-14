@@ -6,8 +6,13 @@ class SignalRService {
   private connection: signalR.HubConnection | null = null;
 
   public async startConnection(storeId?: number, tableId?: number) {
-    if (this.connection && this.connection.state === signalR.HubConnectionState.Connected) {
-      return;
+    // If already connected or connecting, skip
+    if (this.connection) {
+      const state = this.connection.state;
+      if (state === signalR.HubConnectionState.Connected || state === signalR.HubConnectionState.Connecting) {
+        console.log(`⏭️ SignalR already ${state}, skipping...`);
+        return;
+      }
     }
 
     const token = localStorage.getItem('token');
@@ -25,7 +30,7 @@ class SignalRService {
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(HUB_URL, hubOptions)
       .withAutomaticReconnect()
-      .configureLogging(signalR.LogLevel.Information)
+      .configureLogging(signalR.LogLevel.Warning)
       .build();
 
     try {

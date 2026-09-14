@@ -7,11 +7,17 @@ export default function StaffLayout() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { orders, fetchOrders, initRealtime, currentStoreId } = useStore();
+  const [isRealtimeInitialized, setIsRealtimeInitialized] = useState(false);
 
   useEffect(() => {
     fetchOrders(currentStoreId);
-    initRealtime(currentStoreId);
-  }, [currentStoreId]);
+    
+    // Only initialize realtime once
+    if (!isRealtimeInitialized) {
+      initRealtime(currentStoreId);
+      setIsRealtimeInitialized(true);
+    }
+  }, [currentStoreId, isRealtimeInitialized]);
 
   // Realtime pending/preparing orders count
   const pendingCount = orders.filter(o => o.status === 'pending').length;

@@ -75,7 +75,36 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
                 };
             });
 
-            services.AddAuthorization();
+            services.AddAuthorization(options =>
+            {
+                // Policy cho SystemAdmin - có quyền truy cập toàn bộ hệ thống
+                options.AddPolicy("SystemAdminOnly", policy => 
+                    policy.RequireRole("SystemAdmin"));
+
+                // Policy cho TenantOwner - quản lý toàn bộ tenant của mình
+                options.AddPolicy("TenantOwnerOnly", policy => 
+                    policy.RequireRole("Owner", "SystemAdmin"));
+
+                // Policy cho Manager - quản lý cửa hàng
+                options.AddPolicy("ManagerAccess", policy => 
+                    policy.RequireRole("Manager", "Owner", "SystemAdmin"));
+
+                // Policy cho Staff - nhân viên thông thường
+                options.AddPolicy("StaffAccess", policy => 
+                    policy.RequireRole("Staff", "Manager", "Owner", "SystemAdmin"));
+
+                // Policy cho Kitchen - bếp
+                options.AddPolicy("KitchenAccess", policy => 
+                    policy.RequireRole("Kitchen", "Manager", "Owner", "SystemAdmin"));
+
+                // Policy cho Cashier - thu ngân
+                options.AddPolicy("CashierAccess", policy => 
+                    policy.RequireRole("Cashier", "Manager", "Owner", "SystemAdmin"));
+
+                // Policy cho tất cả authenticated users
+                options.AddPolicy("RequireAuthenticated", policy => 
+                    policy.RequireAuthenticatedUser());
+            });
 
             // 4. SignalR
             services.AddSignalR();
@@ -91,6 +120,9 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IVoucherService, VoucherService>();
             services.AddScoped<IAnalyticsService, AnalyticsService>();
+            services.AddScoped<IInventoryService, InventoryService>();
+            services.AddScoped<IVietQRPaymentService, VietQRPaymentService>();
+            services.AddScoped<IRecommendationService, RecommendationService>();
 
             // 6. Swagger with Bearer Support
             services.AddEndpointsApiExplorer();

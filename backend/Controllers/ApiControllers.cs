@@ -10,6 +10,8 @@ using WebCafe.Backend.Models.DTOs.Payment;
 using WebCafe.Backend.Models.DTOs.Table;
 using WebCafe.Backend.Models.DTOs.Voucher;
 using WebCafe.Backend.Services.Abstraction;
+using WebCafe.Backend.Services.Implementation;
+using Microsoft.Extensions.Logging;
 
 namespace WebCafe.Backend.Controllers
 {
@@ -36,6 +38,13 @@ namespace WebCafe.Backend.Controllers
         {
             var res = await _authService.LoginTenantOwnerAsync(request);
             return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập chủ quán thành công."));
+        }
+
+        [HttpPost("admin-login")]
+        public async Task<ActionResult<ApiResponse<LoginResponse>>> AdminLogin([FromBody] LoginRequest request)
+        {
+            var res = await _authService.LoginSystemAdminAsync(request);
+            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập quản trị viên thành công."));
         }
     }
 
@@ -67,7 +76,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpPost("categories/tenant/{tenantId}")]
-        [Authorize]
+        [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<CategoryDto>>> CreateCategory(int tenantId, [FromBody] CreateCategoryDto dto)
         {
             var cat = await _categoryService.CreateCategoryAsync(tenantId, dto);
@@ -90,7 +99,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpPost("items/tenant/{tenantId}")]
-        [Authorize]
+        [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<MenuItemDto>>> CreateMenuItem(int tenantId, [FromBody] CreateMenuItemDto dto)
         {
             var item = await _menuService.CreateAsync(tenantId, dto);
@@ -98,7 +107,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpPut("items/{id}/tenant/{tenantId}")]
-        [Authorize]
+        [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<MenuItemDto>>> UpdateMenuItem(int id, int tenantId, [FromBody] CreateMenuItemDto dto)
         {
             var item = await _menuService.UpdateAsync(tenantId, id, dto);
@@ -106,7 +115,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpDelete("items/{id}/tenant/{tenantId}")]
-        [Authorize]
+        [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<object>>> DeleteMenuItem(int id, int tenantId)
         {
             await _menuService.DeleteAsync(tenantId, id);
@@ -133,7 +142,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<TableDto>>> CreateTable([FromBody] CreateTableDto dto)
         {
             var table = await _tableService.CreateTableAsync(dto);
@@ -141,7 +150,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpPut("{id}/status")]
-        [Authorize]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<TableDto>>> UpdateStatus(int id, [FromBody] UpdateTableStatusDto dto)
         {
             var table = await _tableService.UpdateStatusAsync(id, dto.Status);
@@ -149,7 +158,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<object>>> DeleteTable(int id)
         {
             await _tableService.DeleteTableAsync(id);
@@ -199,7 +208,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("store/{storeId}")]
-        [Authorize]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<PaginationRes<OrderDto>>>> SearchOrders(int storeId, [FromQuery] PagedReq req, [FromQuery] string? status)
         {
             var orders = await _orderService.SearchOrdersAsync(storeId, req, status);
@@ -223,10 +232,17 @@ namespace WebCafe.Backend.Controllers
     public class PaymentsController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
+        private readonly IVietQRPaymentService _vietQRPaymentService;
+        private readonly ILogger<PaymentsController> _logger;
 
-        public PaymentsController(IPaymentService paymentService)
+        public PaymentsController(
+            IPaymentService paymentService, 
+            IVietQRPaymentService vietQRPaymentService,
+            ILogger<PaymentsController> logger)
         {
             _paymentService = paymentService;
+            _vietQRPaymentService = vietQRPaymentService;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -239,6 +255,64 @@ namespace WebCafe.Backend.Controllers
             var result = await _paymentService.ProcessPaymentAsync(dto, staffId);
             return Ok(ApiResponse<PaymentResultDto>.Ok(result, "Thanh toán thành công."));
         }
+
+        [HttpPost("vietqr/create")]
+        public async Task<ActionResult<ApiResponse<VietQRPaymentDto>>> CreateVietQRPayment([FromBody] CreateVietQRPaymentRequest request)
+        {
+            var payment = await _vietQRPaymentService.CreateVietQRPaymentAsync(request.OrderId);
+            return Ok(ApiResponse<VietQRPaymentDto>.Ok(payment, "Đã tạo mã QR thanh toán."));
+        }
+
+        [HttpGet("vietqr/status/{orderId}")]
+        public async Task<ActionResult<ApiResponse<VietQRPaymentDto>>> GetVietQRPaymentStatus(int orderId)
+        {
+            var payment = await _vietQRPaymentService.GetPendingPaymentByOrderIdAsync(orderId);
+            if (payment == null)
+            {
+                return NotFound(ApiResponse<VietQRPaymentDto>.Fail("Không tìm thấy giao dịch thanh toán."));
+            }
+            return Ok(ApiResponse<VietQRPaymentDto>.Ok(payment));
+        }
+
+        [HttpPost("vietqr/webhook")]
+        [AllowAnonymous] // Webhook từ ngân hàng không có authentication
+        public async Task<IActionResult> VietQRWebhook([FromBody] VietQRWebhookDto webhook, [FromHeader(Name = "X-Signature")] string? signature)
+        {
+            try
+            {
+                _logger.LogInformation($"VietQR Webhook received: {webhook.TransactionId}");
+
+                // Verify signature nếu có
+                if (!string.IsNullOrEmpty(signature))
+                {
+                    var isValid = await _vietQRPaymentService.VerifyWebhookSignatureAsync(webhook, signature);
+                    if (!isValid)
+                    {
+                        _logger.LogWarning("Invalid webhook signature");
+                        return Unauthorized(new { message = "Invalid signature" });
+                    }
+                }
+
+                var result = await _vietQRPaymentService.ProcessWebhookAsync(webhook);
+                
+                return Ok(new 
+                { 
+                    success = true, 
+                    message = "Webhook processed successfully",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing VietQR webhook");
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+    }
+
+    public class CreateVietQRPaymentRequest
+    {
+        public int OrderId { get; set; }
     }
 
     [ApiController]
@@ -283,12 +357,165 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("dashboard/store/{storeId}")]
-        [Authorize]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<DashboardStatsDto>>> GetDashboard(int storeId)
         {
             var stats = await _analyticsService.GetDashboardStatsAsync(storeId);
             return Ok(ApiResponse<DashboardStatsDto>.Ok(stats));
         }
+
+        [HttpGet("revenue/store/{storeId}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<RevenueReportDto>>> GetRevenueReport(
+            int storeId,
+            [FromQuery] DateTime fromDate,
+            [FromQuery] DateTime toDate)
+        {
+            var report = await _analyticsService.GetRevenueReportAsync(storeId, fromDate, toDate);
+            return Ok(ApiResponse<RevenueReportDto>.Ok(report));
+        }
+
+        [HttpGet("customers/tenant/{tenantId}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<CustomerAnalyticsDto>>> GetCustomerAnalytics(
+            int tenantId,
+            [FromQuery] DateTime fromDate,
+            [FromQuery] DateTime toDate)
+        {
+            var analytics = await _analyticsService.GetCustomerAnalyticsAsync(tenantId, fromDate, toDate);
+            return Ok(ApiResponse<CustomerAnalyticsDto>.Ok(analytics));
+        }
+
+        [HttpGet("categories/tenant/{tenantId}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<List<CategoryPerformanceDto>>>> GetCategoryPerformance(
+            int tenantId,
+            [FromQuery] DateTime fromDate,
+            [FromQuery] DateTime toDate)
+        {
+            var performance = await _analyticsService.GetCategoryPerformanceAsync(tenantId, fromDate, toDate);
+            return Ok(ApiResponse<List<CategoryPerformanceDto>>.Ok(performance));
+        }
+    }
+
+    [ApiController]
+    [Route("api/[controller]")]
+    public class RecommendationsController : ControllerBase
+    {
+        private readonly IRecommendationService _recommendationService;
+
+        public RecommendationsController(IRecommendationService recommendationService)
+        {
+            _recommendationService = recommendationService;
+        }
+
+        [HttpGet("combos/tenant/{tenantId}")]
+        public async Task<ActionResult<ApiResponse<List<RecommendedComboDto>>>> GetRecommendedCombos(
+            int tenantId,
+            [FromQuery] int top = 5)
+        {
+            var combos = await _recommendationService.GetRecommendedCombosAsync(tenantId, top);
+            return Ok(ApiResponse<List<RecommendedComboDto>>.Ok(combos, "Gợi ý combo dựa trên dữ liệu mua hàng."));
+        }
+
+        [HttpGet("popular/store/{storeId}")]
+        public async Task<ActionResult<ApiResponse<List<MenuItemRecommendationDto>>>> GetPopularItems(
+            int storeId,
+            [FromQuery] int top = 10)
+        {
+            var items = await _recommendationService.GetPopularItemsAsync(storeId, top);
+            return Ok(ApiResponse<List<MenuItemRecommendationDto>>.Ok(items, "Các món bán chạy nhất."));
+        }
+
+        [HttpGet("personalized/customer/{customerId}/store/{storeId}")]
+        public async Task<ActionResult<ApiResponse<List<MenuItemRecommendationDto>>>> GetPersonalizedRecommendations(
+            int customerId,
+            int storeId,
+            [FromQuery] int top = 5)
+        {
+            var recommendations = await _recommendationService.GetPersonalizedRecommendationsAsync(customerId, storeId, top);
+            return Ok(ApiResponse<List<MenuItemRecommendationDto>>.Ok(recommendations, "Gợi ý dành riêng cho bạn."));
+        }
+
+        [HttpGet("frequently-bought-together/tenant/{tenantId}/item/{menuItemId}")]
+        public async Task<ActionResult<ApiResponse<List<FrequentPairDto>>>> GetFrequentlyBoughtTogether(
+            int tenantId,
+            int menuItemId,
+            [FromQuery] int top = 3)
+        {
+            var pairs = await _recommendationService.GetFrequentlyBoughtTogetherAsync(tenantId, menuItemId, top);
+            return Ok(ApiResponse<List<FrequentPairDto>>.Ok(pairs, "Khách hàng thường mua kèm."));
+        }
+    }
+
+    [ApiController]
+    [Route("api/[controller]")]
+    public class InventoryController : ControllerBase
+    {
+        private readonly IInventoryService _inventoryService;
+
+        public InventoryController(IInventoryService inventoryService)
+        {
+            _inventoryService = inventoryService;
+        }
+
+        [HttpGet("store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<List<InventoryStockDto>>>> GetInventory(int storeId)
+        {
+            var stocks = await _inventoryService.GetInventoryByStoreAsync(storeId);
+            return Ok(ApiResponse<List<InventoryStockDto>>.Ok(stocks));
+        }
+
+        [HttpPost("import")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> ImportInventory([FromBody] ImportInventoryDto dto)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int? staffId = int.TryParse(userIdStr, out var sId) ? sId : null;
+
+            await _inventoryService.ImportInventoryAsync(dto.StoreId, dto.IngredientId, dto.Quantity, staffId, dto.Note);
+            return Ok(ApiResponse<object>.Ok(new { }, "Nhập kho thành công."));
+        }
+
+        [HttpPost("adjust")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> AdjustInventory([FromBody] AdjustInventoryDto dto)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int? staffId = int.TryParse(userIdStr, out var sId) ? sId : null;
+
+            await _inventoryService.AdjustInventoryAsync(dto.StoreId, dto.IngredientId, dto.NewQuantity, staffId, dto.Note);
+            return Ok(ApiResponse<object>.Ok(new { }, "Điều chỉnh kho thành công."));
+        }
+
+        [HttpGet("transactions/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<List<InventoryTransactionDto>>>> GetTransactions(
+            int storeId, 
+            [FromQuery] int? ingredientId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var transactions = await _inventoryService.GetTransactionHistoryAsync(storeId, ingredientId, fromDate, toDate);
+            return Ok(ApiResponse<List<InventoryTransactionDto>>.Ok(transactions));
+        }
+    }
+
+    public class ImportInventoryDto
+    {
+        public int StoreId { get; set; }
+        public int IngredientId { get; set; }
+        public decimal Quantity { get; set; }
+        public string? Note { get; set; }
+    }
+
+    public class AdjustInventoryDto
+    {
+        public int StoreId { get; set; }
+        public int IngredientId { get; set; }
+        public decimal NewQuantity { get; set; }
+        public string? Note { get; set; }
     }
 }
 

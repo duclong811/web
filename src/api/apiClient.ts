@@ -60,8 +60,11 @@ apiClient.interceptors.response.use(
       method: error.config?.method,
       status: error.response?.status,
       message,
+      fullResponse: error.response?.data, // Log full response để debug
     });
 
-    return Promise.reject(new Error(message));
+    // GIỮ NGUYÊN error object thay vì tạo Error mới
+    // Điều này giúp component truy cập được err.response.data.errors
+    return Promise.reject(error);
   }
 );

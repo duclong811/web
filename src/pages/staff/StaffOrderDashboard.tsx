@@ -86,17 +86,15 @@ export default function StaffOrderDashboard() {
       try {
         // Start connection with storeId
         const storeId = 1; // TODO: Get from auth or context
-        await signalRService.startConnection(storeId);
-        setIsConnected(true);
-
-        // Listen to new orders
+        
+        // Register event listeners BEFORE starting connection
         signalRService.onNewOrder((order: any) => {
           console.log('📦 New order received:', order);
           const mappedOrder: Order = {
             orderId: order.orderId,
             orderCode: order.orderCode,
-            tableNumber: order.tableNumber,
-            customerName: order.customerName || order.guestName,
+            tableNumber: order.tableNumber || 'Mang về',
+            customerName: order.customerName || order.guestName || 'Khách',
             status: order.status,
             subTotal: order.subTotal,
             totalAmount: order.totalAmount,
@@ -137,8 +135,13 @@ export default function StaffOrderDashboard() {
           }
         });
 
+        // NOW start the connection
+        await signalRService.startConnection(storeId);
+        setIsConnected(true);
+        console.log('✅ SignalR setup complete');
+
       } catch (err) {
-        console.error('SignalR connection error:', err);
+        console.error('❌ SignalR connection error:', err);
         setIsConnected(false);
       }
     };

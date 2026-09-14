@@ -1,7 +1,11 @@
 ﻿import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
+import CustomerLayout from './layouts/CustomerLayout';
 import StaffLayout from './layouts/StaffLayout';
 import AdminLayout from './layouts/AdminLayout';
+
+// Auth Pages
+import Login from './pages/Login';
 
 // Customer Pages
 import ProductDetail from './pages/customer/ProductDetail';
@@ -10,11 +14,11 @@ import AIRecommendations from './pages/customer/AIRecommendations';
 import Cart from './pages/customer/Cart';
 import OrderSuccess from './pages/customer/OrderSuccess';
 import OrderTracking from './pages/customer/OrderTracking';
+import QRLanding from './pages/customer/QRLanding';
 
 // Staff Pages
-import StaffLogin from './pages/staff/StaffLogin';
+import StaffOrderDashboard from './pages/staff/StaffOrderDashboard';
 import StaffDashboard from './pages/staff/StaffDashboard';
-import OrderDashboard from './pages/staff/OrderDashboard';
 import NewOrder from './pages/staff/NewOrder';
 
 // Admin Pages
@@ -28,25 +32,33 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Customer Routes */}
-        <Route path="/" element={<Menu />} />
-        <Route path="/ai-suggest" element={<AIRecommendations />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/menu" element={<Navigate to="/" replace />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/order-success" element={<OrderSuccess />} />
-        <Route path="/tracking" element={<OrderTracking />} />
+        {/* Auth Route */}
+        <Route path="/login" element={<Login />} />
 
-        {/* Staff Routes */}
-        <Route path="/staff/login" element={<StaffLogin />} />
+        {/* QR Code Landing - Outside CustomerLayout for custom styling */}
+        <Route path="/qr" element={<QRLanding />} />
+        <Route path="/table/:storeId/:tableId" element={<QRLanding />} />
+
+        {/* Customer Routes - Wrapped in CustomerLayout */}
+        <Route element={<CustomerLayout />}>
+          <Route path="/" element={<Menu />} />
+          <Route path="/menu" element={<Navigate to="/" replace />} />
+          <Route path="/ai-suggest" element={<AIRecommendations />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/order-success" element={<OrderSuccess />} />
+          <Route path="/tracking" element={<OrderTracking />} />
+        </Route>
+
+        {/* Staff Routes - Wrapped in StaffLayout */}
         <Route path="/staff" element={<StaffLayout />}>
-          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route index element={<Navigate to="orders" replace />} />
+          <Route path="orders" element={<StaffOrderDashboard />} />
           <Route path="dashboard" element={<StaffDashboard />} />
-          <Route path="orders" element={<OrderDashboard />} />
           <Route path="new-order" element={<NewOrder />} />
         </Route>
 
-        {/* Admin Routes */}
+        {/* Admin Routes - Wrapped in AdminLayout */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="analytics" element={<Analytics />} />

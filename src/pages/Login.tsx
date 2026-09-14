@@ -43,10 +43,10 @@ export default function LoginPage() {
       // Điều hướng dựa trên role
       if (role === 'SystemAdmin' || role === 'Owner' || role === 'Manager') {
         navigate('/admin/dashboard');
-      } else if (role === 'Staff' || role === 'Kitchen' || role === 'Cashier') {
-        navigate('/staff/orders');
+      } else if (role === 'Staff' || role === 'Kitchen' || role === 'Cashier' || role === 'Barista') {
+        navigate('/staff/orders'); // Staff → Staff Order Dashboard
       } else {
-        navigate('/menu');
+        navigate('/menu'); // Customer → Menu
       }
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');

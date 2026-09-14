@@ -4,6 +4,9 @@ import { ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import Pagination from '../../components/Pagination';
+import AuthModal from '../../components/AuthModal';
+import UserMenu from '../../components/UserMenu';
+import { useAuthStore } from '../../store/authStore';
 
 const DEFAULT_CATEGORIES = [
   { id: 'Cà Phê Pha Máy', name: 'Cà Phê Pha Máy', icon: 'coffee' },
@@ -25,7 +28,8 @@ export default function Menu() {
     setTable, 
     cart, 
     addToCart, 
-    activeOrder 
+    activeOrder,
+    guestSession
   } = useStore();
 
   const [activeCategory, setActiveCategory] = useState<string>('Cà Phê Pha Máy');
@@ -37,10 +41,24 @@ export default function Menu() {
   // Stock status per branch
   const [stockStatus, setStockStatus] = useState<{ [id: string]: boolean }>({});
 
+  // Auth Modal & User Menu states
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { isAuthenticated, user } = useAuthStore();
+
   useEffect(() => {
-    setStoreId(storeIdParam);
-    if (tableParam) setTable(tableParam);
-    fetchMenu(storeIdParam);
+    // Load guest session from localStorage if exists
+    const savedSession = localStorage.getItem('guestSession');
+    if (savedSession) {
+      const session = JSON.parse(savedSession);
+      setStoreId(session.storeId);
+      setTable(session.tableId);
+      fetchMenu(session.storeId);
+    } else {
+      setStoreId(storeIdParam);
+      if (tableParam) setTable(tableParam);
+      fetchMenu(storeIdParam);
+    }
 
     const loadStock = () => {
       const saved = localStorage.getItem(`webcafe_stock_store_${storeIdParam}`);
@@ -97,6 +115,15 @@ export default function Menu() {
     };
     addToCart(fullItem, { quantity: 1 });
   };
+
+  const handleUserIconClick = () => {
+    if (isAuthenticated) {
+      setIsUserMenuOpen(!isUserMenuOpen);
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  };
+
   return (
     <div className="font-body-md text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed min-h-screen bg-background animate-in fade-in duration-500">
       {/* TopNavBar */}
@@ -121,11 +148,35 @@ export default function Menu() {
           </div>
           
           <div className="flex items-center gap-2 sm:gap-stack-md">
-            {tableParam && (
+            {/* Table Badge - prioritize guestSession, fallback to tableParam */}
+            {(guestSession?.tableId || tableParam) && (
               <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold shadow-xs">
-                Bàn {tableParam}
+                Bàn {guestSession?.tableId || tableParam}
               </span>
             )}
+            
+            {/* User Icon Button */}
+            <div className="relative">
+              <button
+                onClick={handleUserIconClick}
+                className="p-2 sm:p-2.5 rounded-full hover:bg-surface-container-high transition-all text-primary dark:text-primary-fixed-dim flex items-center justify-center"
+                aria-label={isAuthenticated ? 'Menu người dùng' : 'Đăng nhập'}
+              >
+                {isAuthenticated ? (
+                  <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {user?.fullName?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                ) : (
+                  <span className="material-symbols-outlined text-2xl">account_circle</span>
+                )}
+              </button>
+              
+              {/* User Menu Dropdown */}
+              {isAuthenticated && (
+                <UserMenu isOpen={isUserMenuOpen} onClose={() => setIsUserMenuOpen(false)} />
+              )}
+            </div>
+
             <Link 
               to="/cart" 
               className="relative p-2 sm:p-2.5 rounded-full hover:bg-surface-container-high transition-all text-primary dark:text-primary-fixed-dim flex items-center justify-center"
@@ -175,6 +226,40 @@ export default function Menu() {
           <Link to="/cart" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-surface-container text-on-surface-variant font-bold flex items-center gap-3">
             <span className="material-symbols-outlined">shopping_cart</span> Giỏ Hàng ({cartCount})
           </Link>
+          
+          {/* User Auth Section */}
+          {isAuthenticated ? (
+            <>
+              <hr className="my-2 border-outline-variant/20" />
+              <div className="px-4 py-2 text-xs text-on-surface-variant font-bold uppercase">Tài khoản</div>
+              <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-surface-container text-on-surface-variant font-bold flex items-center gap-3">
+                <span className="material-symbols-outlined">person</span> Thông tin cá nhân
+              </Link>
+              <button 
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  useAuthStore.getState().logout();
+                  window.location.href = '/';
+                }}
+                className="px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 font-bold flex items-center gap-3 w-full text-left"
+              >
+                <span className="material-symbols-outlined">logout</span> Đăng xuất
+              </button>
+            </>
+          ) : (
+            <>
+              <hr className="my-2 border-outline-variant/20" />
+              <button 
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsAuthModalOpen(true);
+                }}
+                className="px-4 py-3 rounded-xl bg-primary/10 text-primary font-bold flex items-center gap-3 w-full text-left"
+              >
+                <span className="material-symbols-outlined">login</span> Đăng nhập / Đăng ký
+              </button>
+            </>
+          )}
         </nav>
       </aside>
 
@@ -396,6 +481,9 @@ export default function Menu() {
       </Link>
       
       <MobileBottomNav />
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }

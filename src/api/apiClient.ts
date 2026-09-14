@@ -33,7 +33,10 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       console.warn('Token hết hạn hoặc không hợp lệ. Chuyển về trang đăng nhập.');
       localStorage.removeItem('token');
-      // Có thể redirect về login: window.location.href = '/login';
+      // Auto redirect về login
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
 
     // Xử lý lỗi 403 Forbidden

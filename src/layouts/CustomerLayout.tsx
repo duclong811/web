@@ -11,7 +11,7 @@ export default function CustomerLayout() {
   const guestSession = useStore(state => state.guestSession);
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 

@@ -43,7 +43,7 @@ export default function StaffOrderDashboard() {
   // Convert store orders to component format (memoized to prevent re-creation)
   const orders: Order[] = useMemo(() => storeOrders.map(o => ({
     orderId: parseInt(o.id),
-    orderCode: o.orderCode,
+    orderCode: o.orderCode || '',
     tableNumber: o.tableNumber || 'Mang về',
     customerName: o.rawDto?.customerName || o.rawDto?.guestName || 'Khách',
     status: o.status,
@@ -60,7 +60,7 @@ export default function StaffOrderDashboard() {
       note: item.note,
     })),
     createdAt: o.createdAt,
-    note: o.rawDto?.note,
+    note: o.rawDto?.note || undefined,
   })), [storeOrders]);
 
   // Fetch orders from API and update store

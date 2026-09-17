@@ -1,13 +1,10 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
-import { ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import Pagination from '../../components/Pagination';
 import AiSommelierChat from '../../components/AiSommelierChat';
 import AuthModal from '../../components/AuthModal';
-import UserMenu from '../../components/UserMenu';
-import { useAuthStore } from '../../store/authStore';
 
 const DEFAULT_CATEGORIES = [
   { id: 'Cà Phê Pha Máy', name: 'Cà Phê Pha Máy', icon: 'coffee' },
@@ -29,12 +26,10 @@ export default function Menu() {
     setTable, 
     cart, 
     addToCart, 
-    activeOrder,
-    guestSession
+    activeOrder
   } = useStore();
 
   const [activeCategory, setActiveCategory] = useState<string>('Cà Phê Pha Máy');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 6;
@@ -42,10 +37,8 @@ export default function Menu() {
   // Stock status per branch
   const [stockStatus, setStockStatus] = useState<{ [id: string]: boolean }>({});
 
-  // Auth Modal & User Menu states
+  // Auth Modal state
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
     // Load guest session from localStorage if exists
@@ -70,8 +63,6 @@ export default function Menu() {
     window.addEventListener('storage', loadStock);
     return () => window.removeEventListener('storage', loadStock);
   }, [storeIdParam, tableParam]);
-
-  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
 
   // Filter out Quà Lưu Niệm
   const displayCategories = (categories && categories.length > 0 ? categories : DEFAULT_CATEGORIES)
@@ -115,14 +106,6 @@ export default function Menu() {
       description: '',
     };
     addToCart(fullItem, { quantity: 1 });
-  };
-
-  const handleUserIconClick = () => {
-    if (isAuthenticated) {
-      setIsUserMenuOpen(!isUserMenuOpen);
-    } else {
-      setIsAuthModalOpen(true);
-    }
   };
 
   return (

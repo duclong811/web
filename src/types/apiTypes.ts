@@ -131,6 +131,9 @@ export interface OrderDto {
   customerId?: number | null;
   customerName?: string | null;
   customerPhone?: string | null;
+  guestId?: string | null;
+  guestName?: string | null;
+  guestPhone?: string | null;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'paid' | 'cancelled';
   subTotal: number;
   discountAmount: number;

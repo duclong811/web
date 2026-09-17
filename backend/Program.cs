@@ -1,10 +1,11 @@
-﻿using WebCafe.Backend.Common.Middleware;
+using WebCafe.Backend.Common.Middleware;
 using WebCafe.Backend.Hubs;
 using WebCafe.Backend.Infrastructure.Data;
 using WebCafe.Backend.Infrastructure.DependencyInjection;
 using WebCafe.Backend.Infrastructure.Seeder;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 
 // Register Controllers & Custom Services through Extension
 builder.Services.AddControllers();

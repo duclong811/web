@@ -1,4 +1,4 @@
-﻿# Logs
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -30,3 +30,7 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sw?
+
+# Local secrets & configs
+**/appsettings.Local.json
+*.local.json

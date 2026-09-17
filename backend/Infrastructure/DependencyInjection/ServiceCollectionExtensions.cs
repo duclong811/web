@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -111,6 +111,8 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
             services.AddScoped<IOrderNotificationService, OrderNotificationService>();
 
             // 5. Storage & Business Services
+            services.AddMemoryCache();
+            services.AddHttpClient();
             services.AddScoped<IFileStorageService, LocalFileSystemStorage>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ICategoryService, CategoryService>();
@@ -123,6 +125,7 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
             services.AddScoped<IInventoryService, InventoryService>();
             services.AddScoped<IVietQRPaymentService, VietQRPaymentService>();
             services.AddScoped<IRecommendationService, RecommendationService>();
+            services.AddScoped<IGeminiService, GeminiService>();
 
             // 6. Swagger with Bearer Support
             services.AddEndpointsApiExplorer();

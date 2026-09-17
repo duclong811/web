@@ -1,4 +1,4 @@
-﻿export interface ApiResponse<T> {
+export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
@@ -131,6 +131,9 @@ export interface OrderDto {
   customerId?: number | null;
   customerName?: string | null;
   customerPhone?: string | null;
+  guestId?: string | null;
+  guestName?: string | null;
+  guestPhone?: string | null;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'paid' | 'cancelled';
   subTotal: number;
   discountAmount: number;
@@ -229,3 +232,74 @@ export interface CartItemState {
   itemPrice: number; // base + size extra + toppings
   subTotal: number;
 }
+
+// --- AI Recommendation Types ---
+export interface AiRecommendationRequestDto {
+  storeId: number;
+  tenantId: number;
+  customerId?: number | null;
+  currentCartItemIds?: number[];
+  occasion?: string | null;
+  moodOrPreference?: string | null;
+}
+
+export interface AiRecommendedItemDto {
+  menuItemId: number;
+  name: string;
+  imageUrl?: string | null;
+  price: number;
+  categoryName: string;
+  reason: string;
+  pairingTip?: string | null;
+  badge: string;
+  confidenceScore: number;
+  suggestedSugarLevel?: string | null;
+  suggestedIceLevel?: string | null;
+  suggestedSize?: string | null;
+  isDrink?: boolean;
+}
+
+export interface AiRecommendedComboDto {
+  title: string;
+  description: string;
+  itemIds: number[];
+  items: AiRecommendedItemDto[];
+  originalPrice: number;
+  discountedPrice: number;
+  discountPercent: number;
+  tag: string;
+}
+
+export interface AiRecommendationResponseDto {
+  isAiGenerated: boolean;
+  modelUsed: string;
+  headline: string;
+  chefNote: string;
+  recommendations: AiRecommendedItemDto[];
+  combos: AiRecommendedComboDto[];
+}
+
+// --- AI Sommelier Chat Types ---
+export interface AiChatMessageDto {
+  role: 'user' | 'model';
+  content: string;
+  timestamp?: string;
+}
+
+export interface AiChatRequestDto {
+  storeId: number;
+  tenantId: number;
+  customerId?: number | null;
+  message: string;
+  history?: AiChatMessageDto[];
+  currentCartItemIds?: number[];
+}
+
+export interface AiChatResponseDto {
+  reply: string;
+  suggestedItems: AiRecommendedItemDto[];
+  quickFollowUps: string[];
+  isAiGenerated: boolean;
+  modelUsed: string;
+}
+

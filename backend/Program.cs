@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Middleware;
 using WebCafe.Backend.Common.Models;
@@ -8,6 +8,7 @@ using WebCafe.Backend.Infrastructure.DependencyInjection;
 using WebCafe.Backend.Infrastructure.Seeder;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 
 // Register Controllers & Custom Services through Extension
 builder.Services.AddControllers()

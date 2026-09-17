@@ -1,4 +1,4 @@
-﻿import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { useStore, type Order } from '../../store/useStore';
@@ -9,7 +9,7 @@ export default function OrderTracking() {
   const codeParam = searchParams.get('code');
   const guestIdParam = searchParams.get('guestId');
   
-  const { activeOrder, orders, cart, initRealtime, currentStoreId, guestSession } = useStore();
+  const { activeOrder, orders, initRealtime, currentStoreId, guestSession } = useStore();
   const [currentOrder, setCurrentOrder] = useState<Order | null>(activeOrder || null);
 
   useEffect(() => {

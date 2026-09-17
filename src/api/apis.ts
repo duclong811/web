@@ -1,4 +1,4 @@
-﻿import { apiClient } from './apiClient';
+import { apiClient } from './apiClient';
 import type { 
   ApiResponse, 
   StoreMenuResponse, 
@@ -12,7 +12,11 @@ import type {
   CheckVoucherRequest, 
   VoucherValidationResult, 
   DashboardStatsDto,
-  PaginationRes
+  PaginationRes,
+  AiRecommendationRequestDto,
+  AiRecommendationResponseDto,
+  AiChatRequestDto,
+  AiChatResponseDto
 } from '../types/apiTypes';
 
 // Menu API
@@ -106,3 +110,16 @@ export const analyticsApi = {
     return res.data.data;
   }
 };
+
+// AI SmartServe API
+export const aiApi = {
+  getRecommendations: async (dto: AiRecommendationRequestDto) => {
+    const res = await apiClient.post<ApiResponse<AiRecommendationResponseDto>>('/AI/recommend', dto);
+    return res.data.data;
+  },
+  chatWithSommelier: async (dto: AiChatRequestDto) => {
+    const res = await apiClient.post<ApiResponse<AiChatResponseDto>>('/AI/chat', dto);
+    return res.data.data;
+  }
+};
+

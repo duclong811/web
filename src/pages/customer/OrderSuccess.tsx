@@ -7,7 +7,6 @@ import { ShoppingCart, Copy, Check } from 'lucide-react';
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
   const orderCode = searchParams.get('code') || searchParams.get('orderCode');
-  const orderId = searchParams.get('orderId');
   
   const { cart, activeOrder, guestSession } = useStore();
   const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;

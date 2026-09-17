@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebCafe.Backend.Common.Models;
@@ -9,6 +9,7 @@ using WebCafe.Backend.Models.DTOs.Order;
 using WebCafe.Backend.Models.DTOs.Payment;
 using WebCafe.Backend.Models.DTOs.Table;
 using WebCafe.Backend.Models.DTOs.Voucher;
+using WebCafe.Backend.Models.DTOs.AI;
 using WebCafe.Backend.Services.Abstraction;
 using WebCafe.Backend.Services.Implementation;
 using Microsoft.Extensions.Logging;
@@ -523,6 +524,73 @@ namespace WebCafe.Backend.Controllers
         public int IngredientId { get; set; }
         public decimal NewQuantity { get; set; }
         public string? Note { get; set; }
+    }
+
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AIController : ControllerBase
+    {
+        private readonly IGeminiService _geminiService;
+        private readonly ILogger<AIController> _logger;
+
+        public AIController(IGeminiService geminiService, ILogger<AIController> logger)
+        {
+            _geminiService = geminiService;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Gợi ý món ăn thông minh & cá nhân hóa sử dụng Google Gemini AI (với caching và statistical fallback)
+        /// </summary>
+        [HttpPost("recommend")]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResponse<AiRecommendationResponseDto>>> GetSmartRecommendations([FromBody] AiRecommendationRequestDto request)
+        {
+            if (request.StoreId <= 0 && request.TenantId <= 0)
+            {
+                return BadRequest(ApiResponse<AiRecommendationResponseDto>.Fail("StoreId hoặc TenantId không hợp lệ."));
+            }
+
+            try
+            {
+                var recommendations = await _geminiService.GetSmartRecommendationsAsync(request);
+                return Ok(ApiResponse<AiRecommendationResponseDto>.Ok(recommendations, "Lấy gợi ý món ăn thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy AI recommendations");
+                return StatusCode(500, ApiResponse<AiRecommendationResponseDto>.Fail($"Lỗi hệ thống khi xử lý gợi ý AI: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// Trò chuyện tự do cùng AI Sommelier để tư vấn món ăn & đồ uống chuẩn vị
+        /// </summary>
+        [HttpPost("chat")]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResponse<AiChatResponseDto>>> ChatWithSommelier([FromBody] AiChatRequestDto request)
+        {
+            if (request.StoreId <= 0 && request.TenantId <= 0)
+            {
+                return BadRequest(ApiResponse<AiChatResponseDto>.Fail("StoreId hoặc TenantId không hợp lệ."));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Message))
+            {
+                return BadRequest(ApiResponse<AiChatResponseDto>.Fail("Vui lòng nhập câu hỏi hoặc yêu cầu cho AI Sommelier."));
+            }
+
+            try
+            {
+                var chatResponse = await _geminiService.ChatWithSommelierAsync(request);
+                return Ok(ApiResponse<AiChatResponseDto>.Ok(chatResponse, "AI Sommelier phản hồi thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xử lý cuộc trò chuyện với AI Sommelier");
+                return StatusCode(500, ApiResponse<AiChatResponseDto>.Fail($"Lỗi hệ thống khi trò chuyện cùng AI: {ex.Message}"));
+            }
+        }
     }
 }
 

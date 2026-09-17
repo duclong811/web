@@ -1,59 +1,134 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useEffect } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { useStore } from '../../store/useStore';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Sparkles, RefreshCw, Bot, Coffee, Sun, Moon, Utensils, CheckCircle2, Zap, MessageSquare } from 'lucide-react';
+import { aiApi } from '../../api/apis';
+import type { AiRecommendationResponseDto, AiRecommendedItemDto, AiRecommendedComboDto } from '../../types/apiTypes';
+import AiSommelierChat from '../../components/AiSommelierChat';
 
 export default function AIRecommendations() {
-  const { cart, addToCart } = useStore();
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const { cart, addToCart, currentStoreId, storeInfo } = useStore();
+  const [recommendationsData, setRecommendationsData] = useState<AiRecommendationResponseDto | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedMood, setSelectedMood] = useState<string>('pairing');
+  const [addedToast, setAddedToast] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'chat' | 'suggestions'>('chat');
 
-  const handleAddToCart = (id: string, name: string, price: number, image: string, categoryId: string = 'AI Gợi Ý') => {
-    addToCart({
-      id,
-      name,
-      price,
-      categoryId,
-      description: 'Gợi ý từ chuyên gia AI',
-      image
-    });
-  };
+  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const tenantId = storeInfo?.tenantId || 1;
+  const storeId = currentStoreId || storeInfo?.storeId || 1;
+
+  // Lấy món gần nhất trong giỏ hàng làm điểm nhấn
+  const lastCartItem = cart.length > 0 ? cart[cart.length - 1] : null;
+
+  const moodOptions = [
+    { id: 'pairing', label: 'Ghép Đôi Giỏ Hàng', icon: Utensils, desc: 'Món kèm chuẩn vị với giỏ hàng của bạn' },
+    { id: 'morning', label: 'Năng Lượng Sáng', icon: Sun, desc: 'Tỉnh táo, sảng khoái bắt đầu ngày mới' },
+    { id: 'afternoon', label: 'Thư Giãn Chiều', icon: Coffee, desc: 'Thanh mát, giải nhiệt & thư thái' },
+    { id: 'evening', label: 'Tráng Miệng & Ngọt Ngào', icon: Moon, desc: 'Hương vị nuông chiều vị giác' },
+  ];
+
+  const fetchRecommendations = useCallback(async (mood: string) => {
+    setLoading(true);
+    try {
+      const cartItemIds = cart
+        .map(item => parseInt(item.id, 10))
+        .filter(id => !isNaN(id) && id > 0);
+
+      const response = await aiApi.getRecommendations({
+        storeId,
+        tenantId,
+        currentCartItemIds: cartItemIds,
+        occasion: mood,
+        moodOrPreference: moodOptions.find(m => m.id === mood)?.desc || 'Gợi ý món ngon nhất'
+      });
+
+      setRecommendationsData(response);
+    } catch (err) {
+      console.error('Lỗi khi tải gợi ý AI:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [storeId, tenantId, cart]);
 
   useEffect(() => {
-    // Subtle parallax effect on scroll for cards
-    const handleScroll = () => {
-      const cards = document.querySelectorAll('.group.bg-white');
-      cards.forEach((card: any) => {
-        const speed = 0.05;
-        const rect = card.getBoundingClientRect();
-        const visible = rect.top < window.innerHeight && rect.bottom > 0;
-        if (visible) {
-          const shift = (window.innerHeight / 2 - rect.top) * speed;
-          card.style.transform = `translateY(${shift}px)`;
-        }
-      });
-    };
+    fetchRecommendations(selectedMood);
+  }, [selectedMood, fetchRecommendations]);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const showToast = (message: string) => {
+    setAddedToast(message);
+    setTimeout(() => {
+      setAddedToast(null);
+    }, 2500);
+  };
+
+  const handleAddItem = (item: AiRecommendedItemDto) => {
+    addToCart({
+      id: item.menuItemId.toString(),
+      name: item.name,
+      price: item.price,
+      categoryId: item.categoryName || 'AI Gợi Ý',
+      description: item.reason,
+      image: item.imageUrl || 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=500&q=80'
+    });
+    showToast(`Đã thêm "${item.name}" vào giỏ hàng!`);
+  };
+
+  const handleAddCombo = (combo: AiRecommendedComboDto) => {
+    combo.items.forEach(item => {
+      addToCart({
+        id: item.menuItemId.toString(),
+        name: item.name,
+        price: item.price,
+        categoryId: 'Combo AI',
+        description: combo.title,
+        image: item.imageUrl || 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=500&q=80'
+      });
+    });
+    showToast(`Đã thêm combo "${combo.title}" vào giỏ hàng!`);
+  };
 
   return (
-    <div className="bg-surface text-on-surface font-body-md overflow-x-hidden min-h-screen">
-      {/* TopNavBar */}
-      <header className="bg-surface dark:bg-surface-container-high shadow-sm dock full-width top-0 sticky z-50 transition-all duration-300">
-        <div className="flex justify-between items-center px-container-margin py-4 w-full max-w-7xl mx-auto">
-          <Link to="/" className="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">AI-SMARTSERVE</Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-on-surface-variant dark:text-on-surface-variant hover:text-primary font-label-md text-label-md transition-colors hover:bg-surface-container-low dark:hover:bg-surface-container px-3 py-2 rounded-lg">Thực Đơn</Link>
-            <a className="text-on-surface-variant dark:text-on-surface-variant hover:text-primary font-label-md text-label-md transition-colors hover:bg-surface-container-low dark:hover:bg-surface-container px-3 py-2 rounded-lg cursor-pointer">Ưu Đãi</a>
-            <Link to="/cart" className="text-primary font-bold border-b-2 border-primary pb-1 font-label-md text-label-md">Giỏ Hàng</Link>
+    <div className="bg-[#FAF8F5] text-[#2C2420] font-sans overflow-x-hidden min-h-screen">
+      {/* Toast Notification */}
+      {addedToast && (
+        <div className="fixed top-20 right-4 z-50 bg-[#1E293B] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-bounce">
+          <CheckCircle2 className="text-emerald-400" size={20} />
+          <span className="font-medium text-sm">{addedToast}</span>
+        </div>
+      )}
+
+      {/* Top Navigation */}
+      <header className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-40 border-b border-amber-900/5">
+        <div className="flex justify-between items-center px-4 md:px-8 py-3.5 max-w-7xl mx-auto">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-white shadow-md">
+              <Sparkles size={18} />
+            </div>
+            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-amber-800 via-amber-700 to-amber-900 bg-clip-text text-transparent">
+              AI-SMARTSERVE
+            </span>
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-6">
+            <Link to="/" className="text-stone-600 hover:text-amber-800 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-stone-100 transition-colors">
+              Thực Đơn
+            </Link>
+            <Link to="/ai-suggest" className="text-amber-800 font-bold text-sm bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200/60 flex items-center gap-1.5">
+              <Sparkles size={15} className="text-amber-600" />
+              AI Sommelier
+            </Link>
+            <Link to="/cart" className="text-stone-600 hover:text-amber-800 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-stone-100 transition-colors">
+              Giỏ Hàng
+            </Link>
           </nav>
-          <div className="flex items-center gap-4">
-            <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
-              <ShoppingCart className="text-primary" size={24} />
+
+          <div className="flex items-center gap-3">
+            <Link to="/cart" className="relative p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-full transition-all active:scale-95 border border-amber-200/50">
+              <ShoppingCart size={20} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-pulse">
                   {cartCount}
                 </span>
               )}
@@ -62,174 +137,373 @@ export default function AIRecommendations() {
         </div>
       </header>
 
-      <main className="min-h-screen">
-        {/* Hero Confirmation Section */}
-        <section className="px-container-margin py-stack-lg max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row items-center gap-stack-lg bg-secondary-container rounded-3xl p-8 shadow-sm">
-            <div className="relative w-32 h-32 flex-shrink-0">
-              <div className="absolute inset-0 bg-primary/10 rounded-full animate-ping opacity-20"></div>
-              <div className="relative z-10 w-full h-full rounded-full border-4 border-white shadow-md overflow-hidden bg-white">
-                <img className="w-full h-full object-cover" data-alt="Oolong Milk Tea" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOZn-rzgY3-0eTzFo51NLGFduXdcaJXtSTzb80iQQGWxC54cgzZS0N41q0Tqakdr9wAudUjTzfJrvKSyzEOayl861oFzYDfu_SYO2c-t2x92ORYFVQAIK0EMG9HyfGMOngsH5xCGdB86p6iaRzbWB_8PfVylIdjRL6ht1OmVVY0vlwzcy8qXH6PRENkxIgXLJQexWbsc8JveIYk1qkp0rJ4h4XioU1YA6JGaKksqCI8AIZf7vnUq1f" />
-              </div>
-            </div>
-            <div className="text-center md:text-left">
-              <h2 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-2">Lựa Chọn Tuyệt Vời!</h2>
-              <p className="font-body-lg text-body-lg text-on-surface-variant">Món <span className="font-bold text-primary">Oolong Milk Tea</span> của bạn đã được thêm vào giỏ. Để ngon hơn nữa, chuyên gia AI của chúng tôi gợi ý các món ăn kèm sau.</p>
-            </div>
-          </div>
-        </section>
-
-        {/* AI-Powered Pairings (Bento Grid Style) */}
-        <section className="px-container-margin py-stack-lg max-w-7xl mx-auto">
-          <div className="flex items-center gap-2 mb-8">
-            <span className="material-symbols-outlined text-tertiary" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-            <h3 className="font-headline-md text-headline-md text-primary">Gợi Ý Ghép Đôi Từ AI</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
-            {/* Recommendation 1 */}
-            <div className="group bg-white rounded-[16px] p-4 shadow-[0_4px_20px_rgba(85,55,34,0.08)] hover:shadow-[0_8px_30px_rgba(85,55,34,0.12)] transition-all duration-300 border border-transparent hover:border-primary/10">
-              <div className="relative h-48 mb-4 rounded-xl overflow-hidden">
-                <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Almond Croissant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAlwhNX6VEn4w1bVqQuNP4PUn6Q2E4EJpS7Mpqgrd2OSfvPjEZvCHn4t8ywUAeAfoSgsNjiIJeJfYuRRGAEaF7BZmucXjsF_cHCyESl4UeEWOzc8Td9B_oGwhLagwLJn-u5e0L52t7AcC22VeNxjYmOxY58d-bY-quB2bZOQQBKSBmGonefSR9FSP3ejUE8Rn6wmpcqoveWKKO5jdvA9WG7MX81sq9371MSF_iGWKKbRA-nYfKd0gY" />
-                <div className="absolute bottom-2 right-2 bg-primary text-white px-3 py-1 rounded-full text-label-sm font-bold shadow-lg">45.000đ</div>
-              </div>
-              <h4 className="font-headline-md text-[18px] text-primary mb-1">Almond Croissant</h4>
-              <div className="bg-tertiary-fixed-dim/20 rounded-lg p-3 mb-4">
-                <p className="text-label-sm text-on-tertiary-fixed-variant leading-relaxed italic">"Vị bùi của hạnh nhân nướng cân bằng hoàn hảo với hương vị mộc mạc, đậm mùi hoa của trà Oolong."</p>
-              </div>
-              <button onClick={() => handleAddToCart('pas-1', 'Almond Croissant', 45000, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAlwhNX6VEn4w1bVqQuNP4PUn6Q2E4EJpS7Mpqgrd2OSfvPjEZvCHn4t8ywUAeAfoSgsNjiIJeJfYuRRGAEaF7BZmucXjsF_cHCyESl4UeEWOzc8Td9B_oGwhLagwLJn-u5e0L52t7AcC22VeNxjYmOxY58d-bY-quB2bZOQQBKSBmGonefSR9FSP3ejUE8Rn6wmpcqoveWKKO5jdvA9WG7MX81sq9371MSF_iGWKKbRA-nYfKd0gY', 'Bánh Ngọt')} className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                Thêm vào Combo
-              </button>
-            </div>
-
-            {/* Recommendation 2 */}
-            <div className="group bg-white rounded-[16px] p-4 shadow-[0_4px_20px_rgba(85,55,34,0.08)] hover:shadow-[0_8px_30px_rgba(85,55,34,0.12)] transition-all duration-300 border border-transparent hover:border-primary/10">
-              <div className="relative h-48 mb-4 rounded-xl overflow-hidden">
-                <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Lavender Macaron" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDI2LFP7YTlf3W-DOmahNfhkeE0REOIwkRfAktI1kbdHD2DK0vqUqOO1NX7ea-dKF2oXfa1tXT89j6nrCHqkiBa5DHKBi5C1yl-c1d1cB5ZtC-FHi5MQsWVr5VS97cW6etQbfGBvzm73n1NvYWZH86mQ8higX0Li6GemA1RgpGQJicWWjzt-16tjecEePOQrA2S9mNGh8knNi6OFTvPR27SVcbAWYjBviiIJXgLOeLvL4k0YW0P_47" />
-                <div className="absolute bottom-2 right-2 bg-primary text-white px-3 py-1 rounded-full text-label-sm font-bold shadow-lg">32.500đ</div>
-              </div>
-              <h4 className="font-headline-md text-[18px] text-primary mb-1">Lavender Macaron</h4>
-              <div className="bg-tertiary-fixed-dim/20 rounded-lg p-3 mb-4">
-                <p className="text-label-sm text-on-tertiary-fixed-variant leading-relaxed italic">"Hương hoa oải hương dịu nhẹ hòa quyện tuyệt vời với kết cấu béo ngậy của trà sữa."</p>
-              </div>
-              <button onClick={() => handleAddToCart('pas-2', 'Lavender Macaron', 32500, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDDI2LFP7YTlf3W-DOmahNfhkeE0REOIwkRfAktI1kbdHD2DK0vqUqOO1NX7ea-dKF2oXfa1tXT89j6nrCHqkiBa5DHKBi5C1yl-c1d1cB5ZtC-FHi5MQsWVr5VS97cW6etQbfGBvzm73n1NvYWZH86mQ8higX0Li6GemA1RgpGQJicWWjzt-16tjecEePOQrA2S9mNGh8knNi6OFTvPR27SVcbAWYjBviiIJXgLOeLvL4k0YW0P_47', 'Bánh Ngọt')} className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                Thêm vào Combo
-              </button>
-            </div>
-
-            {/* Recommendation 3 */}
-            <div className="group bg-white rounded-[16px] p-4 shadow-[0_4px_20px_rgba(85,55,34,0.08)] hover:shadow-[0_8px_30px_rgba(85,55,34,0.12)] transition-all duration-300 border border-transparent hover:border-primary/10">
-              <div className="relative h-48 mb-4 rounded-xl overflow-hidden">
-                <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Lemon Drizzle Cake" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5PnNR9EJ9_C7qSwCOdp6yH1t5-DLWUqXtY4A5FMhwixIoOJyrBg3bK9e-_f1-tzeYsFanDAgNYJPf4VoznlqPppyyWKhfqWRSBYYn5TQaf3CfhjPggGJZGJx8ScOQik2WgFnbY1LzqDNtBXCIBehrlilZbnWITubGSTs5j-JrsLztnB5PrcdOqJe7-ZX-yOAwdYox_sfSDO1Wjg5TPhTGbVfBAhjQvmMRLZYHfjlgrIi7HSGnR0wd" />
-                <div className="absolute bottom-2 right-2 bg-primary text-white px-3 py-1 rounded-full text-label-sm font-bold shadow-lg">57.500đ</div>
-              </div>
-              <h4 className="font-headline-md text-[18px] text-primary mb-1">Lemon Drizzle Cake</h4>
-              <div className="bg-tertiary-fixed-dim/20 rounded-lg p-3 mb-4">
-                <p className="text-label-sm text-on-tertiary-fixed-variant leading-relaxed italic">"Vị cam chanh thanh mát làm dịu đi độ béo của sữa, làm tươi mới vị giác sau mỗi ngụm."</p>
-              </div>
-              <button onClick={() => handleAddToCart('pas-3', 'Lemon Drizzle Cake', 57500, 'https://lh3.googleusercontent.com/aida-public/AB6AXuD5PnNR9EJ9_C7qSwCOdp6yH1t5-DLWUqXtY4A5FMhwixIoOJyrBg3bK9e-_f1-tzeYsFanDAgNYJPf4VoznlqPppyyWKhfqWRSBYYn5TQaf3CfhjPggGJZGJx8ScOQik2WgFnbY1LzqDNtBXCIBehrlilZbnWITubGSTs5j-JrsLztnB5PrcdOqJe7-ZX-yOAwdYox_sfSDO1Wjg5TPhTGbVfBAhjQvmMRLZYHfjlgrIi7HSGnR0wd', 'Bánh Ngọt')} className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                Thêm vào Combo
-              </button>
-            </div>
-
-            {/* Recommendation 4 */}
-            <div className="group bg-white rounded-[16px] p-4 shadow-[0_4px_20px_rgba(85,55,34,0.08)] hover:shadow-[0_8px_30px_rgba(85,55,34,0.12)] transition-all duration-300 border border-transparent hover:border-primary/10">
-              <div className="relative h-48 mb-4 rounded-xl overflow-hidden">
-                <img className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Butter Shortbread" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQmARlY698zgmUMPEQAyQyQi2X-Py-b6Ni4vHDZnB6JZq6CZaFYoxcEa3WHflpNIpEShXRYYllKUeYssnYg6p03XLfsbVPKP511ra2kOYQ84RlyWMi_Rsv-Q1BMIovtQ_3UvvgK3JJM81xrVVu0umKCdUbXyLbxPmpwO7orbW8rojKDeFEIlpqySzrjPVf74T0PinblMbp9HMq2NQUl0xqaKmX7Y140jvlQm_3-ERmJw6FK6Bcea0S" />
-                <div className="absolute bottom-2 right-2 bg-primary text-white px-3 py-1 rounded-full text-label-sm font-bold shadow-lg">40.000đ</div>
-              </div>
-              <h4 className="font-headline-md text-[18px] text-primary mb-1">Butter Shortbread</h4>
-              <div className="bg-tertiary-fixed-dim/20 rounded-lg p-3 mb-4">
-                <p className="text-label-sm text-on-tertiary-fixed-variant leading-relaxed italic">"Hương vị bơ nguyên bản, mộc mạc giúp làm nổi bật trọn vẹn hương vị lá trà Oolong thượng hạng."</p>
-              </div>
-              <button onClick={() => handleAddToCart('pas-4', 'Butter Shortbread', 40000, 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQmARlY698zgmUMPEQAyQyQi2X-Py-b6Ni4vHDZnB6JZq6CZaFYoxcEa3WHflpNIpEShXRYYllKUeYssnYg6p03XLfsbVPKP511ra2kOYQ84RlyWMi_Rsv-Q1BMIovtQ_3UvvgK3JJM81xrVVu0umKCdUbXyLbxPmpwO7orbW8rojKDeFEIlpqySzrjPVf74T0PinblMbp9HMq2NQUl0xqaKmX7Y140jvlQm_3-ERmJw6FK6Bcea0S', 'Bánh Ngọt')} className="w-full py-3 rounded-full bg-primary text-white font-label-md flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                Thêm vào Combo
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Recommended Combos (Asymmetric Layout) */}
-        <section className="bg-surface-container py-stack-lg px-container-margin">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
-              <div>
-                <span className="text-tertiary font-bold tracking-widest text-label-sm uppercase mb-2 block">Ưu Đãi Đặc Biệt</span>
-                <h3 className="font-headline-md text-headline-md text-primary">Gói Combo Tuyển Chọn</h3>
-              </div>
-              <p className="text-on-surface-variant max-w-md">Các Barista của chúng tôi đã tuyển chọn sẵn những món được yêu thích nhất. Tiết kiệm 15% khi bạn gọi theo gói hôm nay.</p>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-stack-lg">
-              {/* Bundle Card 1 */}
-              <div className="flex flex-col sm:flex-row bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <div className="sm:w-1/2 h-64 sm:h-auto relative">
-                  <img className="w-full h-full object-cover" data-alt="Combo 1" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJonOoRVtp75jLFjbYKlZWznNOnDuOeLHG64m4ONgxDQCNWifUblrvlsw4VgG_p69645mJnnA6cLzCSr2NjW4A0e91iuAZ5gphC5kmfvUNVMPtFZcvV3gFW6vUgJQyrpYQzqh9b3Jcul57FUQ9nBr1evDsi-FVn66O5fBV_P9trR4rl63JLjAakZ26AMRbSOj7h1yCtRWs1oGecyRN_28gVhkuLy5vWrgeX4XnjfUP4qR7CLM25nJR" />
-                  <div className="absolute top-4 left-4 bg-tertiary text-white font-bold text-label-sm px-3 py-1 rounded-full">BÁN CHẠY NHẤT</div>
-                </div>
-                <div className="sm:w-1/2 p-8 flex flex-col justify-center">
-                  <h4 className="font-headline-md text-primary mb-2">Thức Uống Buổi Sáng</h4>
-                  <p className="text-on-surface-variant text-body-md mb-6">Oolong Milk Tea + Almond Croissant + Trái Cây Tươi</p>
-                  <div className="flex items-center gap-3 mb-6">
-                    <span className="text-on-surface-variant line-through font-body-md text-body-md">142.500đ</span>
-                    <span className="text-primary font-bold text-headline-md">119.500đ</span>
-                  </div>
-                  <button onClick={() => handleAddToCart('combo-1', 'Thức Uống Buổi Sáng', 119500, 'https://lh3.googleusercontent.com/aida-public/AB6AXuAJonOoRVtp75jLFjbYKlZWznNOnDuOeLHG64m4ONgxDQCNWifUblrvlsw4VgG_p69645mJnnA6cLzCSr2NjW4A0e91iuAZ5gphC5kmfvUNVMPtFZcvV3gFW6vUgJQyrpYQzqh9b3Jcul57FUQ9nBr1evDsi-FVn66O5fBV_P9trR4rl63JLjAakZ26AMRbSOj7h1yCtRWs1oGecyRN_28gVhkuLy5vWrgeX4XnjfUP4qR7CLM25nJR', 'Combo')} className="w-full py-3 rounded-full bg-secondary text-white font-label-md hover:bg-opacity-90 transition-all active:scale-95">Nâng Cấp Đơn Hàng</button>
-                </div>
-              </div>
-
-              {/* Bundle Card 2 */}
-              <div className="flex flex-col sm:flex-row bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                <div className="sm:w-1/2 h-64 sm:h-auto relative order-first sm:order-last">
-                  <img className="w-full h-full object-cover" data-alt="Combo 2" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdS9L4GoZiyPNcaqpTJhX2PFNee5iRRr-ZSOifvQ9Rfa8Huzrfaf8btQuIpUvzIdqk6mu4aErLJ7nY0N_qC8sih8bWa5ZwzCAg4whxroQTnt8--_VTqMKwkvRenjIWnzNm1wIsc2a82P_jfVjFJ7s_3Uuz8lwur7RWYGqtEWfUOmAOH3MS3VZA7zGWcdmxrTkAE4XdyuszhK5WcWp0R5Hq-MYk66AhBysE80BInlA940__GYZr5xiS" />
-                  <div className="absolute top-4 right-4 bg-primary text-white font-bold text-label-sm px-3 py-1 rounded-full">MÓN NGỌT</div>
-                </div>
-                <div className="sm:w-1/2 p-8 flex flex-col justify-center">
-                  <h4 className="font-headline-md text-primary mb-2">Tiệc Trà Chiều</h4>
-                  <p className="text-on-surface-variant text-body-md mb-6">Oolong Milk Tea + 3 Macaron + Shortbread</p>
-                  <div className="flex items-center gap-3 mb-6">
-                    <span className="text-on-surface-variant line-through font-body-md text-body-md">165.000đ</span>
-                    <span className="text-primary font-bold text-headline-md">135.000đ</span>
-                  </div>
-                  <button onClick={() => handleAddToCart('combo-2', 'Tiệc Trà Chiều', 135000, 'https://lh3.googleusercontent.com/aida-public/AB6AXuBdS9L4GoZiyPNcaqpTJhX2PFNee5iRRr-ZSOifvQ9Rfa8Huzrfaf8btQuIpUvzIdqk6mu4aErLJ7nY0N_qC8sih8bWa5ZwzCAg4whxroQTnt8--_VTqMKwkvRenjIWnzNm1wIsc2a82P_jfVjFJ7s_3Uuz8lwur7RWYGqtEWfUOmAOH3MS3VZA7zGWcdmxrTkAE4XdyuszhK5WcWp0R5Hq-MYk66AhBysE80BInlA940__GYZr5xiS', 'Combo')} className="w-full py-3 rounded-full bg-secondary text-white font-label-md hover:bg-opacity-90 transition-all active:scale-95">Nâng Cấp Đơn Hàng</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Sticky Bottom Actions */}
-        <div className="sticky bottom-16 md:bottom-0 bg-white/80 backdrop-blur-md border-t border-outline-variant py-6 px-container-margin z-40">
-          <div className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <Link to="/" className="w-full sm:w-auto px-10 py-3 rounded-full border-2 border-primary text-primary font-label-md hover:bg-primary/5 transition-colors text-center">Tiếp Tục Chọn Món</Link>
-            <Link to="/cart" className="w-full sm:w-auto px-12 py-4 rounded-full bg-primary text-white font-label-md shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
-              Đến Trang Thanh Toán
-              <span className="material-symbols-outlined">arrow_forward</span>
-            </Link>
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 space-y-5 sm:space-y-8">
+        {/* Mode Navigation Tabs - Sticky on Mobile */}
+        <div className="sticky top-[58px] sm:static z-30 py-1 sm:py-0 bg-[#FAF8F5]/90 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none">
+          <div className="flex items-center justify-center p-1.5 bg-stone-200/90 backdrop-blur rounded-2xl max-w-lg mx-auto shadow-sm border border-stone-300/40">
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                activeTab === 'chat'
+                  ? 'bg-gradient-to-r from-amber-700 to-amber-900 text-white shadow-md scale-[1.01]'
+                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-300/40'
+              }`}
+            >
+              <MessageSquare size={16} />
+              <span>Chat Cùng AI</span>
+              <span className="text-[10px] bg-amber-400 text-stone-950 px-1.5 py-0.2 rounded-full font-black animate-pulse">
+                MỚI
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab('suggestions')}
+              className={`flex-1 flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                activeTab === 'suggestions'
+                  ? 'bg-white text-stone-900 shadow-md scale-[1.01]'
+                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-300/40'
+              }`}
+            >
+              <Sparkles size={16} className="text-amber-600" />
+              <span>Gợi Ý Theo Dịp</span>
+            </button>
           </div>
         </div>
+
+        {/* Banner: Hero Section with AI Status (Shown when on suggestions tab, or as compact banner on desktop) */}
+        {activeTab === 'suggestions' ? (
+          <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#2D1B13] via-[#42291E] to-[#1F120C] text-white p-5 sm:p-6 md:p-10 shadow-xl border border-amber-900/40">
+            <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-1/3 -mb-8 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="max-w-2xl space-y-3">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-semibold backdrop-blur-md">
+                  <Bot size={14} className="animate-spin" style={{ animationDuration: '6s' }} />
+                  <span>Powered by {recommendationsData?.modelUsed || 'Google Gemini AI'}</span>
+                  {recommendationsData?.isAiGenerated ? (
+                    <span className="bg-emerald-500/80 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Realtime AI</span>
+                  ) : (
+                    <span className="bg-amber-500/80 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">Smart Analysis</span>
+                  )}
+                </div>
+
+                <h1 className="text-xl sm:text-2xl md:text-4xl font-extrabold tracking-tight text-white leading-tight">
+                  {recommendationsData?.headline || 'Trợ Lý AI Sommelier Ẩm Thực'}
+                </h1>
+
+                <p className="text-amber-100/80 text-xs sm:text-sm md:text-base leading-relaxed">
+                  {recommendationsData?.chefNote || 'Đang phân tích khẩu vị và giỏ hàng của bạn để đề xuất những món ngon và cặp đôi hương vị hài hòa nhất.'}
+                </p>
+              </div>
+
+              {/* Cart Highlight Badge if items in cart */}
+              {lastCartItem && (
+                <div className="w-full md:w-auto bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 flex-shrink-0">
+                  <img
+                    src={lastCartItem.image || 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200'}
+                    alt={lastCartItem.name}
+                    className="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-xl border border-white/20 shadow-md"
+                  />
+                  <div>
+                    <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-amber-300 font-bold block">Đang Có Trong Giỏ</span>
+                    <p className="font-bold text-white text-xs sm:text-sm line-clamp-1">{lastCartItem.name}</p>
+                    <p className="text-amber-200 text-xs font-medium">{lastCartItem.price.toLocaleString('vi-VN')}đ</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mood / Occasion Selector */}
+            <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-white/10">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-semibold text-amber-200/90 flex items-center gap-1.5">
+                  <Zap size={14} className="text-amber-400" />
+                  Chọn tâm trạng / thời điểm:
+                </span>
+                <button
+                  onClick={() => fetchRecommendations(selectedMood)}
+                  disabled={loading}
+                  className="text-xs text-amber-300 hover:text-white flex items-center gap-1 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+                  <span className="hidden xs:inline">Làm mới gợi ý</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
+                {moodOptions.map(m => {
+                  const IconComponent = m.icon;
+                  const isSelected = selectedMood === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedMood(m.id)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all text-xs font-medium ${
+                        isSelected
+                          ? 'bg-amber-500 text-stone-900 font-bold shadow-lg shadow-amber-500/20 scale-[1.02]'
+                          : 'bg-white/10 hover:bg-white/15 text-stone-200 border border-white/5'
+                      }`}
+                    >
+                      <IconComponent size={16} className={isSelected ? 'text-stone-900' : 'text-amber-300'} />
+                      <span className="truncate">{m.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        ) : (
+          /* Sleek Mini Header for Chat Tab */
+          <div className="hidden sm:flex items-center justify-between bg-gradient-to-r from-[#2D1B13] to-[#42291E] rounded-2xl px-6 py-4 text-white shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300">
+                <Bot size={22} />
+              </div>
+              <div>
+                <h1 className="text-base font-bold text-white flex items-center gap-2">
+                  <span>Trò Chuyện Cùng AI Sommelier Ẩm Thực</span>
+                  <span className="text-[10px] bg-emerald-500/80 text-white px-2 py-0.5 rounded-full font-bold">Realtime AI</span>
+                </h1>
+                <p className="text-xs text-amber-100/70">
+                  Hỏi tự do theo sở thích, tâm trạng, chế độ ăn hoặc yêu cầu món ăn kèm đặc biệt.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'chat' ? (
+          /* Khung Chat Trực Tiếp với AI Sommelier */
+          <div className="max-w-4xl mx-auto">
+            <AiSommelierChat mode="embedded" />
+          </div>
+        ) : (
+          /* Gợi Ý Theo Thực Đơn Cố Định */
+          <>
+        {/* AI Recommendations Grid */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center text-amber-800">
+                <Sparkles size={18} />
+              </div>
+              <h2 className="text-xl font-bold text-stone-900">Món Được AI Đề Xuất Riêng Cho Bạn</h2>
+            </div>
+            <span className="text-xs text-stone-500">
+              {recommendationsData?.recommendations?.length || 0} món tuyển chọn
+            </span>
+          </div>
+
+          {loading ? (
+            /* Skeleton Loading */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {[1, 2, 3, 4].map(n => (
+                <div key={n} className="bg-white rounded-2xl p-4 shadow-sm border border-stone-200/60 animate-pulse space-y-3">
+                  <div className="h-44 bg-stone-200 rounded-xl"></div>
+                  <div className="h-5 bg-stone-200 rounded w-3/4"></div>
+                  <div className="h-14 bg-stone-100 rounded-lg"></div>
+                  <div className="h-10 bg-stone-200 rounded-full"></div>
+                </div>
+              ))}
+            </div>
+          ) : recommendationsData?.recommendations && recommendationsData.recommendations.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {recommendationsData.recommendations.map(item => (
+                <div
+                  key={item.menuItemId}
+                  className="group bg-white rounded-2xl p-4 shadow-[0_2px_15px_rgba(45,27,19,0.06)] hover:shadow-[0_8px_25px_rgba(45,27,19,0.12)] transition-all duration-300 border border-stone-200/70 hover:border-amber-500/30 flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Item Image & Badge */}
+                    <div className="relative h-44 mb-3.5 rounded-xl overflow-hidden bg-stone-100">
+                      <img
+                        src={item.imageUrl || 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=500'}
+                        alt={item.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                        onError={(e: any) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=500';
+                        }}
+                      />
+                      <div className="absolute top-2 left-2 bg-gradient-to-r from-amber-600 to-amber-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                        <Sparkles size={11} />
+                        {item.badge || 'AI Gợi Ý'}
+                      </div>
+                      <div className="absolute bottom-2 right-2 bg-stone-900/85 backdrop-blur-sm text-white px-2.5 py-0.5 rounded-lg text-xs font-extrabold shadow">
+                        {item.price.toLocaleString('vi-VN')}đ
+                      </div>
+                    </div>
+
+                    {/* Item Info */}
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-amber-700 uppercase tracking-wider">
+                        {item.categoryName || 'Món Ngon'}
+                      </span>
+                      {item.confidenceScore && (
+                        <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">
+                          {Math.round(item.confidenceScore * 100)}% Match
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="font-bold text-stone-900 text-base mb-2 group-hover:text-amber-800 transition-colors line-clamp-1">
+                      {item.name}
+                    </h3>
+
+                    {/* AI Reason */}
+                    <div className="bg-amber-50/70 border border-amber-200/50 rounded-xl p-2.5 mb-3 space-y-1">
+                      <p className="text-xs text-amber-950/90 leading-relaxed italic">
+                        "{item.reason}"
+                      </p>
+                      {item.pairingTip && (
+                        <p className="text-[11px] text-amber-800 font-medium flex items-center gap-1">
+                          <span className="font-bold">Mẹo:</span> {item.pairingTip}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add to Cart Button */}
+                  <button
+                    onClick={() => handleAddItem(item)}
+                    className="w-full py-2.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm hover:shadow-md"
+                  >
+                    <span className="text-base leading-none">+</span>
+                    Thêm vào Giỏ
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-8 text-center border border-stone-200 text-stone-500">
+              <Bot size={36} className="mx-auto text-stone-400 mb-2" />
+              <p className="font-medium">Chưa có gợi ý món nào phù hợp.</p>
+              <button
+                onClick={() => fetchRecommendations(selectedMood)}
+                className="mt-3 px-4 py-2 bg-amber-800 text-white text-xs font-bold rounded-xl"
+              >
+                Thử lại
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Recommended Bundles & Combos */}
+        {recommendationsData?.combos && recommendationsData.combos.length > 0 && (
+          <section className="space-y-4 pt-4">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div>
+                <span className="text-amber-700 font-bold tracking-wider text-xs uppercase block">Ưu Đãi Tuyển Chọn</span>
+                <h2 className="text-xl font-bold text-stone-900">Gói Combo Tiết Kiệm Do AI Thiết Kế</h2>
+              </div>
+              <p className="text-stone-500 text-xs max-w-md">
+                Sự kết hợp hoàn hảo giữa các món ngon với mức giá ưu đãi đặc biệt.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {recommendationsData.combos.map((combo, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(45,27,19,0.06)] border border-amber-900/10 flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 bg-gradient-to-l from-rose-500 to-amber-500 text-white text-xs font-extrabold px-4 py-1 rounded-bl-2xl shadow-sm">
+                    Tiết kiệm {combo.discountPercent}%
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold mb-1.5">
+                        {combo.tag || 'Combo Đặc Biệt'}
+                      </span>
+                      <h3 className="text-lg font-extrabold text-stone-900">{combo.title}</h3>
+                      <p className="text-stone-600 text-xs mt-1">{combo.description}</p>
+                    </div>
+
+                    {/* Combo Item Thumbnails */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-stone-50 p-3 rounded-2xl border border-stone-200/60">
+                      {combo.items.map((cItem, iIdx) => (
+                        <div key={iIdx} className="flex items-center gap-2">
+                          <img
+                            src={cItem.imageUrl || 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200'}
+                            alt={cItem.name}
+                            className="w-11 h-11 object-cover rounded-lg border border-stone-200"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-stone-800 truncate">{cItem.name}</p>
+                            <p className="text-[11px] text-stone-500">{cItem.price.toLocaleString('vi-VN')}đ</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Price and CTA */}
+                  <div className="mt-5 pt-4 border-t border-stone-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-xs text-stone-400 line-through block">
+                        {combo.originalPrice.toLocaleString('vi-VN')}đ
+                      </span>
+                      <span className="text-lg font-black text-amber-800">
+                        {combo.discountedPrice.toLocaleString('vi-VN')}đ
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={() => handleAddCombo(combo)}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-700 to-amber-900 hover:from-amber-800 hover:to-amber-950 text-white text-xs font-bold shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                      <Sparkles size={14} />
+                      Thêm Cả Combo
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+          </>
+        )}
+
+        {/* Bottom CTA Actions */}
+        <section className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-stone-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h4 className="font-bold text-stone-900 text-sm md:text-base">Đã chọn xong món yêu thích?</h4>
+            <p className="text-xs text-stone-500">Giỏ hàng của bạn đang có {cartCount} món. Kiểm tra lại và hoàn tất đơn hàng.</p>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Link
+              to="/"
+              className="flex-1 sm:flex-none text-center px-5 py-2.5 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-50 transition-colors"
+            >
+              Thực Đơn Đầy Đủ
+            </Link>
+            <Link
+              to="/cart"
+              className="flex-1 sm:flex-none text-center px-6 py-2.5 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
+            >
+              Xem Giỏ Hàng
+              <span className="text-sm">→</span>
+            </Link>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
-      <footer className="bg-surface-container dark:bg-surface-container-lowest full-width bottom transition-colors">
-        <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-stack-lg w-full max-w-7xl mx-auto gap-8">
-          <div className="text-center md:text-left">
-            <h2 className="font-headline-md text-headline-md font-bold text-primary">AI-SMARTSERVE</h2>
-            <p className="text-on-surface-variant mt-2 font-body-md text-body-md">Nơi mang đến sự ấm áp và thoải mái mỗi ngày.</p>
+      <footer className="bg-stone-900 text-stone-400 text-xs py-8 px-4 mt-12 pb-24 md:pb-8">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded bg-amber-600 flex items-center justify-center text-white font-bold text-xs">
+              AI
+            </div>
+            <span className="font-bold text-stone-200">AI-SMARTSERVE</span>
+            <span>— Trợ lý ẩm thực thông minh</span>
           </div>
-          <div className="flex flex-wrap justify-center gap-6">
-            <a className="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed font-body-md text-body-md transition-colors opacity-100 hover:opacity-80 cursor-pointer">Về Chúng Tôi</a>
-            <a className="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed font-body-md text-body-md transition-colors opacity-100 hover:opacity-80 cursor-pointer">Cửa Hàng</a>
-            <a className="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed font-body-md text-body-md transition-colors opacity-100 hover:opacity-80 cursor-pointer">Chính Sách Bảo Mật</a>
-            <a className="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed font-body-md text-body-md transition-colors opacity-100 hover:opacity-80 cursor-pointer">Điều Khoản Dịch Vụ</a>
-          </div>
-          <div className="text-on-surface-variant font-body-md text-body-md">
-            © 2024 AI-SMARTSERVE. All rights reserved.
-          </div>
+          <p>© 2026 WebCafe AI-SmartServe. All rights reserved.</p>
         </div>
       </footer>
+
       <MobileBottomNav />
     </div>
   );

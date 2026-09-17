@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import Pagination from '../../components/Pagination';
 import AiSommelierChat from '../../components/AiSommelierChat';
+import AuthModal from '../../components/AuthModal';
+import UserMenu from '../../components/UserMenu';
+import { useAuthStore } from '../../store/authStore';
 
 const DEFAULT_CATEGORIES = [
   { id: 'Cà Phê Pha Máy', name: 'Cà Phê Pha Máy', icon: 'coffee' },
@@ -26,7 +29,8 @@ export default function Menu() {
     setTable, 
     cart, 
     addToCart, 
-    activeOrder 
+    activeOrder,
+    guestSession
   } = useStore();
 
   const [activeCategory, setActiveCategory] = useState<string>('Cà Phê Pha Máy');
@@ -38,10 +42,24 @@ export default function Menu() {
   // Stock status per branch
   const [stockStatus, setStockStatus] = useState<{ [id: string]: boolean }>({});
 
+  // Auth Modal & User Menu states
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { isAuthenticated, user } = useAuthStore();
+
   useEffect(() => {
-    setStoreId(storeIdParam);
-    if (tableParam) setTable(tableParam);
-    fetchMenu(storeIdParam);
+    // Load guest session from localStorage if exists
+    const savedSession = localStorage.getItem('guestSession');
+    if (savedSession) {
+      const session = JSON.parse(savedSession);
+      setStoreId(session.storeId);
+      setTable(session.tableId);
+      fetchMenu(session.storeId);
+    } else {
+      setStoreId(storeIdParam);
+      if (tableParam) setTable(tableParam);
+      fetchMenu(storeIdParam);
+    }
 
     const loadStock = () => {
       const saved = localStorage.getItem(`webcafe_stock_store_${storeIdParam}`);
@@ -98,87 +116,17 @@ export default function Menu() {
     };
     addToCart(fullItem, { quantity: 1 });
   };
+
+  const handleUserIconClick = () => {
+    if (isAuthenticated) {
+      setIsUserMenuOpen(!isUserMenuOpen);
+    } else {
+      setIsAuthModalOpen(true);
+    }
+  };
+
   return (
-    <div className="font-body-md text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed min-h-screen bg-background animate-in fade-in duration-500">
-      {/* TopNavBar */}
-      <nav className="w-full sticky top-0 z-40 bg-surface/95 dark:bg-surface-dim backdrop-blur-md border-b border-outline-variant/10 shadow-sm dark:shadow-none glass-header">
-        <div className="flex justify-between items-center px-4 sm:px-container-margin py-3.5 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 sm:gap-stack-lg">
-            <button 
-              className="lg:hidden p-2 -ml-1 text-primary hover:bg-primary/10 rounded-full transition-colors flex items-center justify-center" 
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle Navigation Drawer"
-            >
-              <span className="material-symbols-outlined text-2xl">{isMobileMenuOpen ? 'close' : 'menu'}</span>
-            </button>
-            <Link to="/" className="text-lg sm:text-2xl font-black text-primary dark:text-primary-fixed-dim whitespace-nowrap tracking-tight">
-              AI-SMARTSERVE
-            </Link>
-            <div className="hidden md:flex gap-gutter items-center">
-              <Link to="/" className="font-label-md text-label-md text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1">Thực Đơn</Link>
-              <Link to="/ai-suggest" className="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">AI Gợi Ý</Link>
-              <Link to="/tracking" className="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors">Theo Dõi Đơn</Link>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 sm:gap-stack-md">
-            {tableParam && (
-              <span className="px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold shadow-xs">
-                Bàn {tableParam}
-              </span>
-            )}
-            <Link 
-              to="/cart" 
-              className="relative p-2 sm:p-2.5 rounded-full hover:bg-surface-container-high transition-all text-primary dark:text-primary-fixed-dim flex items-center justify-center"
-              aria-label="Giỏ hàng"
-            >
-              <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-white rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center shadow-md animate-scale">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* Mobile Drawer */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 lg:hidden transition-opacity" 
-          onClick={() => setIsMobileMenuOpen(false)} 
-        />
-      )}
-
-      <aside className={`fixed top-0 left-0 bottom-0 w-72 bg-surface dark:bg-surface-dim z-50 shadow-2xl p-6 flex flex-col gap-6 lg:hidden transition-transform duration-300 ease-out ${
-        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        <div className="flex justify-between items-center border-b border-outline-variant/15 pb-4">
-          <span className="font-black text-xl text-primary">AI-SMARTSERVE</span>
-          <button 
-            onClick={() => setIsMobileMenuOpen(false)} 
-            className="p-1 rounded-full text-on-surface-variant hover:bg-surface-container flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined text-2xl">close</span>
-          </button>
-        </div>
-        <nav className="flex flex-col gap-2">
-          <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl bg-primary/10 text-primary font-bold flex items-center gap-3">
-            <span className="material-symbols-outlined">menu_book</span> Thực Đơn
-          </Link>
-          <Link to="/ai-suggest" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-surface-container text-on-surface-variant font-bold flex items-center gap-3">
-            <span className="material-symbols-outlined">auto_awesome</span> AI Gợi Ý
-          </Link>
-          <Link to="/tracking" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-surface-container text-on-surface-variant font-bold flex items-center gap-3">
-            <span className="material-symbols-outlined">receipt_long</span> Theo Dõi Đơn
-          </Link>
-          <Link to="/cart" onClick={() => setIsMobileMenuOpen(false)} className="px-4 py-3 rounded-xl hover:bg-surface-container text-on-surface-variant font-bold flex items-center gap-3">
-            <span className="material-symbols-outlined">shopping_cart</span> Giỏ Hàng ({cartCount})
-          </Link>
-        </nav>
-      </aside>
-
+    <div className="font-body-md text-on-surface selection:bg-primary-fixed selection:text-on-primary-fixed bg-background">
       {/* Main Container */}
       <div className="flex max-w-7xl mx-auto px-4 sm:px-container-margin py-4 sm:py-stack-md gap-stack-lg">
         {/* Desktop Sidebar (Categories) */}
@@ -375,25 +323,15 @@ export default function Menu() {
         </main>
       </div>
 
-      {/* Footer */}
-      <footer className="w-full mt-auto bg-surface-container-highest dark:bg-surface-container border-t border-outline-variant/20 relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-center px-container-margin py-6 sm:py-stack-lg max-w-7xl mx-auto gap-4">
-          <div className="flex flex-col gap-1 items-center md:items-start text-center md:text-left">
-            <span className="font-headline-md text-base sm:text-xl text-primary font-bold">AI-SMARTSERVE</span>
-            <p className="font-label-sm text-xs text-on-surface-variant">© 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4 text-xs text-on-surface-variant">
-            <a className="hover:text-primary transition-colors cursor-pointer">Chính Sách</a>
-            <a className="hover:text-primary transition-colors cursor-pointer">Điều Khoản</a>
-            <a className="hover:text-primary transition-colors cursor-pointer">Liên Hệ</a>
-          </div>
-        </div>
-      </footer>
+
 
       {/* Floating AI Sommelier Chat Widget */}
       <AiSommelierChat mode="floating" />
       
       <MobileBottomNav />
+
+      {/* Auth Modal */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }

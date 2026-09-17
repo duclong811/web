@@ -13,7 +13,9 @@ export default function Cart() {
     currentTable,
     appliedVoucherCode,
     voucherDiscount,
-    setVoucher
+    setVoucher,
+    guestSession,
+    updateGuestInfo
   } = useStore();
 
   const navigate = useNavigate();
@@ -44,9 +46,14 @@ export default function Cart() {
     if (cart.length === 0 || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const tableToUse = currentTable || 'T01';
+      // Update guest info before checkout
+      if (guestSession) {
+        updateGuestInfo(customerName, customerPhone);
+      }
+      
+      const tableToUse = guestSession?.tableId || currentTable || 'T01';
       const order = await createOrder(tableToUse, customerPhone, customerName, orderNote);
-      navigate(`/tracking?code=${order.orderCode}`);
+      navigate(`/order-success?code=${order.orderCode}&orderId=${order.id}`);
     } catch (err) {
       console.error('Order creation error:', err);
       navigate('/order-success');
@@ -164,7 +171,15 @@ export default function Cart() {
             {/* Customer Details Form */}
             {cart.length > 0 && (
               <section className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/20 space-y-4">
-                <h3 className="font-headline-md text-label-md font-bold text-primary">Thông Tin Bàn & Ghi Chú</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-headline-md text-label-md font-bold text-primary">Thông Tin Bàn & Ghi Chú</h3>
+                  {(guestSession?.tableId || currentTable) && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary-container text-on-secondary-container rounded-full">
+                      <span className="material-symbols-outlined text-sm">table_restaurant</span>
+                      <span className="text-xs font-bold">Bàn của bạn: {guestSession?.tableId || currentTable}</span>
+                    </div>
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-on-surface-variant block mb-1">Tên khách hàng (Tùy chọn)</label>

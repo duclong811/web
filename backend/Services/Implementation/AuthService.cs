@@ -4,6 +4,7 @@ using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Common.Helper;
 using WebCafe.Backend.Infrastructure.Data;
 using WebCafe.Backend.Models.DTOs.Auth;
+using WebCafe.Backend.Models.Entities;
 using WebCafe.Backend.Services.Abstraction;
 
 namespace WebCafe.Backend.Services.Implementation
@@ -141,6 +142,51 @@ namespace WebCafe.Backend.Services.Implementation
                 StoreId = null,
                 StoreName = null,
                 BrandName = "WebCafe System"
+            };
+        }
+
+        public async Task<RegisterResponse> RegisterCustomerAsync(RegisterRequest request)
+        {
+            // Kiểm tra email đã tồn tại chưa
+            var existingByEmail = await _db.Customers
+                .FirstOrDefaultAsync(c => c.Phone == request.Email);
+
+            if (existingByEmail != null)
+            {
+                throw new AppException("Email này đã được đăng ký.");
+            }
+
+            // Kiểm tra phone đã tồn tại chưa
+            var existingByPhone = await _db.Customers
+                .FirstOrDefaultAsync(c => c.Phone == request.Phone);
+
+            if (existingByPhone != null)
+            {
+                throw new AppException("Số điện thoại này đã được đăng ký.");
+            }
+
+            // Tạo customer mới với TenantId mặc định = 1 (The Coffee House)
+            var customer = new Customer
+            {
+                TenantId = 1,
+                Phone = request.Phone,
+                Name = request.FullName,
+                TotalPoints = 0,
+                TotalSpent = 0,
+                VisitCount = 0,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.Customers.Add(customer);
+            await _db.SaveChangesAsync();
+
+            return new RegisterResponse
+            {
+                CustomerId = customer.CustomerId,
+                Email = request.Email,
+                Phone = request.Phone,
+                FullName = customer.Name ?? string.Empty,
+                Message = "Đăng ký thành công! Bạn có thể đặt món ngay bây giờ."
             };
         }
     }

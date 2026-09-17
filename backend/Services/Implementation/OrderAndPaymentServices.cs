@@ -306,6 +306,12 @@ namespace WebCafe.Backend.Services.Implementation
                 OrderCode = orderCode,
                 TableId = dto.TableId,
                 CustomerId = customer?.CustomerId,
+                
+                // Guest Order Support
+                GuestId = dto.GuestId,
+                GuestName = dto.GuestName ?? dto.CustomerName,
+                GuestPhone = dto.GuestPhone ?? dto.CustomerPhone,
+                
                 Status = OrderStatus.Pending,
                 SubTotal = subTotal,
                 DiscountAmount = totalDiscount,
@@ -486,6 +492,12 @@ namespace WebCafe.Backend.Services.Implementation
                 CustomerId = o.CustomerId,
                 CustomerName = o.Customer?.Name,
                 CustomerPhone = o.Customer?.Phone,
+                
+                // Guest Order Fields
+                GuestId = o.GuestId,
+                GuestName = o.GuestName,
+                GuestPhone = o.GuestPhone,
+                
                 Status = o.Status,
                 SubTotal = o.SubTotal,
                 DiscountAmount = o.DiscountAmount,

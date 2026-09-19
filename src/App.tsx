@@ -1,4 +1,4 @@
-﻿import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 import CustomerLayout from './layouts/CustomerLayout';
 import StaffLayout from './layouts/StaffLayout';
@@ -25,6 +25,7 @@ import NewOrder from './pages/staff/NewOrder';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Analytics from './pages/admin/Analytics';
 import MenuManagement from './pages/admin/MenuManagement';
+import InventoryManagement from './pages/admin/InventoryManagement';
 import TableManagement from './pages/admin/TableManagement';
 import StaffManagement from './pages/admin/StaffManagement';
 
@@ -63,6 +64,7 @@ function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="menu" element={<MenuManagement />} />
+          <Route path="inventory" element={<InventoryManagement />} />
           <Route path="tables" element={<TableManagement />} />
           <Route path="staff" element={<StaffManagement />} />
         </Route>

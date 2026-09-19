@@ -105,7 +105,18 @@ export default function Menu() {
       categoryId: activeCategory,
       description: '',
     };
-    addToCart(fullItem, { quantity: 1 });
+
+    // Gán size mặc định (thường là size Medium) nếu món có danh sách sizes
+    const defaultSize = fullItem.rawDto?.sizes && fullItem.rawDto.sizes.length > 0 
+      ? fullItem.rawDto.sizes[0] 
+      : undefined;
+
+    addToCart(fullItem, { 
+      quantity: 1,
+      sizeId: defaultSize?.sizeId,
+      sizeName: defaultSize?.name,
+      sizeExtra: defaultSize?.extraPrice || 0
+    });
   };
 
   return (

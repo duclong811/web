@@ -1,7 +1,18 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { inventoryApi } from '../../api/apis';
+import type { LowStockAlertDto } from '../../types/apiTypes';
 
 export default function AdminDashboard() {
-  const { orders } = useStore();
+  const { orders, currentStoreId } = useStore();
+  const [alerts, setAlerts] = useState<LowStockAlertDto[]>([]);
+
+  useEffect(() => {
+    inventoryApi.getLowStockAlerts(currentStoreId || 1)
+      .then(data => setAlerts(data || []))
+      .catch(err => console.error('Failed to load inventory alerts:', err));
+  }, [currentStoreId]);
 
   const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString());
   const revenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
@@ -10,10 +21,50 @@ export default function AdminDashboard() {
   return (
     <div className="pt-24 px-container-margin pb-stack-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Welcome Header */}
-      <header className="mb-stack-lg">
-        <h2 className="font-headline-lg text-headline-lg text-primary">Overview</h2>
-        <p className="font-body-md text-body-md text-on-surface-variant">Welcome back, Alex. Here's what's brewing today.</p>
+      <header className="mb-stack-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-headline-lg text-headline-lg text-primary">Overview</h2>
+          <p className="font-body-md text-body-md text-on-surface-variant">Welcome back, Alex. Here's what's brewing today.</p>
+        </div>
+        <Link
+          to="/admin/inventory"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-high hover:bg-secondary-container/50 text-on-surface text-sm font-semibold transition-all border border-outline-variant/30 self-start"
+        >
+          <span className="material-symbols-outlined text-lg">inventory_2</span>
+          Quản Lý Kho FnB
+          {alerts.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500 text-white animate-pulse">
+              {alerts.length} thiếu
+            </span>
+          )}
+        </Link>
       </header>
+
+      {/* Critical Stock Alert Banner */}
+      {alerts.length > 0 && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-200 text-amber-800 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-xl">warning</span>
+            </div>
+            <div>
+              <p className="font-bold text-sm">
+                Cảnh báo: Có {alerts.length} nguyên liệu trong kho đang ở mức báo động!
+              </p>
+              <p className="text-xs text-amber-800/80">
+                {alerts.slice(0, 3).map(a => `${a.ingredientName} (còn ${a.currentQuantity} ${a.unit})`).join(', ')}
+                {alerts.length > 3 ? '...' : ''}
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/admin/inventory"
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all self-start sm:self-auto shadow-sm whitespace-nowrap"
+          >
+            Nhập Kho Ngay
+          </Link>
+        </div>
+      )}
 
       {/* Top Level Bento Grid Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-stack-md mb-stack-lg">

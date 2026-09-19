@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Helper;
 using WebCafe.Backend.Infrastructure.Data;
 using WebCafe.Backend.Models.Entities;
@@ -346,6 +346,141 @@ namespace WebCafe.Backend.Infrastructure.Seeder
                     IsActive = true
                 });
                 await db.SaveChangesAsync();
+            }
+
+            // 7. Seed Inventory Ingredients & Recipes
+            if (!await db.Ingredients.AnyAsync(i => i.TenantId == tenant.TenantId))
+            {
+                var ingRobusta = new Ingredient { TenantId = tenant.TenantId, Name = "Cà phê Robusta Đắk Lắk", Unit = "kg", MinimumStock = 3.0m, Description = "Hạt rang mộc đậm đà nguyên bản" };
+                var ingArabica = new Ingredient { TenantId = tenant.TenantId, Name = "Cà phê Arabica Cầu Đất", Unit = "kg", MinimumStock = 2.0m, Description = "Hương thơm hoa quả, hậu vị thanh tao" };
+                var ingSuaDac = new Ingredient { TenantId = tenant.TenantId, Name = "Sữa đặc Ông Thọ", Unit = "hộp", MinimumStock = 5.0m, Description = "Hộp lon 380g" };
+                var ingSuaTuoi = new Ingredient { TenantId = tenant.TenantId, Name = "Sữa tươi Barista Dalat Milk", Unit = "lít", MinimumStock = 10.0m, Description = "Sữa thanh trùng chuyên dùng pha chế" };
+                var ingDuong = new Ingredient { TenantId = tenant.TenantId, Name = "Đường mía Biên Hòa", Unit = "kg", MinimumStock = 5.0m, Description = "Đường cát trắng tinh khiết" };
+                var ingTraOlong = new Ingredient { TenantId = tenant.TenantId, Name = "Trà Ô Long Bảo Lộc", Unit = "kg", MinimumStock = 1.0m, Description = "Trà búp sao khô thơm ngát" };
+                var ingSyrupVani = new Ingredient { TenantId = tenant.TenantId, Name = "Syrup Monin Vani", Unit = "chai", MinimumStock = 2.0m, Description = "Chai 700ml hương vani Pháp" };
+                var ingLyNhua = new Ingredient { TenantId = tenant.TenantId, Name = "Ly giấy takeaway 500ml", Unit = "cái", MinimumStock = 100.0m, Description = "Ly thân thiện môi trường" };
+                var ingOngHut = new Ingredient { TenantId = tenant.TenantId, Name = "Ống hút bã mía", Unit = "cái", MinimumStock = 100.0m, Description = "Ống hút tự hủy sinh học" };
+
+                db.Ingredients.AddRange(ingRobusta, ingArabica, ingSuaDac, ingSuaTuoi, ingDuong, ingTraOlong, ingSyrupVani, ingLyNhua, ingOngHut);
+                await db.SaveChangesAsync();
+
+                // Stock for Store 1
+                var stocks = new List<InventoryStock>
+                {
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingRobusta.IngredientId, CurrentQuantity = 12.5m, LastUpdated = DateTime.UtcNow },
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingArabica.IngredientId, CurrentQuantity = 1.8m, LastUpdated = DateTime.UtcNow }, // Warning: Low stock!
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingSuaDac.IngredientId, CurrentQuantity = 24.0m, LastUpdated = DateTime.UtcNow },
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingSuaTuoi.IngredientId, CurrentQuantity = 18.0m, LastUpdated = DateTime.UtcNow },
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingDuong.IngredientId, CurrentQuantity = 8.5m, LastUpdated = DateTime.UtcNow },
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingTraOlong.IngredientId, CurrentQuantity = 0.8m, LastUpdated = DateTime.UtcNow }, // Warning: Low stock!
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingSyrupVani.IngredientId, CurrentQuantity = 4.0m, LastUpdated = DateTime.UtcNow },
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingLyNhua.IngredientId, CurrentQuantity = 450.0m, LastUpdated = DateTime.UtcNow },
+                    new InventoryStock { StoreId = store1.StoreId, IngredientId = ingOngHut.IngredientId, CurrentQuantity = 500.0m, LastUpdated = DateTime.UtcNow },
+                };
+                db.InventoryStocks.AddRange(stocks);
+                await db.SaveChangesAsync();
+
+                // Initial Import Transactions
+                foreach (var st in stocks)
+                {
+                    db.InventoryTransactions.Add(new InventoryTransaction
+                    {
+                        StockId = st.StockId,
+                        Type = "import",
+                        Quantity = st.CurrentQuantity,
+                        QuantityBefore = 0,
+                        QuantityAfter = st.CurrentQuantity,
+                        Note = "Khởi tạo tồn kho ban đầu",
+                        CreatedAt = DateTime.UtcNow.AddDays(-2)
+                    });
+                }
+                await db.SaveChangesAsync();
+
+                // Recipes for first few menu items
+                var menuItems = await db.MenuItems.Where(m => m.TenantId == tenant.TenantId).Take(5).ToListAsync();
+                if (menuItems.Any())
+                {
+                    var recipes = new List<MenuItemRecipe>();
+                    var m1 = menuItems[0];
+                    recipes.Add(new MenuItemRecipe { MenuItemId = m1.MenuItemId, IngredientId = ingRobusta.IngredientId, QuantityRequired = 0.025m });
+                    recipes.Add(new MenuItemRecipe { MenuItemId = m1.MenuItemId, IngredientId = ingSuaDac.IngredientId, QuantityRequired = 0.1m });
+                    recipes.Add(new MenuItemRecipe { MenuItemId = m1.MenuItemId, IngredientId = ingLyNhua.IngredientId, QuantityRequired = 1.0m });
+                    recipes.Add(new MenuItemRecipe { MenuItemId = m1.MenuItemId, IngredientId = ingOngHut.IngredientId, QuantityRequired = 1.0m });
+
+                    if (menuItems.Count > 1)
+                    {
+                        var m2 = menuItems[1];
+                        recipes.Add(new MenuItemRecipe { MenuItemId = m2.MenuItemId, IngredientId = ingRobusta.IngredientId, QuantityRequired = 0.015m });
+                        recipes.Add(new MenuItemRecipe { MenuItemId = m2.MenuItemId, IngredientId = ingSuaDac.IngredientId, QuantityRequired = 0.08m });
+                        recipes.Add(new MenuItemRecipe { MenuItemId = m2.MenuItemId, IngredientId = ingSuaTuoi.IngredientId, QuantityRequired = 0.06m });
+                        recipes.Add(new MenuItemRecipe { MenuItemId = m2.MenuItemId, IngredientId = ingLyNhua.IngredientId, QuantityRequired = 1.0m });
+                    }
+
+                    db.MenuItemRecipes.AddRange(recipes);
+                    await db.SaveChangesAsync();
+                }
+            }
+
+            // 8. Đảm bảo toàn bộ MenuItems đồ uống đều có công thức (BOM) để trừ kho tự động
+            var allItems = await db.MenuItems.Where(m => m.TenantId == tenant.TenantId).ToListAsync();
+            var allIngs = await db.Ingredients.Where(i => i.TenantId == tenant.TenantId).ToListAsync();
+            
+            var ingRob = allIngs.FirstOrDefault(i => i.Name.Contains("Robusta")) ?? allIngs.FirstOrDefault();
+            var ingAra = allIngs.FirstOrDefault(i => i.Name.Contains("Arabica")) ?? ingRob;
+            var ingSuaT = allIngs.FirstOrDefault(i => i.Name.Contains("Sữa tươi")) ?? allIngs.FirstOrDefault();
+            var ingSuaD = allIngs.FirstOrDefault(i => i.Name.Contains("Sữa đặc")) ?? allIngs.FirstOrDefault();
+            var ingDu = allIngs.FirstOrDefault(i => i.Name.Contains("Đường")) ?? allIngs.FirstOrDefault();
+            var ingTra = allIngs.FirstOrDefault(i => i.Name.Contains("Trà")) ?? allIngs.FirstOrDefault();
+            var ingLy = allIngs.FirstOrDefault(i => i.Name.Contains("Ly")) ?? allIngs.FirstOrDefault();
+            var ingOng = allIngs.FirstOrDefault(i => i.Name.Contains("Ống hút")) ?? allIngs.FirstOrDefault();
+
+            if (ingRob != null && ingLy != null && ingOng != null)
+            {
+                var extraRecipes = new List<MenuItemRecipe>();
+                foreach (var mi in allItems)
+                {
+                    bool hasRecipe = await db.MenuItemRecipes.AnyAsync(r => r.MenuItemId == mi.MenuItemId);
+                    if (!hasRecipe)
+                    {
+                        var nameLower = mi.Name.ToLower();
+                        if (nameLower.Contains("cà phê") || nameLower.Contains("cafe") || nameLower.Contains("latte") || 
+                            nameLower.Contains("cappuccino") || nameLower.Contains("espresso") || nameLower.Contains("praline") ||
+                            nameLower.Contains("hazelnut") || nameLower.Contains("americano"))
+                        {
+                            // Công thức cho Latte / Cà phê cao cấp
+                            extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingAra!.IngredientId, QuantityRequired = 0.02m });
+                            if (ingSuaT != null)
+                                extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingSuaT.IngredientId, QuantityRequired = 0.15m });
+                            extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingLy.IngredientId, QuantityRequired = 1.0m });
+                            extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingOng.IngredientId, QuantityRequired = 1.0m });
+                        }
+                        else if (nameLower.Contains("trà") || nameLower.Contains("tea") || nameLower.Contains("olong") || nameLower.Contains("matcha"))
+                        {
+                            // Công thức trà
+                            if (ingTra != null)
+                                extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingTra.IngredientId, QuantityRequired = 0.015m });
+                            if (ingDu != null)
+                                extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingDu.IngredientId, QuantityRequired = 0.02m });
+                            extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingLy.IngredientId, QuantityRequired = 1.0m });
+                            extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingOng.IngredientId, QuantityRequired = 1.0m });
+                        }
+                        else
+                        {
+                            // Đồ uống khác
+                            extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingRob.IngredientId, QuantityRequired = 0.02m });
+                            if (ingSuaD != null)
+                                extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingSuaD.IngredientId, QuantityRequired = 0.05m });
+                            extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingLy.IngredientId, QuantityRequired = 1.0m });
+                            extraRecipes.Add(new MenuItemRecipe { MenuItemId = mi.MenuItemId, IngredientId = ingOng.IngredientId, QuantityRequired = 1.0m });
+                        }
+                    }
+                }
+
+                if (extraRecipes.Any())
+                {
+                    db.MenuItemRecipes.AddRange(extraRecipes);
+                    await db.SaveChangesAsync();
+                }
             }
         }
     }

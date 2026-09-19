@@ -1,4 +1,4 @@
-﻿import { useStore } from '../../store/useStore';
+import { useStore } from '../../store/useStore';
 import { Link, useNavigate } from 'react-router-dom';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { ShoppingCart } from 'lucide-react';
@@ -116,55 +116,65 @@ export default function Cart() {
                   </Link>
                 </div>
               ) : (
-                cart.map(item => (
-                  <div key={`${item.id}-${item.sizeName}-${item.sugarLevel}-${item.iceLevel}`} className="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_rgba(85,55,34,0.05)] border border-surface-variant flex items-center gap-4 group transition-all hover:shadow-[0_8px_30px_rgba(85,55,34,0.1)]">
-                    <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-low">
-                      <img className="w-full h-full object-cover" src={item.image} alt={item.name} />
-                    </div>
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-headline-md text-label-md font-bold text-on-surface">{item.name}</h3>
-                          <div className="text-xs text-on-surface-variant mt-1 flex flex-wrap gap-2">
-                            {item.sizeName && <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md font-bold">Size: {item.sizeName}</span>}
-                            {item.sugarLevel && <span>Đường: {item.sugarLevel}</span>}
-                            {item.iceLevel && <span>Đá: {item.iceLevel}</span>}
-                            {item.note && <span className="italic text-primary">"{item.note}"</span>}
+                cart.map(item => {
+                  const itemKey = item.cartItemId || `${item.id}-${item.sizeId}-${item.sugarLevel}-${item.iceLevel}`;
+                  return (
+                    <div key={itemKey} className="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_rgba(85,55,34,0.05)] border border-surface-variant flex items-center gap-4 group transition-all hover:shadow-[0_8px_30px_rgba(85,55,34,0.1)]">
+                      <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-surface-container-low">
+                        <img className="w-full h-full object-cover" src={item.image} alt={item.name} />
+                      </div>
+                      <div className="flex-grow">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-headline-md text-label-md font-bold text-on-surface">{item.name}</h3>
+                            <div className="text-xs text-on-surface-variant mt-1 flex flex-wrap gap-2">
+                              {item.sizeName && <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-md font-bold">Size: {item.sizeName}</span>}
+                              {item.sugarLevel && <span>Đường: {item.sugarLevel}</span>}
+                              {item.iceLevel && <span>Đá: {item.iceLevel}</span>}
+                              {item.note && <span className="italic text-primary">"{item.note}"</span>}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => removeFromCart(item.cartItemId || item.id)} 
+                            className="text-error hover:bg-error/10 p-1.5 rounded-full transition-colors"
+                            title="Xóa món"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                        
+                        <div className="flex justify-between items-center mt-4">
+                          <div>
+                            <span className="font-headline-md text-label-md text-primary font-bold">
+                              {(item.price * item.quantity).toLocaleString('vi-VN')}đ
+                            </span>
+                            {item.quantity > 1 && (
+                              <span className="text-xs text-on-surface-variant ml-2">
+                                ({item.price.toLocaleString('vi-VN')}đ / ly)
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 bg-surface-variant/40 rounded-full px-2 py-1">
+                            <button 
+                              onClick={() => updateQuantity(item.cartItemId || item.id, item.quantity - 1)}
+                              className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-primary shadow-xs hover:bg-primary hover:text-white transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-xs">remove</span>
+                            </button>
+                            <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                            <button 
+                              onClick={() => updateQuantity(item.cartItemId || item.id, item.quantity + 1)}
+                              className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-primary shadow-xs hover:bg-primary hover:text-white transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-xs">add</span>
+                            </button>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => removeFromCart(item.id)} 
-                          className="text-error hover:bg-error/10 p-1.5 rounded-full transition-colors"
-                          title="Xóa món"
-                        >
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                        </button>
-                      </div>
-                      
-                      <div className="flex justify-between items-center mt-4">
-                        <span className="font-headline-md text-label-md text-primary font-bold">
-                          {(item.price * item.quantity).toLocaleString('vi-VN')}đ
-                        </span>
-                        
-                        <div className="flex items-center gap-2 bg-surface-variant/40 rounded-full px-2 py-1">
-                          <button 
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-primary shadow-xs hover:bg-primary hover:text-white transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-xs">remove</span>
-                          </button>
-                          <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
-                          <button 
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-primary shadow-xs hover:bg-primary hover:text-white transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-xs">add</span>
-                          </button>
-                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </section>
 

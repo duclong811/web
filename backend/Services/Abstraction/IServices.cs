@@ -1,6 +1,7 @@
-﻿using WebCafe.Backend.Common.Models;
+using WebCafe.Backend.Common.Models;
 using WebCafe.Backend.Models.DTOs.Analytics;
 using WebCafe.Backend.Models.DTOs.Auth;
+using WebCafe.Backend.Models.DTOs.Inventory;
 using WebCafe.Backend.Models.DTOs.Menu;
 using WebCafe.Backend.Models.DTOs.Order;
 using WebCafe.Backend.Models.DTOs.Payment;
@@ -92,5 +93,19 @@ namespace WebCafe.Backend.Services.Abstraction
         Task AdjustInventoryAsync(int storeId, int ingredientId, decimal newQuantity, int? staffId, string? note);
         Task<List<InventoryStockDto>> GetInventoryByStoreAsync(int storeId);
         Task<List<InventoryTransactionDto>> GetTransactionHistoryAsync(int storeId, int? ingredientId = null, DateTime? fromDate = null, DateTime? toDate = null);
+
+        // Ingredient CRUD
+        Task<List<IngredientDto>> GetIngredientsAsync(int tenantId, int? storeId = null);
+        Task<IngredientDto> CreateIngredientAsync(CreateIngredientDto dto);
+        Task<IngredientDto> UpdateIngredientAsync(int ingredientId, UpdateIngredientDto dto);
+        Task DeleteIngredientAsync(int ingredientId);
+
+        // Recipe Management
+        Task<List<MenuItemRecipeDto>> GetMenuItemRecipesAsync(int menuItemId);
+        Task UpsertMenuItemRecipeAsync(UpsertRecipeDto dto);
+        Task DeleteMenuItemRecipeAsync(int recipeId);
+
+        // Alerts
+        Task<List<LowStockAlertDto>> GetLowStockAlertsAsync(int storeId);
     }
 }

@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { menuApi, orderApi, authApi } from '../api/apis';
 import { signalRService } from '../api/signalr';
 import type { 
@@ -30,6 +30,7 @@ export interface Category {
 }
 
 export interface CartItem extends MenuItem {
+  cartItemId?: string;
   quantity: number;
   sizeId?: number;
   sizeName?: string;
@@ -267,11 +268,18 @@ export const useStore = create<StoreState>((set, get) => ({
     const toppingExtra = options.toppingExtra || 0;
     const finalUnitPrice = itemPrice + sizeExtra + toppingExtra;
 
+    const toppingsKey = (options.toppingIds || []).slice().sort().join(',');
+    const cartItemId = `${itemId}_s${options.sizeId || 0}_sg${options.sugarLevel || '100'}_ic${options.iceLevel || '100'}_tp${toppingsKey}_n${options.note || ''}`;
+
     const existingIndex = get().cart.findIndex(i => 
-      i.id === itemId && 
-      i.sizeId === options.sizeId && 
-      (i.sizeName || '') === (options.sizeName || '') &&
-      JSON.stringify(i.toppingIds || []) === JSON.stringify(options.toppingIds || [])
+      (i.cartItemId ? i.cartItemId === cartItemId : (
+        i.id === itemId && 
+        i.sizeId === options.sizeId && 
+        (i.sizeName || '') === (options.sizeName || '') &&
+        (i.sugarLevel || '') === (options.sugarLevel || '100%') &&
+        (i.iceLevel || '') === (options.iceLevel || '100%') &&
+        JSON.stringify(i.toppingIds || []) === JSON.stringify(options.toppingIds || [])
+      ))
     );
 
     if (existingIndex > -1) {
@@ -280,6 +288,7 @@ export const useStore = create<StoreState>((set, get) => ({
       set({ cart: updatedCart });
     } else {
       const newCartItem: CartItem = {
+        cartItemId,
         id: itemId,
         name: itemName,
         description: item.description || '',
@@ -300,17 +309,17 @@ export const useStore = create<StoreState>((set, get) => ({
     }
   },
 
-  removeFromCart: (itemId) => set({
-    cart: get().cart.filter(i => i.id !== itemId)
+  removeFromCart: (key: string) => set({
+    cart: get().cart.filter(i => (i.cartItemId || i.id) !== key)
   }),
 
-  updateQuantity: (id, quantity) => {
+  updateQuantity: (key: string, quantity: number) => {
     if (quantity <= 0) {
-      get().removeFromCart(id);
+      get().removeFromCart(key);
       return;
     }
     set({
-      cart: get().cart.map(i => i.id === id ? { ...i, quantity } : i)
+      cart: get().cart.map(i => (i.cartItemId || i.id) === key ? { ...i, quantity } : i)
     });
   },
 
@@ -364,7 +373,7 @@ export const useStore = create<StoreState>((set, get) => ({
           const numId = parseInt(i.id);
           return {
             menuItemId: isNaN(numId) ? 5 : numId,
-            sizeId: i.sizeId || undefined,
+            sizeId: i.sizeId ? Number(i.sizeId) : undefined,
             quantity: i.quantity,
             sugarLevel: i.sugarLevel || '100%',
             iceLevel: i.iceLevel || '100%',

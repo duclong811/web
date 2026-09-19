@@ -303,3 +303,102 @@ export interface AiChatResponseDto {
   modelUsed: string;
 }
 
+// --- Inventory Types ---
+export interface IngredientDto {
+  ingredientId: number;
+  tenantId: number;
+  name: string;
+  unit: string;
+  minimumStock: number;
+  description?: string | null;
+  isActive: boolean;
+  currentStock: number;
+  createdAt: string;
+}
+
+export interface CreateIngredientDto {
+  tenantId: number;
+  storeId: number;
+  name: string;
+  unit: string;
+  minimumStock: number;
+  initialStock: number;
+  description?: string;
+}
+
+export interface UpdateIngredientDto {
+  name: string;
+  unit: string;
+  minimumStock: number;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface InventoryStockDto {
+  stockId: number;
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  currentQuantity: number;
+  minimumStock: number;
+  isLowStock: boolean;
+  lastUpdated?: string | null;
+}
+
+export interface InventoryTransactionDto {
+  transactionId: number;
+  ingredientName: string;
+  type: string; // import, export, deduction, adjustment
+  quantity: number;
+  quantityBefore: number;
+  quantityAfter: number;
+  orderCode?: string | null;
+  staffName?: string | null;
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface ImportInventoryDto {
+  storeId: number;
+  ingredientId: number;
+  quantity: number;
+  note?: string;
+}
+
+export interface AdjustInventoryDto {
+  storeId: number;
+  ingredientId: number;
+  newQuantity: number;
+  note?: string;
+}
+
+export interface MenuItemRecipeDto {
+  recipeId: number;
+  menuItemId: number;
+  menuItemName: string;
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  sizeId?: number | null;
+  sizeName?: string | null;
+  quantityRequired: number;
+}
+
+export interface UpsertRecipeDto {
+  menuItemId: number;
+  ingredientId: number;
+  sizeId?: number | null;
+  quantityRequired: number;
+}
+
+export interface LowStockAlertDto {
+  stockId: number;
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  currentQuantity: number;
+  minimumStock: number;
+  deficit: number;
+  lastUpdated?: string | null;
+}
+

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Common.Models;
@@ -117,12 +117,18 @@ namespace WebCafe.Backend.Services.Implementation
         private readonly WebCafeDbContext _db;
         private readonly IVoucherService _voucherService;
         private readonly IOrderNotificationService _notificationService;
+        private readonly IInventoryService _inventoryService;
 
-        public OrderService(WebCafeDbContext db, IVoucherService voucherService, IOrderNotificationService notificationService)
+        public OrderService(
+            WebCafeDbContext db, 
+            IVoucherService voucherService, 
+            IOrderNotificationService notificationService,
+            IInventoryService inventoryService)
         {
             _db = db;
             _voucherService = voucherService;
             _notificationService = notificationService;
+            _inventoryService = inventoryService;
         }
 
         public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto)
@@ -442,8 +448,8 @@ namespace WebCafe.Backend.Services.Implementation
             order.UpdatedAt = DateTime.UtcNow;
             if (staffId.HasValue) order.StaffId = staffId.Value;
 
-            // Nếu đơn đã thanh toán hoặc hủy, giải phóng bàn
-            if (newStatus == OrderStatus.Paid || newStatus == OrderStatus.Cancelled)
+            // Nếu đơn đã phục vụ, thanh toán, hoàn thành hoặc hủy: giải phóng bàn
+            if (newStatus == OrderStatus.Paid || newStatus == OrderStatus.Served || newStatus == "completed" || newStatus == OrderStatus.Cancelled)
             {
                 if (order.Table != null)
                 {
@@ -452,7 +458,7 @@ namespace WebCafe.Backend.Services.Implementation
                 }
 
                 // Tích điểm cho khách khi đơn hoàn tất
-                if (newStatus == OrderStatus.Paid && order.CustomerId.HasValue && order.PointsEarned > 0)
+                if ((newStatus == OrderStatus.Paid || newStatus == "completed" || newStatus == OrderStatus.Served) && order.CustomerId.HasValue && order.PointsEarned > 0)
                 {
                     var customer = await _db.Customers.FindAsync(order.CustomerId.Value);
                     if (customer != null)
@@ -468,6 +474,20 @@ namespace WebCafe.Backend.Services.Implementation
                             Description = $"Tích điểm đơn hàng {order.OrderCode}"
                         });
                     }
+                }
+            }
+
+            // Tự động trừ kho theo BOM khi hoàn thành pha chế (ready), phục vụ (served) hoặc thanh toán (paid/completed)
+            // (hàm DeductInventoryForOrderAsync đã có kiểm tra idempotent, không trừ trùng lặp)
+            if (newStatus == OrderStatus.Ready || newStatus == OrderStatus.Served || newStatus == OrderStatus.Paid || newStatus == "completed")
+            {
+                try
+                {
+                    await _inventoryService.DeductInventoryForOrderAsync(order.OrderId, staffId);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Inventory Error] Không thể tự động trừ kho cho đơn hàng {order.OrderCode}: {ex.Message}");
                 }
             }
 
@@ -505,7 +525,7 @@ namespace WebCafe.Backend.Services.Implementation
                 PointsEarned = o.PointsEarned,
                 TotalAmount = o.TotalAmount,
                 Note = o.Note,
-                CreatedAt = o.CreatedAt,
+                CreatedAt = DateTime.SpecifyKind(o.CreatedAt, DateTimeKind.Utc),
                 Items = o.OrderItems.Select(i => new OrderItemDto
                 {
                     OrderItemId = i.OrderItemId,

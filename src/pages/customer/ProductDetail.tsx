@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import MobileBottomNav from '../../components/MobileBottomNav';
@@ -36,17 +36,40 @@ export default function ProductDetail() {
 
   const isOutOfStock = stockStatus[item.id.toString()] === false;
 
+  // Dynamic Sizes from API or fallback
+  const availableSizes = useMemo(() => {
+    if (item.rawDto?.sizes && item.rawDto.sizes.length > 0) {
+      return item.rawDto.sizes.map((s: any) => ({
+        sizeId: s.sizeId,
+        name: s.name,
+        extraPrice: s.extraPrice || 0
+      }));
+    }
+    return [
+      { sizeId: 1, name: 'Medium', extraPrice: 0 },
+      { sizeId: 2, name: 'Large', extraPrice: 15000 }
+    ];
+  }, [item]);
+
+  const [selectedSize, setSelectedSize] = useState(availableSizes[0]);
+
+  // Update selected size when item changes
+  useEffect(() => {
+    if (availableSizes.length > 0) {
+      setSelectedSize(availableSizes[0]);
+    }
+  }, [availableSizes]);
+
   const [quantity, setQuantity] = useState(1);
   const [sugar, setSugar] = useState(100);
   const [ice, setIce] = useState(100);
-  const [size, setSize] = useState('Medium');
   const [notes, setNotes] = useState('');
   const [isAdded, setIsAdded] = useState(false);
 
   const handleIncrement = () => setQuantity(q => q + 1);
   const handleDecrement = () => setQuantity(q => (q > 1 ? q - 1 : 1));
 
-  const sizeExtra = (size === 'Large' || size === 'Lớn') ? 15000 : 0;
+  const sizeExtra = selectedSize?.extraPrice || 0;
   const currentPrice = item.price + sizeExtra;
   const totalPrice = currentPrice * quantity;
 
@@ -55,8 +78,9 @@ export default function ProductDetail() {
 
     addToCart(item, {
       quantity,
-      sizeName: size,
-      sizeExtra,
+      sizeId: selectedSize.sizeId,
+      sizeName: selectedSize.name,
+      sizeExtra: selectedSize.extraPrice,
       sugarLevel: `${sugar}%`,
       iceLevel: `${ice}%`,
       note: notes,
@@ -163,24 +187,25 @@ export default function ProductDetail() {
             <div className="space-y-2">
               <label className="text-xs sm:text-sm font-bold text-on-background block">Chọn Kích Cỡ</label>
               <div className="grid grid-cols-2 gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setSize('Medium')}
-                  className={`flex items-center justify-between p-3.5 sm:p-4 rounded-xl border-2 transition-all active:scale-[0.98] ${size === 'Medium' ? 'border-primary bg-secondary-container/20 text-primary font-bold shadow-xs' : 'border-outline-variant/30 text-on-surface-variant hover:border-primary'}`}>
-                  <span className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <span className="material-symbols-outlined text-lg">coffee</span> Medium
-                  </span>
-                  <span className="text-xs font-semibold">+0đ</span>
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setSize('Large')}
-                  className={`flex items-center justify-between p-3.5 sm:p-4 rounded-xl border-2 transition-all active:scale-[0.98] ${size === 'Large' ? 'border-primary bg-secondary-container/20 text-primary font-bold shadow-xs' : 'border-outline-variant/30 text-on-surface-variant hover:border-primary'}`}>
-                  <span className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <span className="material-symbols-outlined text-lg">coffee</span> Large
-                  </span>
-                  <span className="text-xs font-semibold">+15.000đ</span>
-                </button>
+                {availableSizes.map((s) => (
+                  <button 
+                    key={s.sizeId}
+                    type="button"
+                    onClick={() => setSelectedSize(s)}
+                    className={`flex items-center justify-between p-3.5 sm:p-4 rounded-xl border-2 transition-all active:scale-[0.98] ${
+                      selectedSize.sizeId === s.sizeId 
+                        ? 'border-primary bg-secondary-container/20 text-primary font-bold shadow-xs' 
+                        : 'border-outline-variant/30 text-on-surface-variant hover:border-primary'
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5 text-xs sm:text-sm">
+                      <span className="material-symbols-outlined text-lg">coffee</span> {s.name}
+                    </span>
+                    <span className="text-xs font-semibold">
+                      {s.extraPrice > 0 ? `+${s.extraPrice.toLocaleString('vi-VN')}đ` : '+0đ'}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
 

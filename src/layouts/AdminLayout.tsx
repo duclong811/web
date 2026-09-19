@@ -1,15 +1,23 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+    }
+  }, [location.pathname, navigate]);
+
   const navItems = [
     { path: '/admin/analytics', icon: 'analytics', label: 'Phân Tích' },
     { path: '/admin', icon: 'dashboard', label: 'Bảng Điều Khiển' },
     { path: '/admin/menu', icon: 'restaurant_menu', label: 'Thực Đơn' },
+    { path: '/admin/inventory', icon: 'inventory_2', label: 'Kho & Nguyên Liệu' },
     { path: '/admin/tables', icon: 'table_restaurant', label: 'Bàn' },
     { path: '/admin/staff', icon: 'groups', label: 'Nhân Sự' },
   ];

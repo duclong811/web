@@ -16,7 +16,17 @@ import type {
   AiRecommendationRequestDto,
   AiRecommendationResponseDto,
   AiChatRequestDto,
-  AiChatResponseDto
+  AiChatResponseDto,
+  IngredientDto,
+  CreateIngredientDto,
+  UpdateIngredientDto,
+  InventoryStockDto,
+  InventoryTransactionDto,
+  ImportInventoryDto,
+  AdjustInventoryDto,
+  MenuItemRecipeDto,
+  UpsertRecipeDto,
+  LowStockAlertDto
 } from '../types/apiTypes';
 
 // Menu API
@@ -122,4 +132,61 @@ export const aiApi = {
     return res.data.data;
   }
 };
+
+// Inventory API (FnB 4-Modules System)
+export const inventoryApi = {
+  getStocks: async (storeId: number) => {
+    const res = await apiClient.get<ApiResponse<InventoryStockDto[]>>(`/inventory/store/${storeId}`);
+    return res.data.data;
+  },
+  getIngredients: async (tenantId: number = 1, storeId?: number) => {
+    const res = await apiClient.get<ApiResponse<IngredientDto[]>>('/inventory/ingredients', {
+      params: { tenantId, storeId }
+    });
+    return res.data.data;
+  },
+  createIngredient: async (dto: CreateIngredientDto) => {
+    const res = await apiClient.post<ApiResponse<IngredientDto>>('/inventory/ingredients', dto);
+    return res.data.data;
+  },
+  updateIngredient: async (id: number, dto: UpdateIngredientDto) => {
+    const res = await apiClient.put<ApiResponse<IngredientDto>>(`/inventory/ingredients/${id}`, dto);
+    return res.data.data;
+  },
+  deleteIngredient: async (id: number) => {
+    const res = await apiClient.delete<ApiResponse<object>>(`/inventory/ingredients/${id}`);
+    return res.data;
+  },
+  importStock: async (dto: ImportInventoryDto) => {
+    const res = await apiClient.post<ApiResponse<object>>('/inventory/import', dto);
+    return res.data;
+  },
+  adjustStock: async (dto: AdjustInventoryDto) => {
+    const res = await apiClient.post<ApiResponse<object>>('/inventory/adjust', dto);
+    return res.data;
+  },
+  getTransactions: async (storeId: number, params?: { ingredientId?: number; fromDate?: string; toDate?: string }) => {
+    const res = await apiClient.get<ApiResponse<InventoryTransactionDto[]>>(`/inventory/transactions/store/${storeId}`, {
+      params
+    });
+    return res.data.data;
+  },
+  getMenuItemRecipes: async (menuItemId: number) => {
+    const res = await apiClient.get<ApiResponse<MenuItemRecipeDto[]>>(`/inventory/recipes/menu-item/${menuItemId}`);
+    return res.data.data;
+  },
+  upsertRecipe: async (dto: UpsertRecipeDto) => {
+    const res = await apiClient.post<ApiResponse<object>>('/inventory/recipes/menu-item', dto);
+    return res.data;
+  },
+  deleteRecipe: async (recipeId: number) => {
+    const res = await apiClient.delete<ApiResponse<object>>(`/inventory/recipes/${recipeId}`);
+    return res.data;
+  },
+  getLowStockAlerts: async (storeId: number) => {
+    const res = await apiClient.get<ApiResponse<LowStockAlertDto[]>>(`/inventory/alerts/store/${storeId}`);
+    return res.data.data;
+  }
+};
+
 

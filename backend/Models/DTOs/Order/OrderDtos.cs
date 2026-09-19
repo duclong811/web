@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebCafe.Backend.Models.DTOs.Order
 {
@@ -123,8 +123,8 @@ namespace WebCafe.Backend.Models.DTOs.Order
     public class UpdateOrderStatusDto
     {
         [Required(ErrorMessage = "Trạng thái đơn hàng là bắt buộc.")]
-        [RegularExpression(@"^(pending|confirmed|preparing|ready|completed|cancelled)$", 
-            ErrorMessage = "Trạng thái phải là: pending, confirmed, preparing, ready, completed hoặc cancelled.")]
+        [RegularExpression(@"^(pending|confirmed|preparing|ready|served|paid|completed|cancelled)$", 
+            ErrorMessage = "Trạng thái phải là: pending, confirmed, preparing, ready, served, paid, completed hoặc cancelled.")]
         public string Status { get; set; } = "confirmed";
     }
 }

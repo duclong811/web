@@ -26,7 +26,12 @@ interface OrderCardProps {
   onStatusUpdate: (orderId: number, newStatus: string) => void;
 }
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, {
+  label: string;
+  color: string;
+  icon: string;
+  nextAction: { status: string; label: string; color: string } | null;
+}> = {
   pending: {
     label: 'Chờ xác nhận',
     color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -45,19 +50,37 @@ const STATUS_CONFIG = {
     icon: 'check_circle',
     nextAction: { status: 'paid', label: 'Đã phục vụ', color: 'bg-gray-600 hover:bg-gray-700' }
   },
+  served: {
+    label: 'Đã phục vụ',
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    icon: 'room_service',
+    nextAction: { status: 'paid', label: 'Thanh toán', color: 'bg-emerald-600 hover:bg-emerald-700' }
+  },
   paid: {
     label: 'Đã thanh toán',
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: 'paid',
     nextAction: null
   },
+  completed: {
+    label: 'Hoàn thành',
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    icon: 'task_alt',
+    nextAction: null
+  },
+  cancelled: {
+    label: 'Đã hủy',
+    color: 'bg-red-100 text-red-800 border-red-200',
+    icon: 'cancel',
+    nextAction: null
+  }
 };
 
 export default function OrderCard({ order, onStatusUpdate }: OrderCardProps) {
   const [loading, setLoading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
-  const statusConfig = STATUS_CONFIG[order.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
+  const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
 
   const handleStatusUpdate = async (newStatus: string) => {
     try {
@@ -65,7 +88,8 @@ export default function OrderCard({ order, onStatusUpdate }: OrderCardProps) {
       await apiClient.put(`/orders/${order.orderId}/status`, { status: newStatus });
       onStatusUpdate(order.orderId, newStatus);
     } catch (err: any) {
-      alert(err.message || 'Không thể cập nhật trạng thái đơn hàng');
+      const msg = err.response?.data?.message || err.response?.data?.title || err.message || 'Không thể cập nhật trạng thái đơn hàng';
+      alert(msg);
     } finally {
       setLoading(false);
     }
@@ -79,21 +103,28 @@ export default function OrderCard({ order, onStatusUpdate }: OrderCardProps) {
       await apiClient.put(`/orders/${order.orderId}/status`, { status: 'cancelled' });
       onStatusUpdate(order.orderId, 'cancelled');
     } catch (err: any) {
-      alert(err.message || 'Không thể hủy đơn hàng');
+      const msg = err.response?.data?.message || err.response?.data?.title || err.message || 'Không thể hủy đơn hàng';
+      alert(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const getElapsedTime = () => {
-    const created = new Date(order.createdAt);
+    if (!order.createdAt) return '';
+    const dateStr = order.createdAt.endsWith('Z') || order.createdAt.includes('+')
+      ? order.createdAt
+      : `${order.createdAt}Z`;
+    const created = new Date(dateStr);
     const now = new Date();
     const diff = Math.floor((now.getTime() - created.getTime()) / 60000); // minutes
     
-    if (diff < 1) return 'Vừa xong';
+    if (isNaN(diff) || diff < 1) return 'Vừa xong';
     if (diff < 60) return `${diff} phút trước`;
     const hours = Math.floor(diff / 60);
-    return `${hours} giờ trước`;
+    if (hours < 24) return `${hours} giờ trước`;
+    const days = Math.floor(hours / 24);
+    return `${days} ngày trước`;
   };
 
   return (

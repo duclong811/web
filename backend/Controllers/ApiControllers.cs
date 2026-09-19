@@ -10,6 +10,7 @@ using WebCafe.Backend.Models.DTOs.Payment;
 using WebCafe.Backend.Models.DTOs.Table;
 using WebCafe.Backend.Models.DTOs.Voucher;
 using WebCafe.Backend.Models.DTOs.AI;
+using WebCafe.Backend.Models.DTOs.Inventory;
 using WebCafe.Backend.Services.Abstraction;
 using WebCafe.Backend.Services.Implementation;
 using Microsoft.Extensions.Logging;
@@ -507,6 +508,72 @@ namespace WebCafe.Backend.Controllers
         {
             var transactions = await _inventoryService.GetTransactionHistoryAsync(storeId, ingredientId, fromDate, toDate);
             return Ok(ApiResponse<List<InventoryTransactionDto>>.Ok(transactions));
+        }
+
+        [HttpGet("ingredients")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<List<IngredientDto>>>> GetIngredients(
+            [FromQuery] int tenantId = 1, 
+            [FromQuery] int? storeId = null)
+        {
+            var list = await _inventoryService.GetIngredientsAsync(tenantId, storeId);
+            return Ok(ApiResponse<List<IngredientDto>>.Ok(list));
+        }
+
+        [HttpPost("ingredients")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<IngredientDto>>> CreateIngredient([FromBody] CreateIngredientDto dto)
+        {
+            var result = await _inventoryService.CreateIngredientAsync(dto);
+            return Ok(ApiResponse<IngredientDto>.Ok(result, "Tạo nguyên liệu thành công."));
+        }
+
+        [HttpPut("ingredients/{id}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<IngredientDto>>> UpdateIngredient(int id, [FromBody] UpdateIngredientDto dto)
+        {
+            var result = await _inventoryService.UpdateIngredientAsync(id, dto);
+            return Ok(ApiResponse<IngredientDto>.Ok(result, "Cập nhật nguyên liệu thành công."));
+        }
+
+        [HttpDelete("ingredients/{id}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteIngredient(int id)
+        {
+            await _inventoryService.DeleteIngredientAsync(id);
+            return Ok(ApiResponse<object>.Ok(new { }, "Xóa nguyên liệu thành công."));
+        }
+
+        [HttpGet("recipes/menu-item/{menuItemId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<List<MenuItemRecipeDto>>>> GetMenuItemRecipes(int menuItemId)
+        {
+            var recipes = await _inventoryService.GetMenuItemRecipesAsync(menuItemId);
+            return Ok(ApiResponse<List<MenuItemRecipeDto>>.Ok(recipes));
+        }
+
+        [HttpPost("recipes/menu-item")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> UpsertRecipe([FromBody] UpsertRecipeDto dto)
+        {
+            await _inventoryService.UpsertMenuItemRecipeAsync(dto);
+            return Ok(ApiResponse<object>.Ok(new { }, "Lưu định lượng công thức thành công."));
+        }
+
+        [HttpDelete("recipes/{recipeId}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteRecipe(int recipeId)
+        {
+            await _inventoryService.DeleteMenuItemRecipeAsync(recipeId);
+            return Ok(ApiResponse<object>.Ok(new { }, "Xóa nguyên liệu khỏi công thức thành công."));
+        }
+
+        [HttpGet("alerts/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<List<LowStockAlertDto>>>> GetLowStockAlerts(int storeId)
+        {
+            var alerts = await _inventoryService.GetLowStockAlertsAsync(storeId);
+            return Ok(ApiResponse<List<LowStockAlertDto>>.Ok(alerts));
         }
     }
 

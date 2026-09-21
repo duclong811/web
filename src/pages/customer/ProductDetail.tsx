@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { ShoppingCart } from 'lucide-react';
+import { trackViewItem } from '../../utils/analytics';
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -33,6 +34,21 @@ export default function ProductDetail() {
     window.addEventListener('storage', loadStock);
     return () => window.removeEventListener('storage', loadStock);
   }, [currentStoreId]);
+
+  useEffect(() => {
+    if (item?.name) {
+      try {
+        trackViewItem({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          category: item.categoryName || item.categoryId,
+        });
+      } catch {
+        // Ignore if GA not initialized
+      }
+    }
+  }, [item?.id]);
 
   const isOutOfStock = stockStatus[item.id.toString()] === false;
 

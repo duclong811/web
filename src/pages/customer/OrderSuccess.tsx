@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { useStore } from '../../store/useStore';
 import { ShoppingCart, Copy, Check } from 'lucide-react';
+import { trackPurchase } from '../../utils/analytics';
 
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
@@ -72,7 +73,20 @@ export default function OrderSuccess() {
     };
 
     createConfetti();
-  }, []);
+
+    // Gửi sự kiện purchase lên Google Analytics 4
+    if (displayOrder.orderCode && displayOrder.orderCode !== 'N/A') {
+      try {
+        trackPurchase({
+          orderCode: displayOrder.orderCode,
+          totalAmount: displayOrder.total || 0,
+          items: displayOrder.items || [],
+        });
+      } catch {
+        // Ignore if GA not initialized
+      }
+    }
+  }, [displayOrder.orderCode]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center overflow-x-hidden bg-background font-body-md">

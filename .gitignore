@@ -34,3 +34,10 @@ dist-ssr
 # Local secrets & configs
 **/appsettings.Local.json
 *.local.json
+
+# Database backups
+*.bak
+
+# Environment variables
+.env.local
+.env.*.local

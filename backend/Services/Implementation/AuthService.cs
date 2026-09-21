@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Common.Helper;

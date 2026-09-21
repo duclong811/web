@@ -40,18 +40,20 @@ builder.Services.RegisterApplicationServices(builder.Configuration);
 
 var app = builder.Build();
 
-// Ensure Database Created & Seed Initial Data
+// Ensure Database Created & Seed Initial Data (Code First Auto-Migration)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<WebCafeDbContext>();
     try
     {
+        // Tự động cập nhật Database theo Model & Migrations (Code First)
+        await db.Database.MigrateAsync();
         await DatabaseSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Lỗi khi seed data.");
+        logger.LogError(ex, "Lỗi khi migrate hoặc seed data.");
     }
 }
 

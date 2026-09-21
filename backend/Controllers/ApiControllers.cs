@@ -22,54 +22,10 @@ namespace WebCafe.Backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly WebCafeDbContext _db;
 
-        public AuthController(IAuthService authService, WebCafeDbContext db)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
-            _db = db;
-        }
-
-        // TEMPORARY: Generate BCrypt hash for password reset
-        [HttpGet("generate-hash")]
-        public IActionResult GenerateHash([FromQuery] string password = "Admin@123")
-        {
-            var hash = WebCafe.Backend.Common.Helper.SecurityHelper.HashPassword(password);
-            return Ok(new {
-                password = password,
-                bcryptHash = hash,
-                sqlCommands = new {
-                    systemAdmin = $"UPDATE SystemAdmins SET PasswordHash = '{hash}' WHERE Username = 'superadmin';",
-                    owner = $"UPDATE Tenants SET OwnerPasswordHash = '{hash}' WHERE OwnerEmail = 'minh@minhcafe.vn';",
-                    staff = $"UPDATE Staff SET PasswordHash = '{hash}' WHERE Email = 'staff.q1@thecoffeehouse.vn';"
-                }
-            });
-        }
-        
-        // TEMPORARY: Test password verification
-        [HttpPost("test-verify")]
-        public async Task<IActionResult> TestVerify([FromBody] TestVerifyRequest request)
-        {
-            var admin = await _db.SystemAdmins.FirstOrDefaultAsync(a => a.Username == request.Username);
-            if (admin == null)
-            {
-                return Ok(new { 
-                    found = false, 
-                    message = "User not found" 
-                });
-            }
-            
-            var isValid = WebCafe.Backend.Common.Helper.SecurityHelper.VerifyPassword(request.Password, admin.PasswordHash);
-            
-            return Ok(new {
-                found = true,
-                username = admin.Username,
-                isActive = admin.IsActive,
-                passwordMatch = isValid,
-                hashInDb = admin.PasswordHash,
-                hashLength = admin.PasswordHash?.Length ?? 0,
-                testPassword = request.Password
-            });
         }
 
         [HttpPost("login")]
@@ -573,14 +529,3 @@ namespace WebCafe.Backend.Controllers
 }
 
 
-
-
-// Temporary DTO for testing password verification
-namespace WebCafe.Backend.Controllers
-{
-    public class TestVerifyRequest
-    {
-        public string Username { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-    }
-}

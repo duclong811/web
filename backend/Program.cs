@@ -13,20 +13,20 @@ builder.Services.RegisterApplicationServices(builder.Configuration);
 
 var app = builder.Build();
 
-// Ensure Database Created & Seed Initial Data
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<WebCafeDbContext>();
-    try
-    {
-        await DatabaseSeeder.SeedAsync(db);
-    }
-    catch (Exception ex)
-    {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Lỗi khi seed data.");
-    }
-}
+// Ensure Database Created & Seed Initial Data (DISABLED for now)
+// using (var scope = app.Services.CreateScope())
+// {
+//     var db = scope.ServiceProvider.GetRequiredService<WebCafeDbContext>();
+//     try
+//     {
+//         await DatabaseSeeder.SeedAsync(db);
+//     }
+//     catch (Exception ex)
+//     {
+//         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+//         logger.LogError(ex, "Lỗi khi seed data.");
+//     }
+// }
 
 // === 🔐 RESET PASSWORD TOOL: UNCOMMENT DƯỚI ĐÂY ĐỂ RESET PASSWORD ===
 // using (var scope = app.Services.CreateScope())

@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/authStore';
 import { inventoryApi } from '../../api/apis';
 import type { LowStockAlertDto } from '../../types/apiTypes';
 
 export default function AdminDashboard() {
   const { orders, currentStoreId } = useStore();
+  const { user } = useAuthStore();
+  const activeStoreId = user?.storeId || currentStoreId || 1;
   const [alerts, setAlerts] = useState<LowStockAlertDto[]>([]);
 
   useEffect(() => {
-    inventoryApi.getLowStockAlerts(currentStoreId || 1)
+    inventoryApi.getLowStockAlerts(activeStoreId)
       .then(data => setAlerts(data || []))
       .catch(err => console.error('Failed to load inventory alerts:', err));
-  }, [currentStoreId]);
+  }, [activeStoreId]);
 
   const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString());
   const revenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
@@ -23,8 +26,12 @@ export default function AdminDashboard() {
       {/* Welcome Header */}
       <header className="mb-stack-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-headline-lg text-headline-lg text-primary">Overview</h2>
-          <p className="font-body-md text-body-md text-on-surface-variant">Welcome back, Alex. Here's what's brewing today.</p>
+          <h2 className="font-headline-lg text-headline-lg text-primary">
+            {user?.brandName || 'Tổng Quan Cửa Hàng'}
+          </h2>
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            Xin chào {user?.fullName || 'Chủ Quán'}. Đây là tình hình kinh doanh hôm nay.
+          </p>
         </div>
         <Link
           to="/admin/inventory"

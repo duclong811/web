@@ -35,7 +35,7 @@ namespace WebCafe.Backend.Controllers
             var totalTables = await _db.Tables.CountAsync();
             var totalOrders = await _db.Orders.CountAsync();
             var totalGmv = await _db.Orders
-                .Where(o => o.Status == "paid" || o.Status == "ready" || o.Status == "served")
+                .Where(o => o.Status != "cancelled")
                 .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
 
             // Tính ước tính doanh thu thuê bao phần mềm dựa trên gói
@@ -52,6 +52,40 @@ namespace WebCafe.Backend.Controllers
                 };
             }
 
+            // Tính toán doanh thu thực tế 7 ngày gần nhất từ cơ sở dữ liệu Orders
+            var now = DateTime.UtcNow;
+            var sevenDaysAgo = now.Date.AddDays(-6);
+            var recentOrders = await _db.Orders
+                .Where(o => o.CreatedAt >= sevenDaysAgo && o.Status != "cancelled")
+                .Select(o => new { o.CreatedAt, o.TotalAmount })
+                .ToListAsync();
+
+            var dailyRevenueList = new List<DailyRevenueDto>();
+            for (int i = 0; i < 7; i++)
+            {
+                var dayDate = sevenDaysAgo.AddDays(i);
+                var ordersInDay = recentOrders.Where(o => o.CreatedAt.Date == dayDate.Date).ToList();
+                var label = i == 6 ? "Hôm nay" : dayDate.DayOfWeek switch
+                {
+                    DayOfWeek.Monday => "T2",
+                    DayOfWeek.Tuesday => "T3",
+                    DayOfWeek.Wednesday => "T4",
+                    DayOfWeek.Thursday => "T5",
+                    DayOfWeek.Friday => "T6",
+                    DayOfWeek.Saturday => "T7",
+                    DayOfWeek.Sunday => "CN",
+                    _ => dayDate.ToString("dd/MM")
+                };
+
+                dailyRevenueList.Add(new DailyRevenueDto
+                {
+                    Date = dayDate.ToString("yyyy-MM-dd"),
+                    DayLabel = label,
+                    Revenue = ordersInDay.Sum(x => x.TotalAmount),
+                    OrderCount = ordersInDay.Count
+                });
+            }
+
             var stats = new PlatformStatsDto
             {
                 TotalTenants = totalTenants,
@@ -60,7 +94,8 @@ namespace WebCafe.Backend.Controllers
                 TotalTables = totalTables,
                 TotalOrders = totalOrders,
                 TotalGmv = totalGmv,
-                MonthlySubscriptionRevenue = subscriptionRevenue
+                MonthlySubscriptionRevenue = subscriptionRevenue,
+                DailyRevenue = dailyRevenueList
             };
 
             return Ok(ApiResponse<PlatformStatsDto>.Ok(stats, "Lấy thống kê nền tảng thành công."));
@@ -94,7 +129,7 @@ namespace WebCafe.Backend.Controllers
                 { 
                     TenantId = g.Key, 
                     Count = g.Count(), 
-                    Gmv = g.Where(x => x.Status == "paid" || x.Status == "ready" || x.Status == "served").Sum(x => (decimal?)x.TotalAmount) ?? 0m 
+                    Gmv = g.Where(x => x.Status != "cancelled").Sum(x => (decimal?)x.TotalAmount) ?? 0m 
                 })
                 .ToDictionaryAsync(x => x.TenantId, x => new { x.Count, x.Gmv });
 

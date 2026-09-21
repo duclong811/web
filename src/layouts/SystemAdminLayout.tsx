@@ -1,16 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { 
-  Coffee, 
-  Store, 
-  LayoutDashboard, 
-  LogOut, 
-  Menu, 
-  X, 
-  ExternalLink,
-  ShieldCheck
-} from 'lucide-react';
 
 export default function SystemAdminLayout() {
   const navigate = useNavigate();
@@ -41,131 +31,148 @@ export default function SystemAdminLayout() {
   };
 
   const navItems = [
-    { path: '/system-admin', label: 'Tổng Quan Nền Tảng', icon: LayoutDashboard },
-    { path: '/system-admin/tenants', label: 'Quán Cafe Đối Tác', icon: Store },
+    { path: '/system-admin', icon: 'dashboard', label: 'Bảng Điều Khiển' },
+    { path: '/system-admin/tenants', icon: 'storefront', label: 'Quán Cafe Đối Tác' },
+    { path: '/system-admin/plans', icon: 'tune', label: 'Gói Cước & Cấu Hình' },
   ];
 
   return (
-    <div className="min-h-screen bg-background font-body-md text-on-surface flex flex-col selection:bg-primary-fixed selection:text-on-primary-fixed">
-      {/* Top Navigation Bar - Đồng bộ theme ấm áp với Customer & Admin */}
-      <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-md border-b border-outline-variant/15 px-4 sm:px-6 h-16 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 text-on-surface-variant hover:text-primary rounded-xl hover:bg-surface-variant transition"
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+    <div className="bg-background text-on-background antialiased overflow-x-hidden min-h-screen">
+      {/* Mobile Menu Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-xs" 
+          onClick={() => setIsMobileMenuOpen(false)} 
+        />
+      )}
+
+      {/* Sidebar Navigation - Đồng bộ 100% cấu trúc và màu sắc với trang Chủ Quán */}
+      <aside className={`flex-col h-screen py-gutter px-4 bg-surface-container-low fixed left-0 top-0 w-64 shadow-sm z-40 border-r border-outline-variant/10 transition-transform ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden md:flex'}`}>
+        {/* Brand Header */}
+        <div className="mb-stack-lg px-2">
+          <div className="flex items-center gap-2">
+            <h1 className="font-headline-md text-headline-md text-primary tracking-tight">AI-SMARTSERVE</h1>
+          </div>
+          <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70 flex items-center gap-1.5 mt-0.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Quản Trị Nền Tảng SaaS
+          </p>
+        </div>
+        
+        {/* Navigation Items */}
+        <nav className="flex-1 space-y-2">
+          {navItems.map(item => {
+            const isActive = location.pathname === item.path || (item.path !== '/system-admin' && location.pathname.startsWith(item.path));
+            return (
+              <Link 
+                key={item.path}
+                to={item.path} 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 active:scale-95 ${
+                  isActive 
+                    ? 'text-primary bg-secondary-container/30 border-r-4 border-primary font-bold' 
+                    : 'text-on-surface-variant hover:text-primary hover:bg-secondary-container/20'
+                }`}
+              >
+                <span className="material-symbols-outlined" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                  {item.icon}
+                </span>
+                <span className="font-label-md text-label-md">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+        
+        {/* Super Admin User Card at bottom-left with Click to Logout (giống trang Chủ quán) */}
+        <div 
+          className="mt-auto p-4 bg-surface-container-high rounded-2xl flex items-center gap-3 mb-4 relative group cursor-pointer border border-outline-variant/10" 
+          onClick={handleLogout} 
+          title="Bấm để đăng xuất"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-base shadow-sm">
+            SA
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-label-md text-label-md text-on-surface font-bold truncate">
+              {user?.fullName || 'Super Admin'}
+            </p>
+            <p className="text-[10px] uppercase tracking-wider text-primary font-bold truncate">
+              Quản Trị Hệ Thống
+            </p>
+          </div>
+          {/* Hover overlay: Nút Đăng Xuất màu đỏ */}
+          <div className="absolute inset-0 bg-surface/95 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center gap-2 text-error font-bold text-xs shadow-lg">
+            <span className="material-symbols-outlined text-error text-lg">logout</span>
+            <span>Đăng Xuất</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="md:ml-64 min-h-screen pt-16 pb-24 md:pb-0">
+        {/* Top Navigation Bar */}
+        <header className="fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] z-10 bg-surface/90 backdrop-blur-md h-16 flex justify-between items-center px-gutter shadow-sm border-b border-surface-container">
+          <div className="flex items-center gap-4">
+            <button 
+              className="md:hidden p-2 -ml-2 text-primary hover:bg-surface-variant rounded-full transition-colors" 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <span className="material-symbols-outlined text-2xl">{isMobileMenuOpen ? 'close' : 'menu'}</span>
+            </button>
+            <div className="relative hidden sm:block">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
+              <input 
+                className="bg-surface-container-low border border-outline-variant/30 rounded-full pl-10 pr-4 py-2 text-sm w-72 focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-on-surface-variant/50" 
+                placeholder="Tìm kiếm quán cafe, đối tác, SĐT..." 
+                type="text" 
+              />
+            </div>
+          </div>
           
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center shadow-md">
-              <Coffee className="text-white" size={22} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-lg text-primary tracking-tight">
-                  AI-SMARTSERVE
-                </span>
-                <span className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-secondary-container text-on-secondary-container rounded-full border border-primary/10">
-                  SaaS Master
-                </span>
-              </div>
-              <p className="text-[11px] text-on-surface-variant hidden sm:block">
-                Quản Trị Hệ Thống Đối Tác FnB
-              </p>
-            </div>
+            <Link
+              to="/menu"
+              target="_blank"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary text-xs font-semibold border border-outline-variant/20 transition"
+              title="Xem giao diện khách hàng gọi món"
+            >
+              <span className="material-symbols-outlined text-sm">open_in_new</span>
+              <span>Menu Khách</span>
+            </Link>
+
+            <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-secondary-container/50 transition-colors text-on-surface-variant">
+              <span className="material-symbols-outlined">notifications</span>
+            </button>
+            <button className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-secondary-container/50 transition-colors text-on-surface-variant">
+              <span className="material-symbols-outlined">settings</span>
+            </button>
           </div>
-        </div>
+        </header>
 
-        <div className="flex items-center gap-3">
-          <Link
-            to="/menu"
-            target="_blank"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary text-xs font-semibold border border-outline-variant/20 transition"
-          >
-            <span>Menu Khách</span>
-            <ExternalLink size={13} />
-          </Link>
-
-          {/* User Chip */}
-          <div className="flex items-center gap-2 bg-surface-container-low border border-outline-variant/30 rounded-full py-1.5 px-3">
-            <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center font-bold text-xs text-white">
-              SA
-            </div>
-            <span className="text-xs font-bold text-on-surface hidden sm:inline">
-              {user?.fullName || 'Super Admin'}
-            </span>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            title="Đăng xuất"
-            className="p-2 text-error hover:bg-error/10 rounded-full transition"
-          >
-            <LogOut size={19} />
-          </button>
-        </div>
-      </header>
-
-      <div className="flex flex-1">
-        {/* Mobile Backdrop */}
-        {isMobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black/40 z-30 md:hidden backdrop-blur-xs"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
-
-        {/* Sidebar Navigation */}
-        <aside className={`fixed md:sticky top-0 md:top-16 bottom-0 left-0 w-64 bg-surface md:bg-surface-container-low border-r border-outline-variant/15 p-4 flex flex-col z-40 md:z-20 transition-transform duration-300 ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}>
-          <div className="mb-stack-md px-2 pt-2">
-            <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70 uppercase tracking-wider">
-              Trung Tâm Điều Hành
-            </p>
-          </div>
-
-          <nav className="space-y-1.5 flex-1">
-            {navItems.map(item => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.path || (item.path !== '/system-admin' && location.pathname.startsWith(item.path));
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs transition-all duration-200 active:scale-95 ${
-                    isActive
-                      ? 'text-primary bg-secondary-container/40 border-r-4 border-primary shadow-xs'
-                      : 'text-on-surface-variant hover:text-primary hover:bg-secondary-container/20'
-                  }`}
-                >
-                  <Icon size={18} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* System Info Card */}
-          <div className="mt-auto p-4 rounded-2xl bg-surface-container-high border border-outline-variant/20 text-xs">
-            <div className="flex items-center gap-2 text-primary font-bold mb-1">
-              <ShieldCheck size={16} className="text-primary" />
-              <span>Nền Tảng Đang Chạy</span>
-            </div>
-            <p className="text-[11px] text-on-surface-variant leading-relaxed">
-              Giải pháp QR Gọi món đa thương hiệu dành cho các chuỗi quán FnB.
-            </p>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
+        {/* Content Outlet with standard padding */}
+        <div className="p-gutter max-w-7xl mx-auto">
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
+
+      {/* Mobile Navigation Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest h-20 flex justify-around items-center px-4 border-t border-surface-container z-40">
+        {navItems.map(item => {
+          const isActive = location.pathname === item.path || (item.path !== '/system-admin' && location.pathname.startsWith(item.path));
+          return (
+            <Link 
+              key={item.path} 
+              to={item.path} 
+              className={`flex flex-col items-center gap-1 ${isActive ? 'text-primary' : 'text-on-surface-variant'}`}
+            >
+              <span className="material-symbols-outlined" style={isActive ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                {item.icon}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-tighter">{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }

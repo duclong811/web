@@ -3,6 +3,17 @@ using System.ComponentModel.DataAnnotations;
 namespace WebCafe.Backend.Models.DTOs.SystemAdmin
 {
     /// <summary>
+    /// Thống kê doanh thu theo ngày
+    /// </summary>
+    public class DailyRevenueDto
+    {
+        public string Date { get; set; } = string.Empty; // yyyy-MM-dd
+        public string DayLabel { get; set; } = string.Empty; // T2, T3... Hôm nay
+        public decimal Revenue { get; set; }
+        public int OrderCount { get; set; }
+    }
+
+    /// <summary>
     /// Thống kê tổng quan toàn sàn SaaS dành cho Super Admin
     /// </summary>
     public class PlatformStatsDto
@@ -14,6 +25,7 @@ namespace WebCafe.Backend.Models.DTOs.SystemAdmin
         public int TotalOrders { get; set; }
         public decimal TotalGmv { get; set; }
         public decimal MonthlySubscriptionRevenue { get; set; }
+        public List<DailyRevenueDto> DailyRevenue { get; set; } = new();
     }
 
     /// <summary>

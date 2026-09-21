@@ -403,6 +403,13 @@ export interface LowStockAlertDto {
 }
 
 // --- Super Admin SaaS Platform Types ---
+export interface SystemDailyRevenueDto {
+  date: string;
+  dayLabel: string;
+  revenue: number;
+  orderCount: number;
+}
+
 export interface PlatformStatsDto {
   totalTenants: number;
   activeTenants: number;
@@ -411,6 +418,7 @@ export interface PlatformStatsDto {
   totalOrders: number;
   totalGmv: number;
   monthlySubscriptionRevenue: number;
+  dailyRevenue?: SystemDailyRevenueDto[];
 }
 
 export interface TenantDetailDto {

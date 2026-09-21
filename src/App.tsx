@@ -33,6 +33,7 @@ import StaffManagement from './pages/admin/StaffManagement';
 // Super Admin Pages (SaaS Platform Master)
 import SystemAdminDashboard from './pages/system-admin/SystemAdminDashboard';
 import TenantManagement from './pages/system-admin/TenantManagement';
+import SaaSPlansSettings from './pages/system-admin/SaaSPlansSettings';
 
 function App() {
   return (
@@ -78,6 +79,7 @@ function App() {
         <Route path="/system-admin" element={<SystemAdminLayout />}>
           <Route index element={<SystemAdminDashboard />} />
           <Route path="tenants" element={<TenantManagement />} />
+          <Route path="plans" element={<SaaSPlansSettings />} />
         </Route>
       </Routes>
     </Router>

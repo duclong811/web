@@ -51,7 +51,7 @@ BEGIN
         OwnerEmail VARCHAR(150) NOT NULL UNIQUE,
         OwnerPasswordHash VARCHAR(256) NOT NULL,
         LogoUrl NVARCHAR(500) NULL,
-        Plan VARCHAR(20) NOT NULL DEFAULT 'free',
+        [Plan] VARCHAR(20) NOT NULL DEFAULT 'free',
         MaxStores INT NOT NULL DEFAULT 1,
         PointsPerAmount INT NOT NULL DEFAULT 10000,
         PointsToMoney DECIMAL(12,0) NOT NULL DEFAULT 200,
@@ -495,7 +495,7 @@ GO
 -- Tenants
 IF NOT EXISTS (SELECT 1 FROM Tenants)
 BEGIN
-    INSERT INTO Tenants (Name, Slug, OwnerName, OwnerPhone, OwnerEmail, OwnerPasswordHash, LogoUrl, Plan, MaxStores, PointsPerAmount, PointsToMoney, IsActive) VALUES
+    INSERT INTO Tenants (Name, Slug, OwnerName, OwnerPhone, OwnerEmail, OwnerPasswordHash, LogoUrl, [Plan], MaxStores, PointsPerAmount, PointsToMoney, IsActive) VALUES
     (N'Minh Cafe', 'minh-cafe', N'Nguyễn Văn Minh', '0987654321', 'minh@minhcafe.vn', 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=200', 'basic', 5, 10000, 200, 1),
     (N'Lan Coffee', 'lan-coffee', N'Lê Thu Lan', '0912345678', 'lan@lancoffee.vn', 'A665A45920422F9D417E4867EFDC4FB8A04A1F3FFF1FA07E998E86F7F7A27AE3', 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=200', 'free', 1, 10000, 200, 1);
 END
@@ -612,7 +612,7 @@ BEGIN
     INSERT INTO Orders (TenantId, StoreId, OrderCode, TableId, CustomerId, StaffId, Status, SubTotal, DiscountAmount, PointsUsed, PointsEarned, ServiceFee, TotalAmount, Note, CreatedAt)
     VALUES 
     (1, 1, 'WB-8891', 1, 1, 2, 'preparing', 105000, 21000, 0, 8, 0, 84000, N'Ít ngọt', DATEADD(MINUTE, -15, GETDATE())),
-    (1, 1, 'WB-8892', 4, 3, 3, 'paid', 185000, 15000, 0, 17, 0, 170000, N'Giao cùng lúc', DATEADD(HOUR, -2, GETDATE()));
+    (1, 1, 'WB-8892', 4, 2, 3, 'paid', 185000, 15000, 0, 17, 0, 170000, N'Giao cùng lúc', DATEADD(HOUR, -2, GETDATE()));
 
     -- Order Items
     INSERT INTO OrderItems (OrderId, MenuItemId, SizeId, Quantity, UnitPrice, ToppingTotal, SubTotal, SugarLevel, IceLevel, Note) VALUES
@@ -761,3 +761,4 @@ GO
 
 PRINT N'Done';
 GO
+

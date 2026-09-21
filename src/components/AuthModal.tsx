@@ -92,14 +92,41 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/auth/register', registerData);
-      const { token, username, fullName, role, tenantId } = response.data.data;
+      const payload = {
+        fullName: registerData.fullName,
+        email: registerData.email,
+        phone: registerData.phoneNumber.trim(),
+        password: registerData.password,
+      };
 
-      localStorage.setItem('token', token);
-      setAuth({
-        token,
-        user: { username, fullName, role, tenantId },
-      });
+      const response = await apiClient.post('/auth/register', payload);
+      const resData = response.data.data;
+
+      // Lưu thông tin khách hàng vào localStorage để sử dụng khi đặt món
+      if (resData?.phone) {
+        const guestSession = {
+          guestId: `cust_${resData.customerId || Date.now()}`,
+          storeId: 1,
+          tableId: 'T01',
+          guestName: resData.fullName,
+          guestPhone: resData.phone,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('guestSession', JSON.stringify(guestSession));
+      }
+
+      if (resData?.token) {
+        localStorage.setItem('token', resData.token);
+        setAuth({
+          token: resData.token,
+          user: { 
+            username: resData.username || resData.email, 
+            fullName: resData.fullName, 
+            role: resData.role || 'Customer', 
+            tenantId: resData.tenantId || 1 
+          },
+        });
+      }
 
       onClose();
       window.location.reload();

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { menuApi, orderApi, authApi } from '../api/apis';
 import { signalRService } from '../api/signalr';
+import { trackAddToCart } from '../utils/analytics';
 import type { 
   MenuItemDto, 
   OrderDto, 
@@ -306,6 +307,19 @@ export const useStore = create<StoreState>((set, get) => ({
         rawDto: item.rawDto || item,
       };
       set({ cart: [...get().cart, newCartItem] });
+    }
+
+    // Gửi sự kiện add_to_cart lên Google Analytics 4
+    try {
+      trackAddToCart({
+        id: itemId,
+        name: itemName,
+        price: finalUnitPrice,
+        quantity: options.quantity || 1,
+        size: options.sizeName,
+      });
+    } catch {
+      // Bỏ qua lỗi nếu GA chưa sẵn sàng
     }
   },
 

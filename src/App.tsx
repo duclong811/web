@@ -34,10 +34,12 @@ import StaffManagement from './pages/admin/StaffManagement';
 import SystemAdminDashboard from './pages/system-admin/SystemAdminDashboard';
 import TenantManagement from './pages/system-admin/TenantManagement';
 import SaaSPlansSettings from './pages/system-admin/SaaSPlansSettings';
+import AnalyticsTracker from './components/AnalyticsTracker';
 
 function App() {
   return (
     <Router>
+      <AnalyticsTracker />
       <Routes>
         {/* Auth Route */}
         <Route path="/login" element={<Login />} />

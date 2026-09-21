@@ -1,7 +1,9 @@
 ﻿import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:5277/api';
-export const HUB_URL = 'http://localhost:5277/hubs/orders';
+// Mobile Hotspot IP (máy tính làm hotspot host)
+// iPhone connected: 192.168.137.102
+export const API_BASE_URL = 'http://192.168.137.1:5277/api';
+export const HUB_URL = 'http://192.168.137.102:5277/hubs/orders';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

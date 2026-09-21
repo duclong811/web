@@ -31,23 +31,59 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError('');
     setLoading(true);
 
-    try {
-      const response = await apiClient.post('/auth/login', loginData);
-      const { token, username, fullName, role, tenantId, storeId, storeName, brandName } = response.data.data;
+    // Auto-retry với các endpoint khác nhau (staff, owner, admin)
+    // NOTE: apiClient đã có baseURL với /api prefix rồi, nên không cần thêm /api
+    const endpoints = ['/auth/login', '/auth/owner-login', '/auth/admin-login'];
+    let lastError: any = null;
 
-      localStorage.setItem('token', token);
-      setAuth({
-        token,
-        user: { username, fullName, role, tenantId, storeId, storeName, brandName },
-      });
+    console.log('🚀 Starting login with username:', loginData.username);
+    console.log('📋 Endpoint order:', endpoints);
 
-      onClose();
-      window.location.reload(); // Reload để update UI
-    } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
-    } finally {
-      setLoading(false);
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`🔄 [${new Date().toISOString()}] Trying endpoint: ${endpoint}`);
+        console.log('📤 Payload:', { username: loginData.username, password: '***' });
+        const response = await apiClient.post(endpoint, loginData);
+        const { token, username, fullName, role, tenantId, storeId, storeName, brandName } = response.data.data;
+
+        localStorage.setItem('token', token);
+        setAuth({
+          token,
+          user: { username, fullName, role, tenantId, storeId, storeName, brandName },
+        });
+
+        console.log(`✅ Login successful with ${endpoint}`);
+        console.log('📦 Response data:', response.data);
+        onClose();
+        window.location.reload();
+        return; // Success, exit function
+      } catch (err: any) {
+        console.log(`❌ Failed with ${endpoint}:`, err.response?.status, err.response?.data?.message);
+        lastError = err;
+        // Continue to next endpoint
+      }
     }
+
+    console.log('❌ All endpoints failed. Last error:', lastError?.response?.data);
+
+    // All endpoints failed, show error
+    if (lastError?.response?.data) {
+      const errorData = lastError.response.data;
+      if (errorData.errors && typeof errorData.errors === 'object') {
+        // Multiple validation errors
+        const errorMessages = Object.entries(errorData.errors)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n');
+        setError(errorMessages);
+      } else if (errorData.message) {
+        setError(`❌ ${errorData.message}`);
+      } else {
+        setError('❌ Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      }
+    } else {
+      setError(lastError?.message || '❌ Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+    }
+    setLoading(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {

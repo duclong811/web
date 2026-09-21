@@ -18,7 +18,9 @@ namespace WebCafe.Backend.Models.Entities
 
         public int SortOrder { get; set; } = 0;
         public bool IsActive { get; set; } = true;
+        public bool IsDeleted { get; set; } = false; // Soft delete
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? DeletedAt { get; set; }
 
         [ForeignKey(nameof(TenantId))]
         public Tenant? Tenant { get; set; }
@@ -51,9 +53,11 @@ namespace WebCafe.Backend.Models.Entities
 
         public bool IsFeatured { get; set; } = false;
         public bool IsAvailable { get; set; } = true;
+        public bool IsDeleted { get; set; } = false; // Soft delete
         public int SortOrder { get; set; } = 0;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+        public DateTime? DeletedAt { get; set; }
 
         [ForeignKey(nameof(TenantId))]
         public Tenant? Tenant { get; set; }

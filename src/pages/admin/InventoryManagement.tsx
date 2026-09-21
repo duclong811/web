@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { inventoryApi, menuApi } from '../../api/apis';
 import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/authStore';
 import type {
   IngredientDto,
   InventoryStockDto,
@@ -13,8 +14,10 @@ import type {
 
 export default function InventoryManagement() {
   const { currentStoreId } = useStore();
-  const storeId = currentStoreId || 1;
-  const tenantId = 1;
+  const { user } = useAuthStore();
+  // Đảm bảo lấy đúng mã cửa hàng và tenant của chủ quán đang đăng nhập
+  const storeId = user?.storeId || currentStoreId || 1;
+  const tenantId = user?.tenantId || 1;
 
   // Active Tab: 'stock' | 'recipes' | 'audit'
   const [activeTab, setActiveTab] = useState<'stock' | 'recipes' | 'audit'>('stock');

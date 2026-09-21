@@ -68,21 +68,34 @@ export default function LoginPage() {
         },
       });
 
-      // Kiểm tra URL redirect
+      // Kiểm tra URL redirect nhưng PHẢI kiểm tra quyền phù hợp với vai trò
       const searchParams = new URLSearchParams(window.location.search);
       const redirect = searchParams.get('redirect');
-      if (redirect) {
-        navigate(redirect);
-        return;
-      }
 
-      // Điều hướng dựa trên role
-      if (role === 'SystemAdmin' || role === 'Owner' || role === 'Manager' || role === 'TenantOwner') {
-        navigate('/admin/inventory'); // Admin Dashboard & Inventory
+      // Điều hướng dựa trên vai trò (Role-based redirection)
+      if (role === 'SystemAdmin') {
+        // SuperAdmin chỉ nhận redirect nếu là trang của system-admin
+        if (redirect && redirect.startsWith('/system-admin')) {
+          navigate(redirect);
+        } else {
+          navigate('/system-admin');
+        }
+      } else if (role === 'Owner' || role === 'TenantOwner' || role === 'Manager') {
+        // Chủ quán chỉ nhận redirect nếu là trang /admin (không phải system-admin)
+        if (redirect && redirect.startsWith('/admin') && !redirect.startsWith('/system-admin')) {
+          navigate(redirect);
+        } else {
+          navigate('/admin');
+        }
       } else if (role === 'Staff' || role === 'Kitchen' || role === 'Cashier' || role === 'Barista') {
-        navigate('/staff/orders'); // Staff → Staff Order Dashboard
+        // Nhân viên chỉ nhận redirect nếu là trang /staff
+        if (redirect && redirect.startsWith('/staff')) {
+          navigate(redirect);
+        } else {
+          navigate('/staff/orders');
+        }
       } else {
-        navigate('/'); // Customer → Menu
+        navigate('/'); // Customer → Thực đơn gọi món
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');

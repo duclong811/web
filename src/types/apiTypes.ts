@@ -402,3 +402,61 @@ export interface LowStockAlertDto {
   lastUpdated?: string | null;
 }
 
+// --- Super Admin SaaS Platform Types ---
+export interface SystemDailyRevenueDto {
+  date: string;
+  dayLabel: string;
+  revenue: number;
+  orderCount: number;
+}
+
+export interface PlatformStatsDto {
+  totalTenants: number;
+  activeTenants: number;
+  totalStores: number;
+  totalTables: number;
+  totalOrders: number;
+  totalGmv: number;
+  monthlySubscriptionRevenue: number;
+  dailyRevenue?: SystemDailyRevenueDto[];
+}
+
+export interface TenantDetailDto {
+  tenantId: number;
+  name: string;
+  slug: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  logoUrl?: string | null;
+  plan: string;
+  maxStores: number;
+  isActive: boolean;
+  createdAt: string;
+  storeCount: number;
+  tableCount: number;
+  orderCount: number;
+  totalGmv: number;
+}
+
+export interface CreateTenantDto {
+  name: string;
+  slug?: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  ownerPassword: string;
+  logoUrl?: string;
+  plan?: string;
+  maxStores?: number;
+  initialStoreName?: string;
+  initialStoreAddress?: string;
+  initialStorePhone?: string;
+}
+
+export interface UpdateTenantPlanDto {
+  plan: string;
+  maxStores: number;
+}
+
+

@@ -26,7 +26,11 @@ import type {
   AdjustInventoryDto,
   MenuItemRecipeDto,
   UpsertRecipeDto,
-  LowStockAlertDto
+  LowStockAlertDto,
+  PlatformStatsDto,
+  TenantDetailDto,
+  CreateTenantDto,
+  UpdateTenantPlanDto
 } from '../types/apiTypes';
 
 // Menu API
@@ -188,5 +192,30 @@ export const inventoryApi = {
     return res.data.data;
   }
 };
+
+// Super Admin Platform API
+export const systemAdminApi = {
+  getPlatformStats: async () => {
+    const res = await apiClient.get<ApiResponse<PlatformStatsDto>>('/system/stats');
+    return res.data.data;
+  },
+  getTenants: async () => {
+    const res = await apiClient.get<ApiResponse<TenantDetailDto[]>>('/system/tenants');
+    return res.data.data;
+  },
+  createTenant: async (payload: CreateTenantDto) => {
+    const res = await apiClient.post<ApiResponse<TenantDetailDto>>('/system/tenants', payload);
+    return res.data.data;
+  },
+  toggleTenantStatus: async (tenantId: number) => {
+    const res = await apiClient.put<ApiResponse<any>>(`/system/tenants/${tenantId}/toggle-status`);
+    return res.data;
+  },
+  updateTenantPlan: async (tenantId: number, payload: UpdateTenantPlanDto) => {
+    const res = await apiClient.put<ApiResponse<any>>(`/system/tenants/${tenantId}/plan`, payload);
+    return res.data;
+  }
+};
+
 
 

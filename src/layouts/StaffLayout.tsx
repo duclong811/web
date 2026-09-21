@@ -1,4 +1,4 @@
-﻿import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 
@@ -179,8 +179,8 @@ export default function StaffLayout() {
               // Clear auth data
               localStorage.removeItem('token');
               localStorage.removeItem('user');
-              // Navigate to staff login
-              navigate('/staff/login');
+              // Navigate to login
+              navigate('/login');
             }} 
             className="w-full flex items-center gap-2.5 text-error px-3 py-2 hover:bg-error/10 rounded-xl transition-all text-xs font-bold text-left"
           >

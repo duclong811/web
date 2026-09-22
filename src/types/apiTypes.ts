@@ -459,4 +459,35 @@ export interface UpdateTenantPlanDto {
   maxStores: number;
 }
 
+// --- Customer Types ---
+export interface CustomerProfileDto {
+  customerId: number;
+  tenantId: number;
+  phone: string;
+  name: string;
+  totalPoints: number;
+  totalSpent: number;
+  visitCount: number;
+  pointsToMoney: number;
+  pointsPerAmount: number;
+  createdAt: string;
+  lastVisitAt?: string | null;
+}
+
+export interface UpdateCustomerProfileDto {
+  phone?: string;
+  newPhone?: string;
+  name?: string;
+}
+
+export interface CustomerLoyaltyHistoryDto {
+  pointId: number;
+  customerId: number;
+  orderId?: number | null;
+  points: number;
+  type: string;
+  description?: string | null;
+  createdAt: string;
+}
+
 

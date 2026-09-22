@@ -16,6 +16,8 @@ import Cart from './pages/customer/Cart';
 import OrderSuccess from './pages/customer/OrderSuccess';
 import OrderTracking from './pages/customer/OrderTracking';
 import QRLanding from './pages/customer/QRLanding';
+import Profile from './pages/customer/Profile';
+import OrderHistory from './pages/customer/OrderHistory';
 
 // Staff Pages
 import StaffOrderDashboard from './pages/staff/StaffOrderDashboard';
@@ -57,6 +59,8 @@ function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/order-success" element={<OrderSuccess />} />
           <Route path="/tracking" element={<OrderTracking />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/history" element={<OrderHistory />} />
         </Route>
 
         {/* Staff Routes - Wrapped in StaffLayout */}

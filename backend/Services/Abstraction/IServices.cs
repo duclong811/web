@@ -16,6 +16,7 @@ namespace WebCafe.Backend.Services.Abstraction
         Task<LoginResponse> LoginStaffAsync(LoginRequest request);
         Task<LoginResponse> LoginTenantOwnerAsync(LoginRequest request);
         Task<LoginResponse> LoginSystemAdminAsync(LoginRequest request);
+        Task<LoginResponse> LoginCustomerAsync(LoginRequest request);
         Task<RegisterResponse> RegisterCustomerAsync(RegisterRequest request);
     }
 

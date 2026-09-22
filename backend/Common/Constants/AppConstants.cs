@@ -1,4 +1,4 @@
-﻿namespace WebCafe.Backend.Common.Constants
+namespace WebCafe.Backend.Common.Constants
 {
     public static class AppRoles
     {
@@ -8,6 +8,7 @@
         public const string Staff = "Staff";
         public const string Kitchen = "Kitchen";
         public const string Cashier = "Cashier";
+        public const string Customer = "Customer";
     }
 
     public static class OrderStatus

@@ -31,8 +31,31 @@ namespace WebCafe.Backend.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
         {
-            var res = await _authService.LoginStaffAsync(request);
-            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập nhân viên thành công."));
+            try
+            {
+                var res = await _authService.LoginStaffAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập nhân viên thành công."));
+            }
+            catch
+            {
+                // Nếu không phải nhân viên, thử đăng nhập dưới dạng khách hàng
+                try
+                {
+                    var customerRes = await _authService.LoginCustomerAsync(request);
+                    return Ok(ApiResponse<LoginResponse>.Ok(customerRes, "Đăng nhập khách hàng thành công."));
+                }
+                catch
+                {
+                    throw;
+                }
+            }
+        }
+
+        [HttpPost("customer-login")]
+        public async Task<ActionResult<ApiResponse<LoginResponse>>> CustomerLogin([FromBody] LoginRequest request)
+        {
+            var res = await _authService.LoginCustomerAsync(request);
+            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập khách hàng thành công."));
         }
 
         [HttpPost("owner-login")]

@@ -30,7 +30,10 @@ import type {
   PlatformStatsDto,
   TenantDetailDto,
   CreateTenantDto,
-  UpdateTenantPlanDto
+  UpdateTenantPlanDto,
+  CustomerProfileDto,
+  UpdateCustomerProfileDto,
+  CustomerLoyaltyHistoryDto
 } from '../types/apiTypes';
 
 // Menu API
@@ -217,5 +220,28 @@ export const systemAdminApi = {
   }
 };
 
-
-
+// Customer API
+export const customerApi = {
+  getProfile: async (phone?: string) => {
+    const res = await apiClient.get<ApiResponse<CustomerProfileDto>>('/customer/profile', {
+      params: phone ? { phone } : undefined
+    });
+    return res.data.data;
+  },
+  updateProfile: async (data: UpdateCustomerProfileDto) => {
+    const res = await apiClient.put<ApiResponse<CustomerProfileDto>>('/customer/profile', data);
+    return res.data.data;
+  },
+  getOrders: async (params?: { phone?: string; pageNumber?: number; pageSize?: number; status?: string }) => {
+    const res = await apiClient.get<ApiResponse<PaginationRes<OrderDto>>>('/customer/orders', {
+      params
+    });
+    return res.data.data;
+  },
+  getLoyaltyHistory: async (params?: { phone?: string; pageNumber?: number; pageSize?: number }) => {
+    const res = await apiClient.get<ApiResponse<PaginationRes<CustomerLoyaltyHistoryDto>>>('/customer/loyalty-history', {
+      params
+    });
+    return res.data.data;
+  }
+};

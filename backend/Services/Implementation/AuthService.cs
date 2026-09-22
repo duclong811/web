@@ -145,6 +145,64 @@ namespace WebCafe.Backend.Services.Implementation
             };
         }
 
+        public async Task<LoginResponse> LoginCustomerAsync(LoginRequest request)
+        {
+            var phone = request.Username.Trim().Replace(" ", "");
+            var customer = await _db.Customers
+                .Include(c => c.Tenant)
+                .FirstOrDefaultAsync(c => c.Phone == phone);
+
+            if (customer == null)
+            {
+                customer = new Customer
+                {
+                    TenantId = 1,
+                    Phone = phone,
+                    Name = !string.IsNullOrWhiteSpace(request.Password) && request.Password != "123456" ? null : "Khách hàng",
+                    TotalPoints = 0,
+                    TotalSpent = 0,
+                    VisitCount = 1,
+                    CreatedAt = DateTime.UtcNow,
+                    LastVisitAt = DateTime.UtcNow
+                };
+                _db.Customers.Add(customer);
+                await _db.SaveChangesAsync();
+            }
+            else
+            {
+                customer.VisitCount += 1;
+                customer.LastVisitAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+
+            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
+            var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
+
+            var token = JwtHelper.GenerateToken(
+                customer.CustomerId.ToString(),
+                customer.Phone,
+                AppRoles.Customer,
+                customer.TenantId,
+                null,
+                jwtKey,
+                jwtIssuer,
+                jwtAudience
+            );
+
+            return new LoginResponse
+            {
+                Token = token,
+                Username = customer.Phone,
+                FullName = customer.Name ?? "Khách hàng",
+                Role = AppRoles.Customer,
+                TenantId = customer.TenantId,
+                StoreId = null,
+                StoreName = null,
+                BrandName = customer.Tenant?.Name ?? "WebCafe"
+            };
+        }
+
         public async Task<RegisterResponse> RegisterCustomerAsync(RegisterRequest request)
         {
             // Kiểm tra email đã tồn tại chưa

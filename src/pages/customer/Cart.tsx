@@ -2,7 +2,11 @@ import { useStore } from '../../store/useStore';
 import { Link, useNavigate } from 'react-router-dom';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { ShoppingCart } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '../../store/authStore';
+import { customerApi } from '../../api/apis';
+import type { CustomerProfileDto } from '../../types/apiTypes';
+import AuthModal from '../../components/AuthModal';
 
 export default function Cart() {
   const { 
@@ -18,19 +22,59 @@ export default function Cart() {
     updateGuestInfo
   } = useStore();
 
+  const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
+
   const [voucherInput, setVoucherInput] = useState('');
   const [voucherError, setVoucherError] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [orderNote, setOrderNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  // Loyalty Points State
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfileDto | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [pointsInput, setPointsInput] = useState<string>('');
+  const [pointsToUse, setPointsToUse] = useState<number>(0);
+  const [pointsError, setPointsError] = useState<string>('');
 
   const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const discountAmount = voucherDiscount ? (subtotal * voucherDiscount / 100) : 0;
   const serviceFee = cart.length > 0 ? 0 : 0;
-  const total = Math.max(0, subtotal - discountAmount + serviceFee);
+
+  // Lấy thông tin điểm tích lũy của khách khi đã đăng nhập
+  useEffect(() => {
+    if (isAuthenticated && user?.username) {
+      setLoadingProfile(true);
+      customerApi.getProfile(user.username)
+        .then(profile => {
+          setCustomerProfile(profile);
+          if (profile.phone && !customerPhone) {
+            setCustomerPhone(profile.phone);
+          }
+          if (profile.name && !customerName) {
+            setCustomerName(profile.name);
+          }
+        })
+        .catch(err => {
+          console.warn('Không thể tải điểm tích lũy:', err);
+        })
+        .finally(() => setLoadingProfile(false));
+    } else {
+      setCustomerProfile(null);
+      setPointsToUse(0);
+      setPointsInput('');
+    }
+  }, [isAuthenticated, user?.username]);
+
+  const pointsToMoney = customerProfile?.pointsToMoney || 200;
+  const maxPointsByOrder = Math.floor(Math.max(0, subtotal - discountAmount) / pointsToMoney);
+  const maxUsablePoints = Math.min(customerProfile?.totalPoints || 0, maxPointsByOrder);
+  const pointsDiscountAmount = pointsToUse * pointsToMoney;
+  const total = Math.max(0, subtotal - discountAmount - pointsDiscountAmount + serviceFee);
 
   const handleApplyVoucher = () => {
     if (!voucherInput.trim()) return;
@@ -42,17 +86,45 @@ export default function Cart() {
     }
   };
 
+  const handleApplyPoints = (val: number) => {
+    setPointsError('');
+    if (isNaN(val) || val < 0) {
+      setPointsToUse(0);
+      setPointsInput('');
+      return;
+    }
+    if (val > (customerProfile?.totalPoints || 0)) {
+      setPointsError(`Bạn chỉ có tối đa ${customerProfile?.totalPoints || 0} điểm.`);
+      return;
+    }
+    if (val > maxUsablePoints) {
+      setPointsError(`Đơn hàng này chỉ có thể dùng tối đa ${maxUsablePoints} điểm.`);
+      val = maxUsablePoints;
+    }
+    setPointsToUse(val);
+    setPointsInput(val > 0 ? val.toString() : '');
+  };
+
+  const handleUseMaxPoints = () => {
+    handleApplyPoints(maxUsablePoints);
+  };
+
+  const handleClearPoints = () => {
+    setPointsToUse(0);
+    setPointsInput('');
+    setPointsError('');
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0 || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      // Update guest info before checkout
       if (guestSession) {
         updateGuestInfo(customerName, customerPhone);
       }
       
       const tableToUse = guestSession?.tableId || currentTable || 'T01';
-      const order = await createOrder(tableToUse, customerPhone, customerName, orderNote);
+      const order = await createOrder(tableToUse, customerPhone, customerName, orderNote, pointsToUse);
       navigate(`/order-success?code=${order.orderCode}&orderId=${order.id}`);
     } catch (err) {
       console.error('Order creation error:', err);
@@ -262,6 +334,92 @@ export default function Cart() {
                   {voucherError && <p className="text-xs text-error font-semibold mt-1">{voucherError}</p>}
                 </div>
 
+                {/* Loyalty Points Section */}
+                <div className="pt-3 border-t border-outline-variant/20">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-1">
+                      <span className="material-symbols-outlined text-amber-500 text-base" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                      Điểm Tích Lũy
+                    </label>
+                    {isAuthenticated && customerProfile && (
+                      <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        Có: {customerProfile.totalPoints.toLocaleString()} điểm
+                      </span>
+                    )}
+                  </div>
+
+                  {isAuthenticated ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input 
+                          type="number" 
+                          placeholder={maxUsablePoints > 0 ? `Tối đa ${maxUsablePoints} điểm` : '0 điểm'} 
+                          className="flex-grow px-3 py-2 bg-surface border border-outline-variant/40 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                          value={pointsInput}
+                          onChange={(e) => handleApplyPoints(parseInt(e.target.value) || 0)}
+                          min={0}
+                          max={maxUsablePoints}
+                          disabled={maxUsablePoints === 0}
+                        />
+                        {maxUsablePoints > 0 && pointsToUse < maxUsablePoints && (
+                          <button 
+                            type="button"
+                            onClick={handleUseMaxPoints}
+                            className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors whitespace-nowrap shadow-sm"
+                          >
+                            Dùng Hết
+                          </button>
+                        )}
+                        {pointsToUse > 0 && (
+                          <button 
+                            type="button"
+                            onClick={handleClearPoints}
+                            className="px-2.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-colors"
+                            title="Bỏ dùng điểm"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-on-surface-variant">
+                        <span>Quy đổi: 1 điểm = {pointsToMoney.toLocaleString()}đ</span>
+                        {pointsToUse > 0 && (
+                          <span className="text-green-600 font-bold">
+                            -{(pointsToUse * pointsToMoney).toLocaleString()}đ
+                          </span>
+                        )}
+                      </div>
+
+                      {pointsError && (
+                        <p className="text-xs text-error font-semibold">{pointsError}</p>
+                      )}
+
+                      {pointsToUse > 0 && (
+                        <p className="text-xs text-green-600 font-bold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">check_circle</span>
+                          Đã dùng {pointsToUse.toLocaleString()} điểm (-{(pointsToUse * pointsToMoney).toLocaleString()}đ)
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-xl text-xs space-y-2">
+                      <div className="flex items-start gap-2 text-amber-900">
+                        <span className="material-symbols-outlined text-sm text-amber-600 mt-0.5">lock</span>
+                        <span>Đăng nhập để xem số điểm hiện có và dùng điểm trừ tiền trực tiếp vào đơn hàng.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAuthModalOpen(true)}
+                        className="w-full py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 shadow-sm"
+                      >
+                        <span className="material-symbols-outlined text-xs">login</span>
+                        Đăng Nhập Dùng Điểm
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Price Breakdown */}
                 <div className="space-y-2 pt-3 border-t border-outline-variant/20 text-sm">
                   <div className="flex justify-between text-on-surface-variant">
@@ -270,8 +428,14 @@ export default function Cart() {
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-green-600 font-bold">
-                      <span>Giảm giá</span>
+                      <span>Giảm giá voucher</span>
                       <span>-{discountAmount.toLocaleString('vi-VN')}đ</span>
+                    </div>
+                  )}
+                  {pointsDiscountAmount > 0 && (
+                    <div className="flex justify-between text-amber-600 font-bold">
+                      <span>Giảm từ điểm tích lũy</span>
+                      <span>-{pointsDiscountAmount.toLocaleString('vi-VN')}đ</span>
                     </div>
                   )}
                   <div className="flex justify-between text-on-surface font-extrabold text-base pt-2 border-t border-outline-variant/20">
@@ -299,6 +463,8 @@ export default function Cart() {
         © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
       </footer>
       <MobileBottomNav />
+
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }

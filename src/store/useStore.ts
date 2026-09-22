@@ -112,7 +112,7 @@ interface StoreState {
   setVoucher: (code: string, discount: number) => void;
   
   placeOrder: () => void;
-  createOrder: (tableId: string, customerPhone?: string, customerName?: string, note?: string) => Promise<Order>;
+  createOrder: (tableId: string, customerPhone?: string, customerName?: string, note?: string, pointsToUse?: number) => Promise<Order>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   
   initRealtime: (storeId?: number) => void;
@@ -359,7 +359,7 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ orders: [newOrder, ...get().orders], activeOrder: newOrder, cart: [] });
   },
 
-  createOrder: async (tableId, customerPhone, customerName, note) => {
+  createOrder: async (tableId, customerPhone, customerName, note, pointsToUse = 0) => {
     const { cart, currentStoreId, currentTable, appliedVoucherCode, guestSession } = get();
     if (cart.length === 0) throw new Error('Giỏ hàng trống');
 
@@ -381,7 +381,7 @@ export const useStore = create<StoreState>((set, get) => ({
         guestPhone: guestSession?.guestPhone || customerPhone || undefined,
         
         voucherCode: appliedVoucherCode || undefined,
-        pointsToUse: 0,
+        pointsToUse: pointsToUse || 0,
         note: note || undefined,
         items: cart.map(i => {
           const numId = parseInt(i.id);

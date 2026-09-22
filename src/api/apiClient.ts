@@ -42,13 +42,13 @@ apiClient.interceptors.response.use(
     // Xử lý lỗi 401 Unauthorized
     if (error.response?.status === 401) {
       console.warn('Token hết hạn hoặc không hợp lệ. Chuyển về trang đăng nhập.');
-      
+
       // Chỉ xóa token và redirect nếu KHÔNG PHẢI là guest request
       const isGuestRequest = !localStorage.getItem('token');
       if (!isGuestRequest) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        
+
         // Auto redirect về login (chỉ cho staff/authenticated users)
         if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
           window.location.href = '/login';

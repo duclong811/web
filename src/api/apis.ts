@@ -12,6 +12,12 @@ import type {
   CheckVoucherRequest, 
   VoucherValidationResult, 
   DashboardStatsDto,
+  ShiftOperationsDto,
+  BusinessAnalyticsReportDto,
+  MenuEngineeringSummaryDto,
+  RevenueReportDto,
+  CustomerAnalyticsDto,
+  CategoryPerformanceDto,
   PaginationRes,
   AiRecommendationRequestDto,
   AiRecommendationResponseDto,
@@ -124,6 +130,40 @@ export const voucherApi = {
 export const analyticsApi = {
   getDashboardStats: async (storeId: number) => {
     const res = await apiClient.get<ApiResponse<DashboardStatsDto>>(`/Analytics/dashboard/store/${storeId}`);
+    return res.data.data;
+  },
+  getShiftOperations: async (storeId: number) => {
+    const res = await apiClient.get<ApiResponse<ShiftOperationsDto>>(`/Analytics/shift-operations/store/${storeId}`);
+    return res.data.data;
+  },
+  getBusinessReport: async (storeId: number, fromDate?: string, toDate?: string) => {
+    const res = await apiClient.get<ApiResponse<BusinessAnalyticsReportDto>>(`/Analytics/business-report/store/${storeId}`, {
+      params: { fromDate, toDate }
+    });
+    return res.data.data;
+  },
+  getMenuEngineering: async (storeId: number, fromDate?: string, toDate?: string) => {
+    const res = await apiClient.get<ApiResponse<MenuEngineeringSummaryDto>>(`/Analytics/menu-engineering/store/${storeId}`, {
+      params: { fromDate, toDate }
+    });
+    return res.data.data;
+  },
+  getRevenueReport: async (storeId: number, fromDate: string, toDate: string) => {
+    const res = await apiClient.get<ApiResponse<RevenueReportDto>>(`/Analytics/revenue/store/${storeId}`, {
+      params: { fromDate, toDate }
+    });
+    return res.data.data;
+  },
+  getCustomerAnalytics: async (tenantId: number, fromDate?: string, toDate?: string) => {
+    const res = await apiClient.get<ApiResponse<CustomerAnalyticsDto>>(`/Analytics/customers/tenant/${tenantId}`, {
+      params: { fromDate, toDate }
+    });
+    return res.data.data;
+  },
+  getCategoryPerformance: async (tenantId: number, fromDate?: string, toDate?: string) => {
+    const res = await apiClient.get<ApiResponse<CategoryPerformanceDto[]>>(`/Analytics/categories/tenant/${tenantId}`, {
+      params: { fromDate, toDate }
+    });
     return res.data.data;
   }
 };

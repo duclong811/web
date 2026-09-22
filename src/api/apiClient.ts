@@ -1,7 +1,15 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
-export const API_BASE_URL = 'http://localhost:5277/api';
-export const HUB_URL = 'http://localhost:5277/hubs/orders';
+// Dynamic Base URL: Tự động nhận diện hostname (localhost hoặc IP mạng LAN/Hotspot)
+const getApiHost = () => {
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
+export const API_BASE_URL = `http://${getApiHost()}:5277/api`;
+export const HUB_URL = `http://${getApiHost()}:5277/hubs/orders`;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

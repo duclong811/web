@@ -20,7 +20,7 @@ namespace WebCafe.Backend.Services.Implementation
         public async Task<List<CategoryDto>> GetCategoriesByTenantAsync(int tenantId)
         {
             return await _db.Categories
-                .Where(c => c.TenantId == tenantId && c.IsActive)
+                .Where(c => c.TenantId == tenantId && c.IsActive && !c.IsDeleted)
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new CategoryDto
                 {
@@ -63,7 +63,9 @@ namespace WebCafe.Backend.Services.Implementation
             var category = await _db.Categories.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.CategoryId == categoryId);
             if (category == null) throw new NotFoundException("Không tìm thấy danh mục.");
 
-            category.IsActive = false;
+            // Soft delete
+            category.IsDeleted = true;
+            category.DeletedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
         }
     }
@@ -91,7 +93,7 @@ namespace WebCafe.Backend.Services.Implementation
             var tenantId = store.TenantId;
 
             var categories = await _db.Categories
-                .Where(c => c.TenantId == tenantId && c.IsActive)
+                .Where(c => c.TenantId == tenantId && c.IsActive && !c.IsDeleted)
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new CategoryDto
                 {
@@ -105,7 +107,7 @@ namespace WebCafe.Backend.Services.Implementation
                 .ToListAsync();
 
             var items = await _db.MenuItems
-                .Where(m => m.TenantId == tenantId && m.IsAvailable)
+                .Where(m => m.TenantId == tenantId && m.IsAvailable && !m.IsDeleted)
                 .Include(m => m.Category)
                 .Include(m => m.MenuItemSizes)
                     .ThenInclude(ms => ms.Size)
@@ -163,7 +165,7 @@ namespace WebCafe.Backend.Services.Implementation
         public async Task<List<MenuItemDto>> GetMenuItemsByTenantAsync(int tenantId, int? categoryId = null)
         {
             var query = _db.MenuItems
-                .Where(m => m.TenantId == tenantId)
+                .Where(m => m.TenantId == tenantId && !m.IsDeleted)
                 .Include(m => m.Category)
                 .Include(m => m.MenuItemSizes).ThenInclude(ms => ms.Size)
                 .Include(m => m.MenuItemToppings).ThenInclude(mt => mt.Topping)
@@ -283,10 +285,12 @@ namespace WebCafe.Backend.Services.Implementation
 
         public async Task DeleteAsync(int tenantId, int menuItemId)
         {
-            var item = await _db.MenuItems.FirstOrDefaultAsync(m => m.TenantId == tenantId && m.MenuItemId == menuItemId);
+            var item = await _db.MenuItems.FirstOrDefaultAsync(m => m.TenantId == tenantId && m.MenuItemId == menuItemId && !m.IsDeleted);
             if (item == null) throw new NotFoundException("Không tìm thấy món ăn.");
 
-            item.IsAvailable = false;
+            // Soft delete
+            item.IsDeleted = true;
+            item.DeletedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
         }
     }
@@ -304,12 +308,15 @@ namespace WebCafe.Backend.Services.Implementation
         {
             var tables = await _db.Tables
                 .Where(t => t.StoreId == storeId && t.IsActive)
-                .Include(t => t.Orders.Where(o => o.Status != "paid" && o.Status != "cancelled"))
+                .Include(t => t.Orders)
                 .ToListAsync();
 
             return tables.Select(t =>
             {
-                var activeOrder = t.Orders.OrderByDescending(o => o.CreatedAt).FirstOrDefault();
+                var activeOrder = t.Orders
+                    .Where(o => o.Status != "paid" && o.Status != "cancelled")
+                    .OrderByDescending(o => o.CreatedAt)
+                    .FirstOrDefault();
                 return new TableDto
                 {
                     TableId = t.TableId,

@@ -199,6 +199,8 @@ export interface VoucherValidationResult {
 export interface TopProductDto {
   menuItemId: number;
   name: string;
+  imageUrl?: string | null;
+  categoryName?: string;
   soldCount: number;
   totalRevenue: number;
 }
@@ -207,6 +209,16 @@ export interface DailyRevenueDto {
   date: string;
   revenue: number;
   ordersCount: number;
+  estimatedProfit?: number;
+}
+
+export interface RevenueReportDto {
+  storeId: number;
+  fromDate: string;
+  toDate: string;
+  totalRevenue: number;
+  totalOrders: number;
+  dailyRevenue: DailyRevenueDto[];
 }
 
 export interface DashboardStatsDto {
@@ -217,6 +229,147 @@ export interface DashboardStatsDto {
   occupiedTables: number;
   topProducts: TopProductDto[];
   revenueChart: DailyRevenueDto[];
+}
+
+// --- Shift Operations Types (/admin) ---
+export interface ActiveTableStatusDto {
+  tableId: number;
+  tableNumber: string;
+  capacity: number;
+  status: 'Available' | 'Occupied' | 'Reserved';
+  activeOrderId?: number | null;
+  activeOrderCode?: string | null;
+  itemCount: number;
+  totalAmount: number;
+  occupiedMinutes: number;
+  isLongStaying: boolean;
+}
+
+export interface ShiftStockAlertDto {
+  ingredientId: number;
+  ingredientName: string;
+  currentQuantity: number;
+  minThreshold: number;
+  unit: string;
+  severity: 'Critical' | 'Warning';
+}
+
+export interface HourlyTrafficDto {
+  hour: number;
+  timeLabel: string;
+  revenue: number;
+  orderCount: number;
+  isPeakHour: boolean;
+}
+
+export interface ShiftOperationsDto {
+  storeId: number;
+  storeName: string;
+  shiftDate: string;
+  todayRevenue: number;
+  yesterdayRevenueSameTime: number;
+  revenueGrowthPercent: number;
+  cashRevenue: number;
+  bankTransferRevenue: number;
+  todayOrdersCount: number;
+  pendingOrdersCount: number;
+  preparingOrdersCount: number;
+  readyOrdersCount: number;
+  servedOrdersCount: number;
+  avgFulfillmentMinutes: number;
+  totalTables: number;
+  occupiedTables: number;
+  availableTables: number;
+  tableOccupancyPercent: number;
+  activeTablesList: ActiveTableStatusDto[];
+  lowStockAlerts: ShiftStockAlertDto[];
+  hourlyTraffic: HourlyTrafficDto[];
+  topProductsToday: TopProductDto[];
+}
+
+// --- Business Analytics & Menu Engineering Types (/admin/analytics) ---
+export interface MenuEngineeringItemDto {
+  menuItemId: number;
+  name: string;
+  categoryName: string;
+  imageUrl?: string | null;
+  basePrice: number;
+  estimatedCost: number;
+  marginPerUnit: number;
+  marginPercent: number;
+  soldCount: number;
+  totalRevenue: number;
+  totalProfit: number;
+  classification: 'Star' | 'Plowhorse' | 'Puzzle' | 'Dog';
+  strategicRecommendation: string;
+}
+
+export interface MenuEngineeringSummaryDto {
+  stars: MenuEngineeringItemDto[];
+  plowhorses: MenuEngineeringItemDto[];
+  puzzles: MenuEngineeringItemDto[];
+  dogs: MenuEngineeringItemDto[];
+}
+
+export interface ChannelSalesDto {
+  channel: string;
+  orderCount: number;
+  revenue: number;
+  percentage: number;
+}
+
+export interface PaymentMethodStatsDto {
+  method: string;
+  count: number;
+  totalAmount: number;
+  percentage: number;
+}
+
+export interface CategoryPerformanceDto {
+  categoryId: number;
+  categoryName: string;
+  totalSold: number;
+  totalRevenue: number;
+  orderCount: number;
+  percentage: number;
+}
+
+export interface TopCustomerDto {
+  customerId: number;
+  name: string;
+  phone: string;
+  totalSpent: number;
+  visitCount: number;
+  totalPoints: number;
+}
+
+export interface CustomerAnalyticsDto {
+  totalCustomers: number;
+  newCustomers: number;
+  activeCustomers: number;
+  retentionRate: number;
+  topCustomers: TopCustomerDto[];
+}
+
+export interface BusinessAnalyticsReportDto {
+  fromDate: string;
+  toDate: string;
+  storeId: number;
+  grossRevenue: number;
+  totalDiscount: number;
+  netRevenue: number;
+  estimatedCOGS: number;
+  grossProfit: number;
+  grossMarginPercent: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  averageSpendPerCustomer: number;
+  dailyTrend: DailyRevenueDto[];
+  categoryBreakdown: CategoryPerformanceDto[];
+  paymentMethodBreakdown: PaymentMethodStatsDto[];
+  channelBreakdown: ChannelSalesDto[];
+  menuEngineering: MenuEngineeringSummaryDto;
+  customerAnalytics: CustomerAnalyticsDto;
 }
 
 // --- Cart Item State (Local) ---

@@ -2,15 +2,14 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { useStore } from '../../store/useStore';
-import { ShoppingCart, Copy, Check } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { trackPurchase } from '../../utils/analytics';
 
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
   const orderCode = searchParams.get('code') || searchParams.get('orderCode');
   
-  const { cart, activeOrder, guestSession } = useStore();
-  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
+  const { activeOrder, guestSession } = useStore();
   
   const [copied, setCopied] = useState(false);
   
@@ -107,26 +106,6 @@ export default function OrderSuccess() {
             opacity: 0.3;
         }
       `}</style>
-
-      {/* Top Navigation Anchor (Shared Component Mapping) */}
-      <header className="bg-surface docked full-width top-0 sticky z-50 shadow-sm w-full">
-        <div className="flex justify-between items-center w-full px-container-margin py-4 max-w-7xl mx-auto">
-          <Link to="/" className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</Link>
-          <div className="flex items-center gap-4">
-            <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
-              <ShoppingCart className="text-primary" size={24} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-            <Link to="/staff/login" className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">
-              <span className="material-symbols-outlined text-primary">person</span>
-            </Link>
-          </div>
-        </div>
-      </header>
 
       {/* Main Success Canvas */}
       <main className="flex-grow flex items-center justify-center w-full px-container-margin py-stack-lg">
@@ -267,20 +246,6 @@ export default function OrderSuccess() {
           </div>
         </div>
       </main>
-      
-      {/* Footer Component */}
-      <footer className="w-full mt-auto bg-surface-container-low border-t border-outline-variant relative z-10">
-        <div className="flex flex-col md:flex-row justify-between items-center w-full px-container-margin py-stack-lg gap-stack-md max-w-7xl mx-auto">
-          <span className="font-headline-md text-headline-md text-primary font-bold">AI-SMARTSERVE</span>
-          <div className="flex flex-wrap justify-center gap-stack-md">
-            <a className="font-label-md text-label-md text-on-surface-variant hover:underline cursor-pointer">Privacy Policy</a>
-            <a className="font-label-md text-label-md text-on-surface-variant hover:underline cursor-pointer">Terms of Service</a>
-            <a className="font-label-md text-label-md text-on-surface-variant hover:underline cursor-pointer">Contact Us</a>
-            <a className="font-label-md text-label-md text-on-surface-variant hover:underline cursor-pointer">Careers</a>
-          </div>
-          <p className="font-label-md text-label-md text-on-surface-variant">© 2024 AI-SMARTSERVE. All rights reserved.</p>
-        </div>
-      </footer>
       <MobileBottomNav />
     </div>
   );

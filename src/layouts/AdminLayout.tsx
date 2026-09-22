@@ -133,12 +133,6 @@ export default function AdminLayout() {
         <Outlet />
       </main>
 
-      {/* Floating Thao Tác Button (FAB) for quick order */}
-      <button className="fixed bottom-24 md:bottom-8 right-8 w-16 h-16 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 z-30 group">
-        <span className="material-symbols-outlined text-3xl">add</span>
-        <span className="absolute right-full mr-4 bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Tạo Đơn Nhanh</span>
-      </button>
-
       {/* Mobile Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest h-20 flex justify-around items-center px-4 border-t border-surface-container z-40">
         {navItems.map(item => {

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import { useStore } from '../../store/useStore';
-import { ShoppingCart, Sparkles, RefreshCw, Bot, Coffee, Sun, Moon, Utensils, CheckCircle2, Zap, MessageSquare } from 'lucide-react';
+import { Sparkles, RefreshCw, Bot, Coffee, Sun, Moon, Utensils, CheckCircle2, Zap, MessageSquare } from 'lucide-react';
 import { aiApi } from '../../api/apis';
 import type { AiRecommendationResponseDto, AiRecommendedItemDto, AiRecommendedComboDto } from '../../types/apiTypes';
 import AiSommelierChat from '../../components/AiSommelierChat';
@@ -15,9 +15,9 @@ export default function AIRecommendations() {
   const [addedToast, setAddedToast] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'chat' | 'suggestions'>('chat');
 
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const tenantId = storeInfo?.tenantId || 1;
   const storeId = currentStoreId || storeInfo?.storeId || 1;
+  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   // Lấy món gần nhất trong giỏ hàng làm điểm nhấn
   const lastCartItem = cart.length > 0 ? cart[cart.length - 1] : null;
@@ -90,7 +90,7 @@ export default function AIRecommendations() {
   };
 
   return (
-    <div className="bg-[#FAF8F5] text-[#2C2420] font-sans overflow-x-hidden min-h-screen">
+    <div className="bg-[#FAF8F5] text-[#2C2420] font-sans overflow-x-hidden min-h-screen py-4">
       {/* Toast Notification */}
       {addedToast && (
         <div className="fixed top-20 right-4 z-50 bg-[#1E293B] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-bounce">
@@ -99,45 +99,7 @@ export default function AIRecommendations() {
         </div>
       )}
 
-      {/* Top Navigation */}
-      <header className="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-40 border-b border-amber-900/5">
-        <div className="flex justify-between items-center px-4 md:px-8 py-3.5 max-w-7xl mx-auto">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-white shadow-md">
-              <Sparkles size={18} />
-            </div>
-            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-amber-800 via-amber-700 to-amber-900 bg-clip-text text-transparent">
-              AI-SMARTSERVE
-            </span>
-          </Link>
-
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-stone-600 hover:text-amber-800 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-stone-100 transition-colors">
-              Thực Đơn
-            </Link>
-            <Link to="/ai-suggest" className="text-amber-800 font-bold text-sm bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200/60 flex items-center gap-1.5">
-              <Sparkles size={15} className="text-amber-600" />
-              AI Sommelier
-            </Link>
-            <Link to="/cart" className="text-stone-600 hover:text-amber-800 text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-stone-100 transition-colors">
-              Giỏ Hàng
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <Link to="/cart" className="relative p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-full transition-all active:scale-95 border border-amber-200/50">
-              <ShoppingCart size={20} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-pulse">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-4 sm:py-6 space-y-5 sm:space-y-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-8 py-2 sm:py-4 space-y-5 sm:space-y-8">
         {/* Mode Navigation Tabs - Sticky on Mobile */}
         <div className="sticky top-[58px] sm:static z-30 py-1 sm:py-0 bg-[#FAF8F5]/90 sm:bg-transparent backdrop-blur-md sm:backdrop-blur-none">
           <div className="flex items-center justify-center p-1.5 bg-stone-200/90 backdrop-blur rounded-2xl max-w-lg mx-auto shadow-sm border border-stone-300/40">

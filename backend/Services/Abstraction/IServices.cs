@@ -82,7 +82,10 @@ namespace WebCafe.Backend.Services.Abstraction
     public interface IAnalyticsService
     {
         Task<DashboardStatsDto> GetDashboardStatsAsync(int storeId);
+        Task<ShiftOperationsDto> GetShiftOperationsAsync(int storeId);
         Task<RevenueReportDto> GetRevenueReportAsync(int storeId, DateTime fromDate, DateTime toDate);
+        Task<BusinessAnalyticsReportDto> GetBusinessAnalyticsReportAsync(int storeId, DateTime fromDate, DateTime toDate);
+        Task<MenuEngineeringSummaryDto> GetMenuEngineeringMatrixAsync(int storeId, DateTime fromDate, DateTime toDate);
         Task<CustomerAnalyticsDto> GetCustomerAnalyticsAsync(int tenantId, DateTime fromDate, DateTime toDate);
         Task<List<CategoryPerformanceDto>> GetCategoryPerformanceAsync(int tenantId, DateTime fromDate, DateTime toDate);
     }

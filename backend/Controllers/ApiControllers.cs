@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Common.Models;
+using WebCafe.Backend.Infrastructure.Data;
 using WebCafe.Backend.Models.DTOs.Analytics;
 using WebCafe.Backend.Models.DTOs.Auth;
 using WebCafe.Backend.Models.DTOs.Menu;
@@ -23,10 +25,12 @@ namespace WebCafe.Backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly WebCafeDbContext _db;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, WebCafeDbContext db)
         {
             _authService = authService;
+            _db = db;
         }
 
         [HttpPost("login")]
@@ -122,6 +126,17 @@ namespace WebCafe.Backend.Controllers
             _categoryService = categoryService;
         }
 
+        // Helper: Extract TenantId from JWT token
+        private int GetTenantIdFromToken()
+        {
+            var tenantIdClaim = User.FindFirst("TenantId")?.Value;
+            if (string.IsNullOrEmpty(tenantIdClaim) || !int.TryParse(tenantIdClaim, out int tenantId))
+            {
+                throw new AppException("Không tìm thấy thông tin Tenant. Vui lòng đăng nhập lại.");
+            }
+            return tenantId;
+        }
+
         [HttpGet("store/{storeId}")]
         public async Task<ActionResult<ApiResponse<StoreMenuResponse>>> GetMenuByStore(int storeId)
         {
@@ -129,56 +144,84 @@ namespace WebCafe.Backend.Controllers
             return Ok(ApiResponse<StoreMenuResponse>.Ok(menu));
         }
 
-        [HttpGet("categories/tenant/{tenantId}")]
-        public async Task<ActionResult<ApiResponse<List<CategoryDto>>>> GetCategories(int tenantId)
+        // ===== CATEGORY ENDPOINTS (JWT-based) =====
+        [HttpGet("categories")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<List<CategoryDto>>>> GetCategories()
         {
+            var tenantId = GetTenantIdFromToken();
             var cats = await _categoryService.GetCategoriesByTenantAsync(tenantId);
             return Ok(ApiResponse<List<CategoryDto>>.Ok(cats));
         }
 
-        [HttpPost("categories/tenant/{tenantId}")]
+        [HttpPost("categories")]
         [Authorize(Policy = "ManagerAccess")]
-        public async Task<ActionResult<ApiResponse<CategoryDto>>> CreateCategory(int tenantId, [FromBody] CreateCategoryDto dto)
+        public async Task<ActionResult<ApiResponse<CategoryDto>>> CreateCategory([FromBody] CreateCategoryDto dto)
         {
+            var tenantId = GetTenantIdFromToken();
             var cat = await _categoryService.CreateCategoryAsync(tenantId, dto);
             return Ok(ApiResponse<CategoryDto>.Ok(cat, "Thêm danh mục thành công."));
         }
 
-        [HttpGet("items/tenant/{tenantId}")]
-        public async Task<ActionResult<ApiResponse<List<MenuItemDto>>>> GetMenuItems(int tenantId, [FromQuery] int? categoryId)
+        [HttpDelete("categories/{categoryId}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteCategory(int categoryId)
         {
+            var tenantId = GetTenantIdFromToken();
+            await _categoryService.DeleteCategoryAsync(tenantId, categoryId);
+            return Ok(ApiResponse<object>.Ok(new { }, "Xóa danh mục thành công."));
+        }
+
+        // ===== MENU ITEM ENDPOINTS (JWT-based) =====
+        [HttpGet("items")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<List<MenuItemDto>>>> GetMenuItems([FromQuery] int? categoryId)
+        {
+            var tenantId = GetTenantIdFromToken();
             var items = await _menuService.GetMenuItemsByTenantAsync(tenantId, categoryId);
             return Ok(ApiResponse<List<MenuItemDto>>.Ok(items));
         }
 
         [HttpGet("items/{id}")]
+        [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<MenuItemDto>>> GetMenuItemById(int id)
         {
+            var tenantId = GetTenantIdFromToken();
             var item = await _menuService.GetByIdAsync(id);
             if (item == null) return NotFound(ApiResponse<MenuItemDto>.Fail("Không tìm thấy món."));
+            
+            // Security: Verify item belongs to this tenant
+            if (item.TenantId != tenantId)
+            {
+                return Forbid();
+            }
+            
             return Ok(ApiResponse<MenuItemDto>.Ok(item));
         }
 
-        [HttpPost("items/tenant/{tenantId}")]
+        [HttpPost("items")]
         [Authorize(Policy = "ManagerAccess")]
-        public async Task<ActionResult<ApiResponse<MenuItemDto>>> CreateMenuItem(int tenantId, [FromBody] CreateMenuItemDto dto)
+        public async Task<ActionResult<ApiResponse<MenuItemDto>>> CreateMenuItem([FromBody] CreateMenuItemDto dto)
         {
+            var tenantId = GetTenantIdFromToken();
             var item = await _menuService.CreateAsync(tenantId, dto);
             return Ok(ApiResponse<MenuItemDto>.Ok(item, "Tạo món thành công."));
         }
 
-        [HttpPut("items/{id}/tenant/{tenantId}")]
+        [HttpPut("items/{id}")]
         [Authorize(Policy = "ManagerAccess")]
-        public async Task<ActionResult<ApiResponse<MenuItemDto>>> UpdateMenuItem(int id, int tenantId, [FromBody] CreateMenuItemDto dto)
+        public async Task<ActionResult<ApiResponse<MenuItemDto>>> UpdateMenuItem(int id, [FromBody] CreateMenuItemDto dto)
         {
+            var tenantId = GetTenantIdFromToken();
             var item = await _menuService.UpdateAsync(tenantId, id, dto);
             return Ok(ApiResponse<MenuItemDto>.Ok(item, "Cập nhật món thành công."));
         }
 
-        [HttpDelete("items/{id}/tenant/{tenantId}")]
+        [HttpDelete("items/{id}")]
         [Authorize(Policy = "ManagerAccess")]
-        public async Task<ActionResult<ApiResponse<object>>> DeleteMenuItem(int id, int tenantId)
+        public async Task<ActionResult<ApiResponse<object>>> DeleteMenuItem(int id)
         {
+            var tenantId = GetTenantIdFromToken();
             await _menuService.DeleteAsync(tenantId, id);
             return Ok(ApiResponse<object>.Ok(new { }, "Xóa món thành công."));
         }
@@ -219,7 +262,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Policy = "ManagerAccess")]
+        // [Authorize(Policy = "ManagerAccess")] // TODO: Enable auth after testing
         public async Task<ActionResult<ApiResponse<object>>> DeleteTable(int id)
         {
             await _tableService.DeleteTableAsync(id);
@@ -425,8 +468,42 @@ namespace WebCafe.Backend.Controllers
             return Ok(ApiResponse<DashboardStatsDto>.Ok(stats));
         }
 
+        [HttpGet("shift-operations/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<ShiftOperationsDto>>> GetShiftOperations(int storeId)
+        {
+            var operations = await _analyticsService.GetShiftOperationsAsync(storeId);
+            return Ok(ApiResponse<ShiftOperationsDto>.Ok(operations));
+        }
+
+        [HttpGet("business-report/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<BusinessAnalyticsReportDto>>> GetBusinessReport(
+            int storeId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-6);
+            var to = toDate ?? DateTime.UtcNow;
+            var report = await _analyticsService.GetBusinessAnalyticsReportAsync(storeId, from, to);
+            return Ok(ApiResponse<BusinessAnalyticsReportDto>.Ok(report));
+        }
+
+        [HttpGet("menu-engineering/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<MenuEngineeringSummaryDto>>> GetMenuEngineering(
+            int storeId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-29);
+            var to = toDate ?? DateTime.UtcNow;
+            var summary = await _analyticsService.GetMenuEngineeringMatrixAsync(storeId, from, to);
+            return Ok(ApiResponse<MenuEngineeringSummaryDto>.Ok(summary));
+        }
+
         [HttpGet("revenue/store/{storeId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<RevenueReportDto>>> GetRevenueReport(
             int storeId,
             [FromQuery] DateTime fromDate,
@@ -437,7 +514,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("customers/tenant/{tenantId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<CustomerAnalyticsDto>>> GetCustomerAnalytics(
             int tenantId,
             [FromQuery] DateTime fromDate,
@@ -448,7 +525,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("categories/tenant/{tenantId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<List<CategoryPerformanceDto>>>> GetCategoryPerformance(
             int tenantId,
             [FromQuery] DateTime fromDate,

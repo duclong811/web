@@ -154,26 +154,12 @@ namespace WebCafe.Backend.Services.Implementation
 
             if (customer == null)
             {
-                customer = new Customer
-                {
-                    TenantId = 1,
-                    Phone = phone,
-                    Name = !string.IsNullOrWhiteSpace(request.Password) && request.Password != "123456" ? null : "Khách hàng",
-                    TotalPoints = 0,
-                    TotalSpent = 0,
-                    VisitCount = 1,
-                    CreatedAt = DateTime.UtcNow,
-                    LastVisitAt = DateTime.UtcNow
-                };
-                _db.Customers.Add(customer);
-                await _db.SaveChangesAsync();
+                throw new AppException("Số điện thoại chưa được đăng ký tài khoản. Vui lòng đăng ký tài khoản mới.");
             }
-            else
-            {
-                customer.VisitCount += 1;
-                customer.LastVisitAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
-            }
+
+            customer.VisitCount += 1;
+            customer.LastVisitAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
 
             var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
             var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
@@ -205,46 +191,59 @@ namespace WebCafe.Backend.Services.Implementation
 
         public async Task<RegisterResponse> RegisterCustomerAsync(RegisterRequest request)
         {
-            // Kiểm tra email đã tồn tại chưa
-            var existingByEmail = await _db.Customers
-                .FirstOrDefaultAsync(c => c.Phone == request.Email);
+            var phone = request.Phone.Trim().Replace(" ", "");
 
-            if (existingByEmail != null)
-            {
-                throw new AppException("Email này đã được đăng ký.");
-            }
-
-            // Kiểm tra phone đã tồn tại chưa
+            // Kiểm tra số điện thoại đã tồn tại chưa
             var existingByPhone = await _db.Customers
-                .FirstOrDefaultAsync(c => c.Phone == request.Phone);
+                .FirstOrDefaultAsync(c => c.Phone == phone);
 
             if (existingByPhone != null)
             {
-                throw new AppException("Số điện thoại này đã được đăng ký.");
+                throw new AppException("Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập.");
             }
 
             // Tạo customer mới với TenantId mặc định = 1 (The Coffee House)
             var customer = new Customer
             {
                 TenantId = 1,
-                Phone = request.Phone,
-                Name = request.FullName,
+                Phone = phone,
+                Name = request.FullName.Trim(),
                 TotalPoints = 0,
                 TotalSpent = 0,
-                VisitCount = 0,
-                CreatedAt = DateTime.UtcNow
+                VisitCount = 1,
+                CreatedAt = DateTime.UtcNow,
+                LastVisitAt = DateTime.UtcNow
             };
 
             _db.Customers.Add(customer);
             await _db.SaveChangesAsync();
 
+            // Tự động tạo Token để đăng nhập ngay lập tức (Auto-login)
+            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
+            var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
+
+            var token = JwtHelper.GenerateToken(
+                customer.CustomerId.ToString(),
+                customer.Phone,
+                AppRoles.Customer,
+                customer.TenantId,
+                null,
+                jwtKey,
+                jwtIssuer,
+                jwtAudience
+            );
+
             return new RegisterResponse
             {
                 CustomerId = customer.CustomerId,
                 Email = request.Email,
-                Phone = request.Phone,
+                Phone = customer.Phone,
                 FullName = customer.Name ?? string.Empty,
-                Message = "Đăng ký thành công! Bạn có thể đặt món ngay bây giờ."
+                Message = "Đăng ký thành công!",
+                Token = token,
+                Role = AppRoles.Customer,
+                TenantId = customer.TenantId
             };
         }
     }

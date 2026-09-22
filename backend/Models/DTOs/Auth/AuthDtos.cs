@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebCafe.Backend.Models.DTOs.Auth
 {
@@ -52,5 +52,8 @@ namespace WebCafe.Backend.Models.DTOs.Auth
         public string Phone { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
+        public string? Token { get; set; }
+        public string Role { get; set; } = "Customer";
+        public int TenantId { get; set; } = 1;
     }
 }

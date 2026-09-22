@@ -1,8 +1,9 @@
-﻿import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 import CustomerLayout from './layouts/CustomerLayout';
 import StaffLayout from './layouts/StaffLayout';
 import AdminLayout from './layouts/AdminLayout';
+import SystemAdminLayout from './layouts/SystemAdminLayout';
 
 // Auth Pages
 import Login from './pages/Login';
@@ -15,22 +16,32 @@ import Cart from './pages/customer/Cart';
 import OrderSuccess from './pages/customer/OrderSuccess';
 import OrderTracking from './pages/customer/OrderTracking';
 import QRLanding from './pages/customer/QRLanding';
+import Profile from './pages/customer/Profile';
+import OrderHistory from './pages/customer/OrderHistory';
 
 // Staff Pages
 import StaffOrderDashboard from './pages/staff/StaffOrderDashboard';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import NewOrder from './pages/staff/NewOrder';
 
-// Admin Pages
+// Admin Pages (Store Owner)
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Analytics from './pages/admin/Analytics';
 import MenuManagement from './pages/admin/MenuManagement';
+import InventoryManagement from './pages/admin/InventoryManagement';
 import TableManagement from './pages/admin/TableManagement';
 import StaffManagement from './pages/admin/StaffManagement';
+
+// Super Admin Pages (SaaS Platform Master)
+import SystemAdminDashboard from './pages/system-admin/SystemAdminDashboard';
+import TenantManagement from './pages/system-admin/TenantManagement';
+import SaaSPlansSettings from './pages/system-admin/SaaSPlansSettings';
+import AnalyticsTracker from './components/AnalyticsTracker';
 
 function App() {
   return (
     <Router>
+      <AnalyticsTracker />
       <Routes>
         {/* Auth Route */}
         <Route path="/login" element={<Login />} />
@@ -48,6 +59,8 @@ function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/order-success" element={<OrderSuccess />} />
           <Route path="/tracking" element={<OrderTracking />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/history" element={<OrderHistory />} />
         </Route>
 
         {/* Staff Routes - Wrapped in StaffLayout */}
@@ -58,13 +71,21 @@ function App() {
           <Route path="new-order" element={<NewOrder />} />
         </Route>
 
-        {/* Admin Routes - Wrapped in AdminLayout */}
+        {/* Store Owner / Store Admin Routes - Wrapped in AdminLayout */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="menu" element={<MenuManagement />} />
+          <Route path="inventory" element={<InventoryManagement />} />
           <Route path="tables" element={<TableManagement />} />
           <Route path="staff" element={<StaffManagement />} />
+        </Route>
+
+        {/* Super Admin Platform Routes - Wrapped in SystemAdminLayout */}
+        <Route path="/system-admin" element={<SystemAdminLayout />}>
+          <Route index element={<SystemAdminDashboard />} />
+          <Route path="tenants" element={<TenantManagement />} />
+          <Route path="plans" element={<SaaSPlansSettings />} />
         </Route>
       </Routes>
     </Router>

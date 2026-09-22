@@ -1,18 +1,15 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
-// DEVELOPMENT MODE - Choose based on your setup:
+// Dynamic Base URL: Tự động nhận diện hostname (localhost hoặc IP mạng LAN/Hotspot)
+const getApiHost = () => {
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
 
-// Option 1: Mobile Hotspot (for mobile demo with iPhone)
-export const API_BASE_URL = 'http://192.168.137.1:5277/api';
-export const HUB_URL = 'http://192.168.137.1:5277/hubs/orders';
-
-// Option 2: School WiFi (fu.edu.vn - when at school)
-// export const API_BASE_URL = 'http://10.33.117.80:5277/api';
-// export const HUB_URL = 'http://10.33.117.80:5277/hubs/orders';
-
-// Option 3: Localhost (development on same laptop)
-// export const API_BASE_URL = 'http://localhost:5277/api';
-// export const HUB_URL = 'http://localhost:5277/hubs/orders';
+export const API_BASE_URL = `http://${getApiHost()}:5277/api`;
+export const HUB_URL = `http://${getApiHost()}:5277/hubs/orders`;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -71,8 +68,11 @@ apiClient.interceptors.response.use(
       method: error.config?.method,
       status: error.response?.status,
       message,
+      fullResponse: error.response?.data, // Log full response để debug
     });
 
-    return Promise.reject(new Error(message));
+    // GIỮ NGUYÊN error object thay vì tạo Error mới
+    // Điều này giúp component truy cập được err.response.data.errors
+    return Promise.reject(error);
   }
 );

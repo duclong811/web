@@ -43,7 +43,7 @@ export default function StaffOrderDashboard() {
   // Convert store orders to component format (memoized to prevent re-creation)
   const orders: Order[] = useMemo(() => storeOrders.map(o => ({
     orderId: parseInt(o.id),
-    orderCode: o.orderCode,
+    orderCode: o.orderCode || '',
     tableNumber: o.tableNumber || 'Mang về',
     customerName: o.rawDto?.customerName || o.rawDto?.guestName || 'Khách',
     status: o.status,
@@ -60,7 +60,7 @@ export default function StaffOrderDashboard() {
       note: item.note,
     })),
     createdAt: o.createdAt,
-    note: o.rawDto?.note,
+    note: o.rawDto?.note || undefined,
   })), [storeOrders]);
 
   // Fetch orders from API and update store
@@ -128,6 +128,8 @@ export default function StaffOrderDashboard() {
   const filterOrders = useCallback((ordersList: Order[], status: LocalOrderStatus) => {
     if (status === 'all') {
       setFilteredOrders(ordersList);
+    } else if (status === 'paid') {
+      setFilteredOrders(ordersList.filter(order => order.status === 'paid' || (order.status as string) === 'served' || (order.status as string) === 'completed'));
     } else {
       setFilteredOrders(ordersList.filter(order => order.status === status));
     }
@@ -149,7 +151,7 @@ export default function StaffOrderDashboard() {
       pending: orders.filter(o => o.status === 'pending').length,
       preparing: orders.filter(o => o.status === 'preparing').length,
       ready: orders.filter(o => o.status === 'ready').length,
-      paid: orders.filter(o => o.status === 'paid').length,
+      paid: orders.filter(o => o.status === 'paid' || (o.status as string) === 'served' || (o.status as string) === 'completed').length,
     };
   };
 

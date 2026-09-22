@@ -69,7 +69,7 @@ export default function UserMenu({ isOpen, onClose }: UserMenuProps) {
           </button>
 
           <button
-            onClick={() => handleNavigate('/tracking')}
+            onClick={() => handleNavigate('/history')}
             className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-left"
           >
             <span className="material-symbols-outlined text-gray-600">receipt_long</span>

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +12,8 @@ using WebCafe.Backend.Models.DTOs.Order;
 using WebCafe.Backend.Models.DTOs.Payment;
 using WebCafe.Backend.Models.DTOs.Table;
 using WebCafe.Backend.Models.DTOs.Voucher;
+using WebCafe.Backend.Models.DTOs.AI;
+using WebCafe.Backend.Models.DTOs.Inventory;
 using WebCafe.Backend.Services.Abstraction;
 using WebCafe.Backend.Services.Implementation;
 using Microsoft.Extensions.Logging;
@@ -34,63 +36,80 @@ namespace WebCafe.Backend.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
         {
-            var res = await _authService.LoginStaffAsync(request);
-            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập nhân viên thành công."));
+            try
+            {
+                var res = await _authService.LoginStaffAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập nhân viên thành công."));
+            }
+            catch (Exception)
+            {
+                // Nếu không phải nhân viên, thử đăng nhập dưới dạng khách hàng
+                try
+                {
+                    var customerRes = await _authService.LoginCustomerAsync(request);
+                    return Ok(ApiResponse<LoginResponse>.Ok(customerRes, "Đăng nhập khách hàng thành công."));
+                }
+                catch (AppException appEx)
+                {
+                    return BadRequest(ApiResponse<LoginResponse>.Fail(appEx.Message));
+                }
+            }
+        }
+
+        [HttpPost("customer-login")]
+        public async Task<ActionResult<ApiResponse<LoginResponse>>> CustomerLogin([FromBody] LoginRequest request)
+        {
+            try
+            {
+                var res = await _authService.LoginCustomerAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập khách hàng thành công."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<LoginResponse>.Fail(ex.Message));
+            }
         }
 
         [HttpPost("owner-login")]
         public async Task<ActionResult<ApiResponse<LoginResponse>>> OwnerLogin([FromBody] LoginRequest request)
         {
-            var res = await _authService.LoginTenantOwnerAsync(request);
-            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập chủ quán thành công."));
+            try
+            {
+                var res = await _authService.LoginTenantOwnerAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập chủ quán thành công."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<LoginResponse>.Fail(ex.Message));
+            }
         }
 
         [HttpPost("admin-login")]
         public async Task<ActionResult<ApiResponse<LoginResponse>>> AdminLogin([FromBody] LoginRequest request)
         {
-            // DEBUG: Log input
-            Console.WriteLine($"[DEBUG] Admin Login Attempt:");
-            Console.WriteLine($"  Username: '{request.Username}'");
-            Console.WriteLine($"  Password: '{request.Password}'");
-            
-            var admin = await _db.SystemAdmins.FirstOrDefaultAsync(a => a.Username == request.Username);
-            
-            if (admin == null)
+            try
             {
-                Console.WriteLine($"[DEBUG] User not found: {request.Username}");
-                throw new AppException("Tên đăng nhập hoặc mật khẩu quản trị viên không chính xác.");
+                var res = await _authService.LoginSystemAdminAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập quản trị viên thành công."));
             }
-            
-            Console.WriteLine($"[DEBUG] User found:");
-            Console.WriteLine($"  Username: '{admin.Username}'");
-            Console.WriteLine($"  IsActive: {admin.IsActive}");
-            Console.WriteLine($"  Hash in DB: {admin.PasswordHash?.Substring(0, 30)}...");
-            
-            var isPasswordValid = WebCafe.Backend.Common.Helper.SecurityHelper.VerifyPassword(request.Password, admin.PasswordHash);
-            Console.WriteLine($"[DEBUG] Password verify result: {isPasswordValid}");
-            
-            if (!admin.IsActive)
+            catch (AppException ex)
             {
-                Console.WriteLine($"[DEBUG] User not active");
-                throw new AppException("Tài khoản đã bị vô hiệu hóa.");
+                return BadRequest(ApiResponse<LoginResponse>.Fail(ex.Message));
             }
-            
-            if (!isPasswordValid)
-            {
-                Console.WriteLine($"[DEBUG] Password mismatch!");
-                throw new AppException("Tên đăng nhập hoặc mật khẩu quản trị viên không chính xác.");
-            }
-            
-            var res = await _authService.LoginSystemAdminAsync(request);
-            Console.WriteLine($"[DEBUG] Login successful!");
-            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập quản trị viên thành công."));
         }
 
         [HttpPost("register")]
         public async Task<ActionResult<ApiResponse<RegisterResponse>>> Register([FromBody] RegisterRequest request)
         {
-            var res = await _authService.RegisterCustomerAsync(request);
-            return Ok(ApiResponse<RegisterResponse>.Ok(res, "Đăng ký tài khoản thành công."));
+            try
+            {
+                var res = await _authService.RegisterCustomerAsync(request);
+                return Ok(ApiResponse<RegisterResponse>.Ok(res, "Đăng ký tài khoản thành công."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<RegisterResponse>.Fail(ex.Message));
+            }
         }
     }
 
@@ -449,8 +468,42 @@ namespace WebCafe.Backend.Controllers
             return Ok(ApiResponse<DashboardStatsDto>.Ok(stats));
         }
 
+        [HttpGet("shift-operations/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<ShiftOperationsDto>>> GetShiftOperations(int storeId)
+        {
+            var operations = await _analyticsService.GetShiftOperationsAsync(storeId);
+            return Ok(ApiResponse<ShiftOperationsDto>.Ok(operations));
+        }
+
+        [HttpGet("business-report/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<BusinessAnalyticsReportDto>>> GetBusinessReport(
+            int storeId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-6);
+            var to = toDate ?? DateTime.UtcNow;
+            var report = await _analyticsService.GetBusinessAnalyticsReportAsync(storeId, from, to);
+            return Ok(ApiResponse<BusinessAnalyticsReportDto>.Ok(report));
+        }
+
+        [HttpGet("menu-engineering/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<MenuEngineeringSummaryDto>>> GetMenuEngineering(
+            int storeId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-29);
+            var to = toDate ?? DateTime.UtcNow;
+            var summary = await _analyticsService.GetMenuEngineeringMatrixAsync(storeId, from, to);
+            return Ok(ApiResponse<MenuEngineeringSummaryDto>.Ok(summary));
+        }
+
         [HttpGet("revenue/store/{storeId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<RevenueReportDto>>> GetRevenueReport(
             int storeId,
             [FromQuery] DateTime fromDate,
@@ -461,7 +514,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("customers/tenant/{tenantId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<CustomerAnalyticsDto>>> GetCustomerAnalytics(
             int tenantId,
             [FromQuery] DateTime fromDate,
@@ -472,7 +525,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("categories/tenant/{tenantId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<List<CategoryPerformanceDto>>>> GetCategoryPerformance(
             int tenantId,
             [FromQuery] DateTime fromDate,
@@ -585,6 +638,72 @@ namespace WebCafe.Backend.Controllers
             var transactions = await _inventoryService.GetTransactionHistoryAsync(storeId, ingredientId, fromDate, toDate);
             return Ok(ApiResponse<List<InventoryTransactionDto>>.Ok(transactions));
         }
+
+        [HttpGet("ingredients")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<List<IngredientDto>>>> GetIngredients(
+            [FromQuery] int tenantId = 1, 
+            [FromQuery] int? storeId = null)
+        {
+            var list = await _inventoryService.GetIngredientsAsync(tenantId, storeId);
+            return Ok(ApiResponse<List<IngredientDto>>.Ok(list));
+        }
+
+        [HttpPost("ingredients")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<IngredientDto>>> CreateIngredient([FromBody] CreateIngredientDto dto)
+        {
+            var result = await _inventoryService.CreateIngredientAsync(dto);
+            return Ok(ApiResponse<IngredientDto>.Ok(result, "Tạo nguyên liệu thành công."));
+        }
+
+        [HttpPut("ingredients/{id}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<IngredientDto>>> UpdateIngredient(int id, [FromBody] UpdateIngredientDto dto)
+        {
+            var result = await _inventoryService.UpdateIngredientAsync(id, dto);
+            return Ok(ApiResponse<IngredientDto>.Ok(result, "Cập nhật nguyên liệu thành công."));
+        }
+
+        [HttpDelete("ingredients/{id}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteIngredient(int id)
+        {
+            await _inventoryService.DeleteIngredientAsync(id);
+            return Ok(ApiResponse<object>.Ok(new { }, "Xóa nguyên liệu thành công."));
+        }
+
+        [HttpGet("recipes/menu-item/{menuItemId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<List<MenuItemRecipeDto>>>> GetMenuItemRecipes(int menuItemId)
+        {
+            var recipes = await _inventoryService.GetMenuItemRecipesAsync(menuItemId);
+            return Ok(ApiResponse<List<MenuItemRecipeDto>>.Ok(recipes));
+        }
+
+        [HttpPost("recipes/menu-item")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> UpsertRecipe([FromBody] UpsertRecipeDto dto)
+        {
+            await _inventoryService.UpsertMenuItemRecipeAsync(dto);
+            return Ok(ApiResponse<object>.Ok(new { }, "Lưu định lượng công thức thành công."));
+        }
+
+        [HttpDelete("recipes/{recipeId}")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteRecipe(int recipeId)
+        {
+            await _inventoryService.DeleteMenuItemRecipeAsync(recipeId);
+            return Ok(ApiResponse<object>.Ok(new { }, "Xóa nguyên liệu khỏi công thức thành công."));
+        }
+
+        [HttpGet("alerts/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<List<LowStockAlertDto>>>> GetLowStockAlerts(int storeId)
+        {
+            var alerts = await _inventoryService.GetLowStockAlertsAsync(storeId);
+            return Ok(ApiResponse<List<LowStockAlertDto>>.Ok(alerts));
+        }
     }
 
     public class ImportInventoryDto
@@ -601,6 +720,73 @@ namespace WebCafe.Backend.Controllers
         public int IngredientId { get; set; }
         public decimal NewQuantity { get; set; }
         public string? Note { get; set; }
+    }
+
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AIController : ControllerBase
+    {
+        private readonly IGeminiService _geminiService;
+        private readonly ILogger<AIController> _logger;
+
+        public AIController(IGeminiService geminiService, ILogger<AIController> logger)
+        {
+            _geminiService = geminiService;
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Gợi ý món ăn thông minh & cá nhân hóa sử dụng Google Gemini AI (với caching và statistical fallback)
+        /// </summary>
+        [HttpPost("recommend")]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResponse<AiRecommendationResponseDto>>> GetSmartRecommendations([FromBody] AiRecommendationRequestDto request)
+        {
+            if (request.StoreId <= 0 && request.TenantId <= 0)
+            {
+                return BadRequest(ApiResponse<AiRecommendationResponseDto>.Fail("StoreId hoặc TenantId không hợp lệ."));
+            }
+
+            try
+            {
+                var recommendations = await _geminiService.GetSmartRecommendationsAsync(request);
+                return Ok(ApiResponse<AiRecommendationResponseDto>.Ok(recommendations, "Lấy gợi ý món ăn thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi lấy AI recommendations");
+                return StatusCode(500, ApiResponse<AiRecommendationResponseDto>.Fail($"Lỗi hệ thống khi xử lý gợi ý AI: {ex.Message}"));
+            }
+        }
+
+        /// <summary>
+        /// Trò chuyện tự do cùng AI Sommelier để tư vấn món ăn & đồ uống chuẩn vị
+        /// </summary>
+        [HttpPost("chat")]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResponse<AiChatResponseDto>>> ChatWithSommelier([FromBody] AiChatRequestDto request)
+        {
+            if (request.StoreId <= 0 && request.TenantId <= 0)
+            {
+                return BadRequest(ApiResponse<AiChatResponseDto>.Fail("StoreId hoặc TenantId không hợp lệ."));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Message))
+            {
+                return BadRequest(ApiResponse<AiChatResponseDto>.Fail("Vui lòng nhập câu hỏi hoặc yêu cầu cho AI Sommelier."));
+            }
+
+            try
+            {
+                var chatResponse = await _geminiService.ChatWithSommelierAsync(request);
+                return Ok(ApiResponse<AiChatResponseDto>.Ok(chatResponse, "AI Sommelier phản hồi thành công."));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi xử lý cuộc trò chuyện với AI Sommelier");
+                return StatusCode(500, ApiResponse<AiChatResponseDto>.Fail($"Lỗi hệ thống khi trò chuyện cùng AI: {ex.Message}"));
+            }
+        }
     }
 }
 

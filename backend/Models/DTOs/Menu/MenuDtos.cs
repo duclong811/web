@@ -14,9 +14,14 @@ namespace WebCafe.Backend.Models.DTOs.Menu
 
     public class CreateCategoryDto
     {
-        [Required, MaxLength(100)]
+        [Required(ErrorMessage = "Tên danh mục là bắt buộc.")]
+        [MaxLength(100, ErrorMessage = "Tên danh mục không được vượt quá 100 ký tự.")]
         public string Name { get; set; } = string.Empty;
+        
+        [MaxLength(50, ErrorMessage = "Icon không được vượt quá 50 ký tự.")]
         public string? Icon { get; set; }
+        
+        [Range(0, int.MaxValue, ErrorMessage = "Thứ tự sắp xếp phải là số dương.")]
         public int SortOrder { get; set; } = 0;
     }
 
@@ -55,15 +60,29 @@ namespace WebCafe.Backend.Models.DTOs.Menu
 
     public class CreateMenuItemDto
     {
+        [Required(ErrorMessage = "Danh mục là bắt buộc.")]
         public int CategoryId { get; set; }
-        [Required, MaxLength(150)]
+        
+        [Required(ErrorMessage = "Tên món là bắt buộc.")]
+        [MaxLength(150, ErrorMessage = "Tên món không được vượt quá 150 ký tự.")]
         public string Name { get; set; } = string.Empty;
+        
+        [MaxLength(500, ErrorMessage = "Mô tả không được vượt quá 500 ký tự.")]
         public string? Description { get; set; }
+        
+        [Required(ErrorMessage = "Giá là bắt buộc.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "Giá phải lớn hơn 0.")]
         public decimal BasePrice { get; set; }
+        
+        [MaxLength(500, ErrorMessage = "URL hình ảnh không được vượt quá 500 ký tự.")]
         public string? ImageUrl { get; set; }
+        
         public bool IsFeatured { get; set; } = false;
         public bool IsAvailable { get; set; } = true;
+        
+        [Range(0, int.MaxValue, ErrorMessage = "Thứ tự sắp xếp phải là số dương.")]
         public int SortOrder { get; set; } = 0;
+        
         public List<int>? SizeIds { get; set; }
         public List<int>? ToppingIds { get; set; }
     }

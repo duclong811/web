@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebCafe.Backend.Models.DTOs.Order
 {
@@ -9,31 +9,59 @@ namespace WebCafe.Backend.Models.DTOs.Order
 
     public class CreateOrderItemDto
     {
+        [Required(ErrorMessage = "Món ăn là bắt buộc.")]
         public int MenuItemId { get; set; }
+        
         public int? SizeId { get; set; }
+        
+        [Range(1, 100, ErrorMessage = "Số lượng phải từ 1 đến 100.")]
         public int Quantity { get; set; } = 1;
+        
+        [RegularExpression(@"^(0%|25%|50%|75%|100%)$", ErrorMessage = "Độ ngọt phải là 0%, 25%, 50%, 75% hoặc 100%.")]
         public string SugarLevel { get; set; } = "100%";
+        
+        [RegularExpression(@"^(0%|25%|50%|75%|100%)$", ErrorMessage = "Độ đá phải là 0%, 25%, 50%, 75% hoặc 100%.")]
         public string IceLevel { get; set; } = "100%";
+        
+        [MaxLength(500, ErrorMessage = "Ghi chú không được vượt quá 500 ký tự.")]
         public string? Note { get; set; }
+        
         public List<CreateOrderItemToppingDto>? Toppings { get; set; }
     }
 
     public class CreateOrderDto
     {
+        [Required(ErrorMessage = "Cửa hàng là bắt buộc.")]
         public int StoreId { get; set; }
+        
         public int? TableId { get; set; }
+        
+        [Phone(ErrorMessage = "Số điện thoại khách hàng không đúng định dạng.")]
         public string? CustomerPhone { get; set; }
+        
+        [MaxLength(100, ErrorMessage = "Tên khách hàng không được vượt quá 100 ký tự.")]
         public string? CustomerName { get; set; }
         
         // Guest Order Support
         public string? GuestId { get; set; }
+        
+        [MaxLength(100, ErrorMessage = "Tên khách không được vượt quá 100 ký tự.")]
         public string? GuestName { get; set; }
+        
+        [Phone(ErrorMessage = "Số điện thoại khách không đúng định dạng.")]
         public string? GuestPhone { get; set; }
         
+        [MaxLength(50, ErrorMessage = "Mã voucher không được vượt quá 50 ký tự.")]
         public string? VoucherCode { get; set; }
+        
+        [Range(0, int.MaxValue, ErrorMessage = "Điểm sử dụng không hợp lệ.")]
         public int PointsToUse { get; set; } = 0;
+        
+        [MaxLength(500, ErrorMessage = "Ghi chú không được vượt quá 500 ký tự.")]
         public string? Note { get; set; }
-        [Required]
+        
+        [Required(ErrorMessage = "Đơn hàng phải có ít nhất 1 món.")]
+        [MinLength(1, ErrorMessage = "Đơn hàng phải có ít nhất 1 món.")]
         public List<CreateOrderItemDto> Items { get; set; } = new();
     }
 
@@ -94,7 +122,9 @@ namespace WebCafe.Backend.Models.DTOs.Order
 
     public class UpdateOrderStatusDto
     {
-        [Required]
+        [Required(ErrorMessage = "Trạng thái đơn hàng là bắt buộc.")]
+        [RegularExpression(@"^(pending|confirmed|preparing|ready|served|paid|completed|cancelled)$", 
+            ErrorMessage = "Trạng thái phải là: pending, confirmed, preparing, ready, served, paid, completed hoặc cancelled.")]
         public string Status { get; set; } = "confirmed";
     }
 }

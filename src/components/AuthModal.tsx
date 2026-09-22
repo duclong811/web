@@ -19,8 +19,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   });
 
   const [registerData, setRegisterData] = useState({
-    username: '',
-    email: '',
     password: '',
     fullName: '',
     phoneNumber: '',
@@ -36,14 +34,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const endpoints = ['/auth/login', '/auth/owner-login', '/auth/admin-login'];
     let lastError: any = null;
 
-    console.log('🚀 Starting login with username:', loginData.username);
+    const payload = {
+      username: loginData.username.trim().replace(/\s/g, ''),
+      password: loginData.password,
+    };
+
+    console.log('🚀 Starting login with username:', payload.username);
     console.log('📋 Endpoint order:', endpoints);
 
     for (const endpoint of endpoints) {
       try {
         console.log(`🔄 [${new Date().toISOString()}] Trying endpoint: ${endpoint}`);
-        console.log('📤 Payload:', { username: loginData.username, password: '***' });
-        const response = await apiClient.post(endpoint, loginData);
+        console.log('📤 Payload:', { username: payload.username, password: '***' });
+        const response = await apiClient.post(endpoint, payload);
         const { token, username, fullName, role, tenantId, storeId, storeName, brandName } = response.data.data;
 
         localStorage.setItem('token', token);
@@ -66,20 +69,39 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     console.log('❌ All endpoints failed. Last error:', lastError?.response?.data);
 
-    // All endpoints failed, show error
-    if (lastError?.response?.data) {
-      const errorData = lastError.response.data;
-      if (errorData.errors && typeof errorData.errors === 'object') {
-        // Multiple validation errors
-        const errorMessages = Object.entries(errorData.errors)
-          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-          .join('\n');
-        setError(errorMessages);
-      } else if (errorData.message) {
-        setError(`❌ ${errorData.message}`);
+    // All endpoints failed — show detailed error (Long's enhanced error handling)
+    if (lastError?.response) {
+      const status = lastError.response.status;
+      const data = lastError.response.data;
+      const message = data?.message;
+      const errors = data?.errors;
+
+      if (status === 401) {
+        setError('❌ Tên đăng nhập hoặc mật khẩu không đúng.\n\nVui lòng kiểm tra lại.');
+      } else if (status === 404) {
+        setError('❌ Tài khoản không tồn tại.\n\nVui lòng đăng ký tài khoản mới.');
+      } else if (status === 400) {
+        if (errors && typeof errors === 'object') {
+          const errorMessages = Object.entries(errors)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          setError(errorMessages);
+        } else if (message) {
+          setError(`❌ ${message}`);
+        } else {
+          setError('❌ Thông tin đăng nhập không hợp lệ.');
+        }
+      } else if (status === 500) {
+        setError('⚠️ Lỗi máy chủ.\n\nVui lòng thử lại sau ít phút.');
       } else {
-        setError('❌ Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+        if (message) {
+          setError(`❌ ${message}`);
+        } else {
+          setError('❌ Đăng nhập thất bại.\n\nVui lòng thử lại.');
+        }
       }
+    } else if (lastError?.code === 'ERR_NETWORK') {
+      setError('🌐 Không thể kết nối đến máy chủ.\n\nVui lòng kiểm tra kết nối mạng.');
     } else {
       setError(lastError?.message || '❌ Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
     }
@@ -92,19 +114,112 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/auth/register', registerData);
-      const { token, username, fullName, role, tenantId } = response.data.data;
+      const cleanPhone = registerData.phoneNumber.trim().replace(/\s/g, '');
+      const payload = {
+        fullName: registerData.fullName.trim(),
+        phone: cleanPhone,
+        password: registerData.password,
+      };
 
-      localStorage.setItem('token', token);
-      setAuth({
-        token,
-        user: { username, fullName, role, tenantId },
-      });
+      const response = await apiClient.post('/auth/register', payload);
+      const resData = response.data.data;
+
+      // Lưu thông tin khách hàng vào localStorage để sử dụng khi đặt món
+      if (resData?.phone) {
+        const guestSession = {
+          guestId: `cust_${resData.customerId || Date.now()}`,
+          storeId: 1,
+          tableId: 'T01',
+          guestName: resData.fullName,
+          guestPhone: resData.phone,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('guestSession', JSON.stringify(guestSession));
+      }
+
+      if (resData?.token) {
+        localStorage.setItem('token', resData.token);
+        setAuth({
+          token: resData.token,
+          user: { 
+            username: resData.phone, 
+            fullName: resData.fullName, 
+            role: resData.role || 'Customer', 
+            tenantId: resData.tenantId || 1 
+          },
+        });
+      }
 
       onClose();
       window.location.reload();
     } catch (err: any) {
-      setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      console.error('Register error:', err);
+      console.log('Full error response data:', err.response?.data);
+      
+      // Handle specific error cases with user-friendly Vietnamese messages
+      if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        // Backend trả về format: { success: false, message: "...", errors: {...} }
+        const message = data?.message;
+        const errors = data?.errors; // Validation errors object from backend (ASP.NET ModelState)
+        
+        console.log('Parsed - status:', status);
+        console.log('Parsed - message:', message);
+        console.log('Parsed - errors:', errors);
+        
+        if (status === 400) {
+          // Bad Request - validation errors
+          if (errors && typeof errors === 'object') {
+            // Backend trả về object errors: { "Email": ["error1", "error2"], "Password": ["error"] }
+            const errorMessages: string[] = [];
+            Object.keys(errors).forEach(field => {
+              const fieldErrors = errors[field];
+              if (Array.isArray(fieldErrors)) {
+                fieldErrors.forEach(msg => errorMessages.push(`❌ ${msg}`));
+              } else if (typeof fieldErrors === 'string') {
+                errorMessages.push(`❌ ${fieldErrors}`);
+              }
+            });
+            
+            if (errorMessages.length > 0) {
+              setError(errorMessages.join('\n'));
+            } else if (message) {
+              setError(`❌ ${message}`);
+            } else {
+              setError('❌ Dữ liệu không hợp lệ.\n\nVui lòng kiểm tra lại thông tin đã nhập.');
+            }
+          } else if (message) {
+            // Backend trả về message trực tiếp (từ AppException)
+            setError(`❌ ${message}`);
+          } else {
+            setError('❌ Dữ liệu không hợp lệ.\n\nVui lòng kiểm tra lại thông tin đã nhập.');
+          }
+        } else if (status === 409) {
+          // Conflict - duplicate data (thường từ AppException với StatusCode 409)
+          if (message) {
+            setError(`❌ ${message}`);
+          } else {
+            setError('❌ Thông tin đã tồn tại trong hệ thống.\n\nVui lòng kiểm tra lại.');
+          }
+        } else if (status === 500) {
+          setError('⚠️ Lỗi máy chủ.\n\nVui lòng thử lại sau ít phút.');
+        } else {
+          // Fallback cho các status code khác
+          if (message) {
+            setError(`❌ ${message}`);
+          } else {
+            setError('❌ Đăng ký thất bại.\n\nVui lòng thử lại.');
+          }
+        }
+      } else if (err.code === 'ERR_NETWORK') {
+        setError('🌐 Không thể kết nối đến máy chủ.\n\nVui lòng kiểm tra kết nối mạng của bạn.');
+      } else {
+        // Fallback: show any message we can get
+        const fallbackMessage = err.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
+        setError(`❌ ${fallbackMessage}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -146,7 +261,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {/* Error Message */}
         {error && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm">{error}</p>
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div className="text-red-600 text-sm whitespace-pre-line">{error}</div>
+            </div>
           </div>
         )}
 
@@ -155,7 +275,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên đăng nhập
+                Số điện thoại hoặc Tên đăng nhập
               </label>
               <input
                 type="text"
@@ -163,8 +283,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="Nhập tên đăng nhập"
+                placeholder="VD: 0912345678 hoặc staff_q1"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Khách hàng vui lòng nhập Số điện thoại để đăng nhập & tích điểm
+              </p>
             </div>
 
             <div>
@@ -207,35 +330,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên đăng nhập
-              </label>
-              <input
-                type="text"
-                value={registerData.username}
-                onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-                required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="username123"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                value={registerData.email}
-                onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="email@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Số điện thoại
+                Số điện thoại <span className="text-xs text-orange-600 font-normal">(Dùng để đăng nhập & tích điểm)</span>
               </label>
               <input
                 type="tel"
@@ -243,7 +338,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 onChange={(e) => setRegisterData({ ...registerData, phoneNumber: e.target.value })}
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="0912345678"
+                placeholder="VD: 0912345678"
               />
             </div>
 
@@ -257,7 +352,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Tối thiểu 8 ký tự (gồm số và ký tự đặc biệt)"
               />
             </div>
 

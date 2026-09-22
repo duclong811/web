@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Infrastructure.Data;
+using WebCafe.Backend.Models.DTOs.Inventory;
 using WebCafe.Backend.Models.Entities;
 using WebCafe.Backend.Services.Abstraction;
 
@@ -32,19 +33,75 @@ namespace WebCafe.Backend.Services.Implementation
                 throw new NotFoundException("Không tìm thấy đơn hàng.");
             }
 
+            // Kiểm tra xem đơn hàng đã từng được trừ kho trước đó chưa (Idempotent)
+            var alreadyDeducted = await _db.InventoryTransactions
+                .AnyAsync(t => t.OrderId == orderId && t.Type == "deduction");
+            if (alreadyDeducted)
+            {
+                _logger.LogInformation($"Inventory for order {order.OrderCode} has already been deducted. Skipping.");
+                return;
+            }
+
             using var transaction = await _db.Database.BeginTransactionAsync();
             try
             {
                 foreach (var orderItem in order.OrderItems)
                 {
-                    // 1. Trừ nguyên liệu cho món chính
-                    var menuItemRecipes = await _db.MenuItemRecipes
+                    // 1. Trừ nguyên liệu cho món chính (Logic đa tầng linh hoạt tránh trượt size)
+                    var allRecipes = await _db.MenuItemRecipes
                         .Include(r => r.Ingredient)
-                        .Where(r => r.MenuItemId == orderItem.MenuItemId &&
-                                   (r.SizeId == null || r.SizeId == orderItem.SizeId))
+                        .Where(r => r.MenuItemId == orderItem.MenuItemId)
                         .ToListAsync();
 
-                    foreach (var recipe in menuItemRecipes)
+                    var recipesToApply = new List<MenuItemRecipe>();
+
+                    if (allRecipes.Any())
+                    {
+                        // 1.1 Lấy công thức dùng chung cho mọi size (SizeId == null)
+                        var universalRecipes = allRecipes.Where(r => r.SizeId == null).ToList();
+                        recipesToApply.AddRange(universalRecipes);
+
+                        // 1.2 Nếu đơn có SizeId cụ thể
+                        if (orderItem.SizeId.HasValue)
+                        {
+                            var exactSizeRecipes = allRecipes.Where(r => r.SizeId == orderItem.SizeId.Value).ToList();
+                            if (exactSizeRecipes.Any())
+                            {
+                                recipesToApply.AddRange(exactSizeRecipes);
+                            }
+                            else if (!universalRecipes.Any())
+                            {
+                                // Fallback: Nếu không có công thức cho size này và cũng không có universal,
+                                // lấy công thức của size đầu tiên có sẵn của món đó
+                                var firstAvailableSizeId = allRecipes.FirstOrDefault(r => r.SizeId.HasValue)?.SizeId;
+                                if (firstAvailableSizeId.HasValue)
+                                {
+                                    recipesToApply.AddRange(allRecipes.Where(r => r.SizeId == firstAvailableSizeId.Value));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // 1.3 Nếu đơn KHÔNG có SizeId (orderItem.SizeId == null)
+                            // Nếu chưa có công thức chung, fallback lấy công thức của size đầu tiên có sẵn
+                            if (!universalRecipes.Any())
+                            {
+                                var firstAvailableSizeId = allRecipes.FirstOrDefault(r => r.SizeId.HasValue)?.SizeId;
+                                if (firstAvailableSizeId.HasValue)
+                                {
+                                    recipesToApply.AddRange(allRecipes.Where(r => r.SizeId == firstAvailableSizeId.Value));
+                                }
+                            }
+                        }
+                    }
+
+                    // Loại bỏ trùng lặp nguyên liệu nếu có
+                    var distinctRecipes = recipesToApply
+                        .GroupBy(r => r.IngredientId)
+                        .Select(g => g.First())
+                        .ToList();
+
+                    foreach (var recipe in distinctRecipes)
                     {
                         var quantityNeeded = recipe.QuantityRequired * orderItem.Quantity;
                         await DeductIngredientAsync(order.StoreId, recipe.IngredientId, quantityNeeded, orderId, staffId, 
@@ -240,10 +297,6 @@ namespace WebCafe.Backend.Services.Implementation
         public async Task<List<InventoryTransactionDto>> GetTransactionHistoryAsync(int storeId, int? ingredientId = null, DateTime? fromDate = null, DateTime? toDate = null)
         {
             var query = _db.InventoryTransactions
-                .Include(t => t.Stock)
-                    .ThenInclude(s => s!.Ingredient)
-                .Include(t => t.Staff)
-                .Include(t => t.Order)
                 .Where(t => t.Stock!.StoreId == storeId);
 
             if (ingredientId.HasValue)
@@ -261,23 +314,264 @@ namespace WebCafe.Backend.Services.Implementation
                 query = query.Where(t => t.CreatedAt <= toDate.Value);
             }
 
-            var transactions = await query
+            return await query
                 .OrderByDescending(t => t.CreatedAt)
                 .Take(100)
+                .Select(t => new InventoryTransactionDto
+                {
+                    TransactionId = t.TransactionId,
+                    IngredientName = t.Stock != null && t.Stock.Ingredient != null ? t.Stock.Ingredient.Name : string.Empty,
+                    Type = t.Type,
+                    Quantity = t.Quantity,
+                    QuantityBefore = t.QuantityBefore,
+                    QuantityAfter = t.QuantityAfter,
+                    OrderCode = t.OrderId != null ? _db.Orders.Where(o => o.OrderId == t.OrderId).Select(o => o.OrderCode).FirstOrDefault() : null,
+                    StaffName = t.Staff != null ? t.Staff.FullName : null,
+                    Note = t.Note,
+                    CreatedAt = t.CreatedAt
+                })
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// Lấy danh mục nguyên liệu theo tenant (và số tồn tại store nếu có)
+        /// </summary>
+        public async Task<List<IngredientDto>> GetIngredientsAsync(int tenantId, int? storeId = null)
+        {
+            var ingredients = await _db.Ingredients
+                .Where(i => i.TenantId == tenantId && i.IsActive)
+                .OrderBy(i => i.Name)
                 .ToListAsync();
 
-            return transactions.Select(t => new InventoryTransactionDto
+            Dictionary<int, decimal> stockMap = new();
+            if (storeId.HasValue && storeId.Value > 0)
             {
-                TransactionId = t.TransactionId,
-                IngredientName = t.Stock?.Ingredient?.Name ?? string.Empty,
-                Type = t.Type,
-                Quantity = t.Quantity,
-                QuantityBefore = t.QuantityBefore,
-                QuantityAfter = t.QuantityAfter,
-                OrderCode = t.Order?.OrderCode,
-                StaffName = t.Staff?.FullName,
-                Note = t.Note,
-                CreatedAt = t.CreatedAt
+                stockMap = await _db.InventoryStocks
+                    .Where(s => s.StoreId == storeId.Value)
+                    .ToDictionaryAsync(s => s.IngredientId, s => s.CurrentQuantity);
+            }
+
+            return ingredients.Select(i => new IngredientDto
+            {
+                IngredientId = i.IngredientId,
+                TenantId = i.TenantId,
+                Name = i.Name,
+                Unit = i.Unit,
+                MinimumStock = i.MinimumStock,
+                Description = i.Description,
+                IsActive = i.IsActive,
+                CurrentStock = stockMap.TryGetValue(i.IngredientId, out var qty) ? qty : 0,
+                CreatedAt = i.CreatedAt
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Tạo nguyên liệu mới
+        /// </summary>
+        public async Task<IngredientDto> CreateIngredientAsync(CreateIngredientDto dto)
+        {
+            var exists = await _db.Ingredients
+                .AnyAsync(i => i.TenantId == dto.TenantId && i.Name.ToLower() == dto.Name.Trim().ToLower() && i.IsActive);
+
+            if (exists)
+            {
+                throw new AppException($"Nguyên liệu '{dto.Name}' đã tồn tại trong hệ thống.");
+            }
+
+            var ingredient = new Ingredient
+            {
+                TenantId = dto.TenantId,
+                Name = dto.Name.Trim(),
+                Unit = dto.Unit.Trim(),
+                MinimumStock = dto.MinimumStock,
+                Description = dto.Description?.Trim(),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.Ingredients.Add(ingredient);
+            await _db.SaveChangesAsync();
+
+            // Khởi tạo tồn kho ban đầu cho cửa hàng
+            if (dto.StoreId > 0)
+            {
+                var stock = new InventoryStock
+                {
+                    StoreId = dto.StoreId,
+                    IngredientId = ingredient.IngredientId,
+                    CurrentQuantity = dto.InitialStock,
+                    LastUpdated = DateTime.UtcNow
+                };
+                _db.InventoryStocks.Add(stock);
+
+                if (dto.InitialStock > 0)
+                {
+                    _db.InventoryTransactions.Add(new InventoryTransaction
+                    {
+                        Stock = stock,
+                        Type = "import",
+                        Quantity = dto.InitialStock,
+                        QuantityBefore = 0,
+                        QuantityAfter = dto.InitialStock,
+                        Note = "Khởi tạo tồn kho ban đầu",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+                await _db.SaveChangesAsync();
+            }
+
+            return new IngredientDto
+            {
+                IngredientId = ingredient.IngredientId,
+                TenantId = ingredient.TenantId,
+                Name = ingredient.Name,
+                Unit = ingredient.Unit,
+                MinimumStock = ingredient.MinimumStock,
+                Description = ingredient.Description,
+                IsActive = ingredient.IsActive,
+                CurrentStock = dto.InitialStock,
+                CreatedAt = ingredient.CreatedAt
+            };
+        }
+
+        /// <summary>
+        /// Cập nhật thông tin nguyên liệu
+        /// </summary>
+        public async Task<IngredientDto> UpdateIngredientAsync(int ingredientId, UpdateIngredientDto dto)
+        {
+            var ingredient = await _db.Ingredients.FirstOrDefaultAsync(i => i.IngredientId == ingredientId);
+            if (ingredient == null)
+            {
+                throw new NotFoundException("Không tìm thấy nguyên liệu.");
+            }
+
+            ingredient.Name = dto.Name.Trim();
+            ingredient.Unit = dto.Unit.Trim();
+            ingredient.MinimumStock = dto.MinimumStock;
+            ingredient.Description = dto.Description?.Trim();
+            ingredient.IsActive = dto.IsActive;
+
+            await _db.SaveChangesAsync();
+
+            return new IngredientDto
+            {
+                IngredientId = ingredient.IngredientId,
+                TenantId = ingredient.TenantId,
+                Name = ingredient.Name,
+                Unit = ingredient.Unit,
+                MinimumStock = ingredient.MinimumStock,
+                Description = ingredient.Description,
+                IsActive = ingredient.IsActive,
+                CreatedAt = ingredient.CreatedAt
+            };
+        }
+
+        /// <summary>
+        /// Xóa nguyên liệu (Soft delete)
+        /// </summary>
+        public async Task DeleteIngredientAsync(int ingredientId)
+        {
+            var ingredient = await _db.Ingredients.FirstOrDefaultAsync(i => i.IngredientId == ingredientId);
+            if (ingredient == null)
+            {
+                throw new NotFoundException("Không tìm thấy nguyên liệu.");
+            }
+
+            ingredient.IsActive = false;
+            await _db.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Lấy công thức pha chế của món ăn
+        /// </summary>
+        public async Task<List<MenuItemRecipeDto>> GetMenuItemRecipesAsync(int menuItemId)
+        {
+            var recipes = await _db.MenuItemRecipes
+                .Include(r => r.MenuItem)
+                .Include(r => r.Ingredient)
+                .Include(r => r.Size)
+                .Where(r => r.MenuItemId == menuItemId)
+                .ToListAsync();
+
+            return recipes.Select(r => new MenuItemRecipeDto
+            {
+                RecipeId = r.RecipeId,
+                MenuItemId = r.MenuItemId,
+                MenuItemName = r.MenuItem?.Name ?? string.Empty,
+                IngredientId = r.IngredientId,
+                IngredientName = r.Ingredient?.Name ?? string.Empty,
+                Unit = r.Ingredient?.Unit ?? string.Empty,
+                SizeId = r.SizeId,
+                SizeName = r.Size?.Name,
+                QuantityRequired = r.QuantityRequired
+            }).ToList();
+        }
+
+        /// <summary>
+        /// Thêm hoặc cập nhật công thức nguyên liệu cho món
+        /// </summary>
+        public async Task UpsertMenuItemRecipeAsync(UpsertRecipeDto dto)
+        {
+            var existing = await _db.MenuItemRecipes
+                .FirstOrDefaultAsync(r => r.MenuItemId == dto.MenuItemId &&
+                                         r.IngredientId == dto.IngredientId &&
+                                         r.SizeId == dto.SizeId);
+
+            if (existing != null)
+            {
+                existing.QuantityRequired = dto.QuantityRequired;
+            }
+            else
+            {
+                var recipe = new MenuItemRecipe
+                {
+                    MenuItemId = dto.MenuItemId,
+                    IngredientId = dto.IngredientId,
+                    SizeId = dto.SizeId,
+                    QuantityRequired = dto.QuantityRequired
+                };
+                _db.MenuItemRecipes.Add(recipe);
+            }
+
+            await _db.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Xóa công thức nguyên liệu khỏi món
+        /// </summary>
+        public async Task DeleteMenuItemRecipeAsync(int recipeId)
+        {
+            var recipe = await _db.MenuItemRecipes.FirstOrDefaultAsync(r => r.RecipeId == recipeId);
+            if (recipe != null)
+            {
+                _db.MenuItemRecipes.Remove(recipe);
+                await _db.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// Lấy danh sách nguyên liệu sắp hết / dưới ngưỡng tối thiểu
+        /// </summary>
+        public async Task<List<LowStockAlertDto>> GetLowStockAlertsAsync(int storeId)
+        {
+            var alerts = await _db.InventoryStocks
+                .Include(s => s.Ingredient)
+                .Where(s => s.StoreId == storeId && 
+                            s.Ingredient != null &&
+                            s.Ingredient.IsActive && 
+                            s.CurrentQuantity <= s.Ingredient.MinimumStock)
+                .OrderBy(s => s.CurrentQuantity)
+                .ToListAsync();
+
+            return alerts.Select(s => new LowStockAlertDto
+            {
+                StockId = s.StockId,
+                IngredientId = s.IngredientId,
+                IngredientName = s.Ingredient?.Name ?? string.Empty,
+                Unit = s.Ingredient?.Unit ?? string.Empty,
+                CurrentQuantity = s.CurrentQuantity,
+                MinimumStock = s.Ingredient?.MinimumStock ?? 0,
+                LastUpdated = s.LastUpdated
             }).ToList();
         }
     }

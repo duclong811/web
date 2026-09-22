@@ -1,12 +1,10 @@
-﻿import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
-import { ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MobileBottomNav from '../../components/MobileBottomNav';
 import Pagination from '../../components/Pagination';
+import AiSommelierChat from '../../components/AiSommelierChat';
 import AuthModal from '../../components/AuthModal';
-import UserMenu from '../../components/UserMenu';
-import { useAuthStore } from '../../store/authStore';
 
 const DEFAULT_CATEGORIES = [
   { id: 'Cà Phê Pha Máy', name: 'Cà Phê Pha Máy', icon: 'coffee' },
@@ -28,12 +26,10 @@ export default function Menu() {
     setTable, 
     cart, 
     addToCart, 
-    activeOrder,
-    guestSession
+    activeOrder
   } = useStore();
 
   const [activeCategory, setActiveCategory] = useState<string>('Cà Phê Pha Máy');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 6;
@@ -41,10 +37,8 @@ export default function Menu() {
   // Stock status per branch
   const [stockStatus, setStockStatus] = useState<{ [id: string]: boolean }>({});
 
-  // Auth Modal & User Menu states
+  // Auth Modal state
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
     // Load guest session from localStorage if exists
@@ -69,8 +63,6 @@ export default function Menu() {
     window.addEventListener('storage', loadStock);
     return () => window.removeEventListener('storage', loadStock);
   }, [storeIdParam, tableParam]);
-
-  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
 
   // Filter out Quà Lưu Niệm
   const displayCategories = (categories && categories.length > 0 ? categories : DEFAULT_CATEGORIES)
@@ -113,15 +105,18 @@ export default function Menu() {
       categoryId: activeCategory,
       description: '',
     };
-    addToCart(fullItem, { quantity: 1 });
-  };
 
-  const handleUserIconClick = () => {
-    if (isAuthenticated) {
-      setIsUserMenuOpen(!isUserMenuOpen);
-    } else {
-      setIsAuthModalOpen(true);
-    }
+    // Gán size mặc định (thường là size Medium) nếu món có danh sách sizes
+    const defaultSize = fullItem.rawDto?.sizes && fullItem.rawDto.sizes.length > 0 
+      ? fullItem.rawDto.sizes[0] 
+      : undefined;
+
+    addToCart(fullItem, { 
+      quantity: 1,
+      sizeId: defaultSize?.sizeId,
+      sizeName: defaultSize?.name,
+      sizeExtra: defaultSize?.extraPrice || 0
+    });
   };
 
   return (
@@ -324,11 +319,8 @@ export default function Menu() {
 
 
 
-      {/* Floating Action Button */}
-      <Link to="/ai-suggest" className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-30 flex items-center gap-2 px-5 py-3.5 bg-primary text-on-primary rounded-full shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all active:scale-95 group text-xs sm:text-sm font-bold">
-        <span className="material-symbols-outlined text-lg group-hover:rotate-12 transition-transform">auto_awesome</span>
-        <span>AI Gợi Ý</span>
-      </Link>
+      {/* Floating AI Sommelier Chat Widget */}
+      <AiSommelierChat mode="floating" />
       
       <MobileBottomNav />
 

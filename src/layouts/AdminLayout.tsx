@@ -1,18 +1,53 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '../store/authStore';
+import { useStore } from '../store/useStore';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuthStore();
+  const { setStoreId } = useStore();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    // Nếu là SuperAdmin đi lạc vào trang quán của Chủ quán, điều hướng về cổng SuperAdmin
+    if (user?.role === 'SystemAdmin') {
+      navigate('/system-admin', { replace: true });
+      return;
+    }
+
+    // Nếu là Staff đi lạc vào trang quản lý của Chủ quán, điều hướng về màn hình nhân viên
+    if (user?.role === 'Staff' || user?.role === 'Kitchen' || user?.role === 'Cashier' || user?.role === 'Barista') {
+      navigate('/staff/orders', { replace: true });
+      return;
+    }
+
+    if (user?.storeId) {
+      // Đảm bảo dữ liệu tải đúng chi nhánh/quán của chủ quán đăng nhập
+      setStoreId(user.storeId);
+    }
+  }, [location.pathname, navigate, user, setStoreId]);
 
   const navItems = [
     { path: '/admin/analytics', icon: 'analytics', label: 'Phân Tích' },
     { path: '/admin', icon: 'dashboard', label: 'Bảng Điều Khiển' },
     { path: '/admin/menu', icon: 'restaurant_menu', label: 'Thực Đơn' },
+    { path: '/admin/inventory', icon: 'inventory_2', label: 'Kho & Nguyên Liệu' },
     { path: '/admin/tables', icon: 'table_restaurant', label: 'Bàn' },
     { path: '/admin/staff', icon: 'groups', label: 'Nhân Sự' },
   ];
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="bg-background text-on-background antialiased overflow-x-hidden min-h-screen">
@@ -25,7 +60,9 @@ export default function AdminLayout() {
       <aside className={`flex-col h-screen py-gutter px-4 bg-surface-container-low fixed left-0 top-0 w-64 shadow-sm z-40 border-r border-outline-variant/10 transition-transform ${isMobileMenuOpen ? 'flex translate-x-0' : 'hidden md:flex'}`}>
         <div className="mb-stack-lg px-2">
           <h1 className="font-headline-md text-headline-md text-primary tracking-tight">AI-SMARTSERVE</h1>
-          <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70">Trung Tâm Quản Lý</p>
+          <p className="font-label-sm text-label-sm text-on-surface-variant opacity-70">
+            {user?.brandName || 'Trung Tâm Quản Lý Quán'}
+          </p>
         </div>
         
         <nav className="flex-1 space-y-2">
@@ -45,16 +82,22 @@ export default function AdminLayout() {
           })}
         </nav>
         
-        <div className="mt-auto p-4 bg-surface-container-high rounded-2xl flex items-center gap-3 mb-4 relative group cursor-pointer" onClick={() => navigate('/')}>
-          <div className="w-10 h-10 rounded-full bg-primary overflow-hidden">
-            <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaRQ5pUyOWkiPpjAhXgXqQVopq0ab0F8dEnB76NznlzLrZMUy55Tal-oEZ-3QXfzuWNkWjp_1SyF-a55_Rf29uNvmrgEKhcv_yiUvedsafZXo4vj_RfYaBD0cauQMU79BerhnwuDVBdNI2LCyN-iw683kSRB9f7gGFvCIkql5WXm_mmq-dDORwCfD4tItQjgSknpmWDt7v2yBG2SfEPu_l-DphEqCOSpSMAjL4k_aGl14GRQ_3UMFv" alt="Admin" />
+        {/* User Card with real Owner name & Logout */}
+        <div className="mt-auto p-4 bg-surface-container-high rounded-2xl flex items-center gap-3 mb-4 relative group cursor-pointer" onClick={handleLogout} title="Bấm để đăng xuất">
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-base shadow-sm">
+            {user?.fullName ? user.fullName.charAt(0).toUpperCase() : 'O'}
           </div>
-          <div className="flex-1">
-            <p className="font-label-md text-label-md text-on-surface">Alex Chen</p>
-            <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Quản Lý Cửa Hàng</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-label-md text-label-md text-on-surface font-bold truncate">
+              {user?.fullName || 'Chủ Quán'}
+            </p>
+            <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold truncate">
+              {user?.brandName || user?.storeName || 'Chủ Cửa Hàng'}
+            </p>
           </div>
-          <div className="absolute inset-0 bg-surface/80 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
-            <span className="material-symbols-outlined text-error">logout</span>
+          <div className="absolute inset-0 bg-surface/90 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center gap-2 text-error font-bold text-xs">
+            <span className="material-symbols-outlined text-error text-lg">logout</span>
+            <span>Đăng Xuất</span>
           </div>
         </div>
       </aside>
@@ -89,12 +132,6 @@ export default function AdminLayout() {
         {/* Content Outlet */}
         <Outlet />
       </main>
-
-      {/* Floating Thao Tác Button (FAB) for quick order */}
-      <button className="fixed bottom-24 md:bottom-8 right-8 w-16 h-16 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 z-30 group">
-        <span className="material-symbols-outlined text-3xl">add</span>
-        <span className="absolute right-full mr-4 bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Tạo Đơn Nhanh</span>
-      </button>
 
       {/* Mobile Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-surface-container-lowest h-20 flex justify-around items-center px-4 border-t border-surface-container z-40">

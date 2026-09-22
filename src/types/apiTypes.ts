@@ -1,4 +1,4 @@
-﻿export interface ApiResponse<T> {
+export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
@@ -131,6 +131,9 @@ export interface OrderDto {
   customerId?: number | null;
   customerName?: string | null;
   customerPhone?: string | null;
+  guestId?: string | null;
+  guestName?: string | null;
+  guestPhone?: string | null;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'paid' | 'cancelled';
   subTotal: number;
   discountAmount: number;
@@ -196,6 +199,8 @@ export interface VoucherValidationResult {
 export interface TopProductDto {
   menuItemId: number;
   name: string;
+  imageUrl?: string | null;
+  categoryName?: string;
   soldCount: number;
   totalRevenue: number;
 }
@@ -204,6 +209,16 @@ export interface DailyRevenueDto {
   date: string;
   revenue: number;
   ordersCount: number;
+  estimatedProfit?: number;
+}
+
+export interface RevenueReportDto {
+  storeId: number;
+  fromDate: string;
+  toDate: string;
+  totalRevenue: number;
+  totalOrders: number;
+  dailyRevenue: DailyRevenueDto[];
 }
 
 export interface DashboardStatsDto {
@@ -214,6 +229,147 @@ export interface DashboardStatsDto {
   occupiedTables: number;
   topProducts: TopProductDto[];
   revenueChart: DailyRevenueDto[];
+}
+
+// --- Shift Operations Types (/admin) ---
+export interface ActiveTableStatusDto {
+  tableId: number;
+  tableNumber: string;
+  capacity: number;
+  status: 'Available' | 'Occupied' | 'Reserved';
+  activeOrderId?: number | null;
+  activeOrderCode?: string | null;
+  itemCount: number;
+  totalAmount: number;
+  occupiedMinutes: number;
+  isLongStaying: boolean;
+}
+
+export interface ShiftStockAlertDto {
+  ingredientId: number;
+  ingredientName: string;
+  currentQuantity: number;
+  minThreshold: number;
+  unit: string;
+  severity: 'Critical' | 'Warning';
+}
+
+export interface HourlyTrafficDto {
+  hour: number;
+  timeLabel: string;
+  revenue: number;
+  orderCount: number;
+  isPeakHour: boolean;
+}
+
+export interface ShiftOperationsDto {
+  storeId: number;
+  storeName: string;
+  shiftDate: string;
+  todayRevenue: number;
+  yesterdayRevenueSameTime: number;
+  revenueGrowthPercent: number;
+  cashRevenue: number;
+  bankTransferRevenue: number;
+  todayOrdersCount: number;
+  pendingOrdersCount: number;
+  preparingOrdersCount: number;
+  readyOrdersCount: number;
+  servedOrdersCount: number;
+  avgFulfillmentMinutes: number;
+  totalTables: number;
+  occupiedTables: number;
+  availableTables: number;
+  tableOccupancyPercent: number;
+  activeTablesList: ActiveTableStatusDto[];
+  lowStockAlerts: ShiftStockAlertDto[];
+  hourlyTraffic: HourlyTrafficDto[];
+  topProductsToday: TopProductDto[];
+}
+
+// --- Business Analytics & Menu Engineering Types (/admin/analytics) ---
+export interface MenuEngineeringItemDto {
+  menuItemId: number;
+  name: string;
+  categoryName: string;
+  imageUrl?: string | null;
+  basePrice: number;
+  estimatedCost: number;
+  marginPerUnit: number;
+  marginPercent: number;
+  soldCount: number;
+  totalRevenue: number;
+  totalProfit: number;
+  classification: 'Star' | 'Plowhorse' | 'Puzzle' | 'Dog';
+  strategicRecommendation: string;
+}
+
+export interface MenuEngineeringSummaryDto {
+  stars: MenuEngineeringItemDto[];
+  plowhorses: MenuEngineeringItemDto[];
+  puzzles: MenuEngineeringItemDto[];
+  dogs: MenuEngineeringItemDto[];
+}
+
+export interface ChannelSalesDto {
+  channel: string;
+  orderCount: number;
+  revenue: number;
+  percentage: number;
+}
+
+export interface PaymentMethodStatsDto {
+  method: string;
+  count: number;
+  totalAmount: number;
+  percentage: number;
+}
+
+export interface CategoryPerformanceDto {
+  categoryId: number;
+  categoryName: string;
+  totalSold: number;
+  totalRevenue: number;
+  orderCount: number;
+  percentage: number;
+}
+
+export interface TopCustomerDto {
+  customerId: number;
+  name: string;
+  phone: string;
+  totalSpent: number;
+  visitCount: number;
+  totalPoints: number;
+}
+
+export interface CustomerAnalyticsDto {
+  totalCustomers: number;
+  newCustomers: number;
+  activeCustomers: number;
+  retentionRate: number;
+  topCustomers: TopCustomerDto[];
+}
+
+export interface BusinessAnalyticsReportDto {
+  fromDate: string;
+  toDate: string;
+  storeId: number;
+  grossRevenue: number;
+  totalDiscount: number;
+  netRevenue: number;
+  estimatedCOGS: number;
+  grossProfit: number;
+  grossMarginPercent: number;
+  totalOrders: number;
+  averageOrderValue: number;
+  averageSpendPerCustomer: number;
+  dailyTrend: DailyRevenueDto[];
+  categoryBreakdown: CategoryPerformanceDto[];
+  paymentMethodBreakdown: PaymentMethodStatsDto[];
+  channelBreakdown: ChannelSalesDto[];
+  menuEngineering: MenuEngineeringSummaryDto;
+  customerAnalytics: CustomerAnalyticsDto;
 }
 
 // --- Cart Item State (Local) ---
@@ -229,3 +385,262 @@ export interface CartItemState {
   itemPrice: number; // base + size extra + toppings
   subTotal: number;
 }
+
+// --- AI Recommendation Types ---
+export interface AiRecommendationRequestDto {
+  storeId: number;
+  tenantId: number;
+  customerId?: number | null;
+  currentCartItemIds?: number[];
+  occasion?: string | null;
+  moodOrPreference?: string | null;
+}
+
+export interface AiRecommendedItemDto {
+  menuItemId: number;
+  name: string;
+  imageUrl?: string | null;
+  price: number;
+  categoryName: string;
+  reason: string;
+  pairingTip?: string | null;
+  badge: string;
+  confidenceScore: number;
+  suggestedSugarLevel?: string | null;
+  suggestedIceLevel?: string | null;
+  suggestedSize?: string | null;
+  isDrink?: boolean;
+}
+
+export interface AiRecommendedComboDto {
+  title: string;
+  description: string;
+  itemIds: number[];
+  items: AiRecommendedItemDto[];
+  originalPrice: number;
+  discountedPrice: number;
+  discountPercent: number;
+  tag: string;
+}
+
+export interface AiRecommendationResponseDto {
+  isAiGenerated: boolean;
+  modelUsed: string;
+  headline: string;
+  chefNote: string;
+  recommendations: AiRecommendedItemDto[];
+  combos: AiRecommendedComboDto[];
+}
+
+// --- AI Sommelier Chat Types ---
+export interface AiChatMessageDto {
+  role: 'user' | 'model';
+  content: string;
+  timestamp?: string;
+}
+
+export interface AiChatRequestDto {
+  storeId: number;
+  tenantId: number;
+  customerId?: number | null;
+  message: string;
+  history?: AiChatMessageDto[];
+  currentCartItemIds?: number[];
+}
+
+export interface AiChatResponseDto {
+  reply: string;
+  suggestedItems: AiRecommendedItemDto[];
+  quickFollowUps: string[];
+  isAiGenerated: boolean;
+  modelUsed: string;
+}
+
+// --- Inventory Types ---
+export interface IngredientDto {
+  ingredientId: number;
+  tenantId: number;
+  name: string;
+  unit: string;
+  minimumStock: number;
+  description?: string | null;
+  isActive: boolean;
+  currentStock: number;
+  createdAt: string;
+}
+
+export interface CreateIngredientDto {
+  tenantId: number;
+  storeId: number;
+  name: string;
+  unit: string;
+  minimumStock: number;
+  initialStock: number;
+  description?: string;
+}
+
+export interface UpdateIngredientDto {
+  name: string;
+  unit: string;
+  minimumStock: number;
+  description?: string;
+  isActive: boolean;
+}
+
+export interface InventoryStockDto {
+  stockId: number;
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  currentQuantity: number;
+  minimumStock: number;
+  isLowStock: boolean;
+  lastUpdated?: string | null;
+}
+
+export interface InventoryTransactionDto {
+  transactionId: number;
+  ingredientName: string;
+  type: string; // import, export, deduction, adjustment
+  quantity: number;
+  quantityBefore: number;
+  quantityAfter: number;
+  orderCode?: string | null;
+  staffName?: string | null;
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface ImportInventoryDto {
+  storeId: number;
+  ingredientId: number;
+  quantity: number;
+  note?: string;
+}
+
+export interface AdjustInventoryDto {
+  storeId: number;
+  ingredientId: number;
+  newQuantity: number;
+  note?: string;
+}
+
+export interface MenuItemRecipeDto {
+  recipeId: number;
+  menuItemId: number;
+  menuItemName: string;
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  sizeId?: number | null;
+  sizeName?: string | null;
+  quantityRequired: number;
+}
+
+export interface UpsertRecipeDto {
+  menuItemId: number;
+  ingredientId: number;
+  sizeId?: number | null;
+  quantityRequired: number;
+}
+
+export interface LowStockAlertDto {
+  stockId: number;
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  currentQuantity: number;
+  minimumStock: number;
+  deficit: number;
+  lastUpdated?: string | null;
+}
+
+// --- Super Admin SaaS Platform Types ---
+export interface SystemDailyRevenueDto {
+  date: string;
+  dayLabel: string;
+  revenue: number;
+  orderCount: number;
+}
+
+export interface PlatformStatsDto {
+  totalTenants: number;
+  activeTenants: number;
+  totalStores: number;
+  totalTables: number;
+  totalOrders: number;
+  totalGmv: number;
+  monthlySubscriptionRevenue: number;
+  dailyRevenue?: SystemDailyRevenueDto[];
+}
+
+export interface TenantDetailDto {
+  tenantId: number;
+  name: string;
+  slug: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  logoUrl?: string | null;
+  plan: string;
+  maxStores: number;
+  isActive: boolean;
+  createdAt: string;
+  storeCount: number;
+  tableCount: number;
+  orderCount: number;
+  totalGmv: number;
+}
+
+export interface CreateTenantDto {
+  name: string;
+  slug?: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  ownerPassword: string;
+  logoUrl?: string;
+  plan?: string;
+  maxStores?: number;
+  initialStoreName?: string;
+  initialStoreAddress?: string;
+  initialStorePhone?: string;
+}
+
+export interface UpdateTenantPlanDto {
+  plan: string;
+  maxStores: number;
+}
+
+// --- Customer Types ---
+export interface CustomerProfileDto {
+  customerId: number;
+  tenantId: number;
+  phone: string;
+  name: string;
+  totalPoints: number;
+  totalSpent: number;
+  visitCount: number;
+  pointsToMoney: number;
+  pointsPerAmount: number;
+  createdAt: string;
+  lastVisitAt?: string | null;
+}
+
+export interface UpdateCustomerProfileDto {
+  phone?: string;
+  newPhone?: string;
+  name?: string;
+}
+
+export interface CustomerLoyaltyHistoryDto {
+  pointId: number;
+  customerId: number;
+  orderId?: number | null;
+  points: number;
+  type: string;
+  description?: string | null;
+  createdAt: string;
+}
+
+

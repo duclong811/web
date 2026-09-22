@@ -19,7 +19,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   });
 
   const [registerData, setRegisterData] = useState({
-    email: '',
     password: '',
     fullName: '',
     phoneNumber: '',
@@ -98,7 +97,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const cleanPhone = registerData.phoneNumber.trim().replace(/\s/g, '');
       const payload = {
         fullName: registerData.fullName.trim(),
-        email: registerData.email.trim(),
         phone: cleanPhone,
         password: registerData.password,
       };
@@ -326,20 +324,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                value={registerData.email}
-                onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="email@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Mật khẩu
               </label>
               <input
@@ -348,7 +332,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Tối thiểu 8 ký tự (gồm số và ký tự đặc biệt)"
               />
             </div>
 

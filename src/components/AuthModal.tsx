@@ -31,59 +31,78 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError('');
     setLoading(true);
 
-    try {
-      const response = await apiClient.post('/auth/login', loginData);
-      const { token, username, fullName, role, tenantId, storeId, storeName, brandName } = response.data.data;
+    // Auto-retry với các endpoint khác nhau (staff, owner, admin)
+    // NOTE: apiClient đã có baseURL với /api prefix rồi, nên không cần thêm /api
+    const endpoints = ['/auth/login', '/auth/owner-login', '/auth/admin-login'];
+    let lastError: any = null;
 
-      localStorage.setItem('token', token);
-      setAuth({
-        token,
-        user: { username, fullName, role, tenantId, storeId, storeName, brandName },
-      });
+    console.log('🚀 Starting login with username:', loginData.username);
+    console.log('📋 Endpoint order:', endpoints);
 
-      onClose();
-      window.location.reload(); // Reload để update UI
-    } catch (err: any) {
-      console.error('Login error:', err);
-      console.log('Full error response data:', err.response?.data);
-      
-      // Handle specific error cases with user-friendly Vietnamese messages
-      if (err.response) {
-        const status = err.response.status;
-        const data = err.response.data;
-        const message = data?.message; // Backend format: { success: false, message: "..." }
-        
-        if (status === 401) {
-          // Unauthorized - wrong credentials
-          setError('❌ Tên đăng nhập hoặc mật khẩu không đúng.\n\nVui lòng kiểm tra lại.');
-        } else if (status === 404) {
-          // Not found - user doesn't exist
-          setError('❌ Tài khoản không tồn tại.\n\nVui lòng đăng ký tài khoản mới.');
-        } else if (status === 400) {
-          // Bad request
-          if (message) {
-            setError(`❌ ${message}`);
-          } else {
-            setError('❌ Thông tin đăng nhập không hợp lệ.');
-          }
-        } else if (status === 500) {
-          setError('⚠️ Lỗi máy chủ.\n\nVui lòng thử lại sau ít phút.');
-        } else {
-          if (message) {
-            setError(`❌ ${message}`);
-          } else {
-            setError('❌ Đăng nhập thất bại.\n\nVui lòng thử lại.');
-          }
-        }
-      } else if (err.code === 'ERR_NETWORK') {
-        setError('🌐 Không thể kết nối đến máy chủ.\n\nVui lòng kiểm tra kết nối mạng.');
-      } else {
-        const fallbackMessage = err.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.';
-        setError(`❌ ${fallbackMessage}`);
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`🔄 [${new Date().toISOString()}] Trying endpoint: ${endpoint}`);
+        console.log('📤 Payload:', { username: loginData.username, password: '***' });
+        const response = await apiClient.post(endpoint, loginData);
+        const { token, username, fullName, role, tenantId, storeId, storeName, brandName } = response.data.data;
+
+        localStorage.setItem('token', token);
+        setAuth({
+          token,
+          user: { username, fullName, role, tenantId, storeId, storeName, brandName },
+        });
+
+        console.log(`✅ Login successful with ${endpoint}`);
+        console.log('📦 Response data:', response.data);
+        onClose();
+        window.location.reload();
+        return; // Success, exit function
+      } catch (err: any) {
+        console.log(`❌ Failed with ${endpoint}:`, err.response?.status, err.response?.data?.message);
+        lastError = err;
+        // Continue to next endpoint
       }
-    } finally {
-      setLoading(false);
     }
+
+    console.log('❌ All endpoints failed. Last error:', lastError?.response?.data);
+
+    // All endpoints failed — show detailed error (Long's enhanced error handling)
+    if (lastError?.response) {
+      const status = lastError.response.status;
+      const data = lastError.response.data;
+      const message = data?.message;
+      const errors = data?.errors;
+
+      if (status === 401) {
+        setError('❌ Tên đăng nhập hoặc mật khẩu không đúng.\n\nVui lòng kiểm tra lại.');
+      } else if (status === 404) {
+        setError('❌ Tài khoản không tồn tại.\n\nVui lòng đăng ký tài khoản mới.');
+      } else if (status === 400) {
+        if (errors && typeof errors === 'object') {
+          const errorMessages = Object.entries(errors)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          setError(errorMessages);
+        } else if (message) {
+          setError(`❌ ${message}`);
+        } else {
+          setError('❌ Thông tin đăng nhập không hợp lệ.');
+        }
+      } else if (status === 500) {
+        setError('⚠️ Lỗi máy chủ.\n\nVui lòng thử lại sau ít phút.');
+      } else {
+        if (message) {
+          setError(`❌ ${message}`);
+        } else {
+          setError('❌ Đăng nhập thất bại.\n\nVui lòng thử lại.');
+        }
+      }
+    } else if (lastError?.code === 'ERR_NETWORK') {
+      setError('🌐 Không thể kết nối đến máy chủ.\n\nVui lòng kiểm tra kết nối mạng.');
+    } else {
+      setError(lastError?.message || '❌ Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+    }
+    setLoading(false);
   };
 
   const handleRegister = async (e: React.FormEvent) => {

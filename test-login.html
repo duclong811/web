@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login - WebCafe</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #ff6b35; margin-top: 0; }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background: #ff5722; }
+        .endpoint {
+            background: #f0f0f0;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .endpoint:hover { background: #e0e0e0; }
+        #log {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .info { color: #0ff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 WebCafe Login Test</h1>
+        
+        <div>
+            <label><strong>Username:</strong></label>
+            <input type="text" id="username" value="minh@minhcafe.vn" placeholder="minh@minhcafe.vn">
+            
+            <label><strong>Password:</strong></label>
+            <input type="password" id="password" value="123123" placeholder="123123">
+        </div>
+
+        <h3>Test Endpoints:</h3>
+        <div class="endpoint" onclick="testEndpoint('/api/auth/login')">
+            ✅ /api/auth/login (Staff Login)
+        </div>
+        <div class="endpoint" onclick="testEndpoint('/api/auth/owner-login')">
+            🏢 /api/auth/owner-login (Owner Login) ← SHOULD WORK ✅
+        </div>
+        <div class="endpoint" onclick="testEndpoint('/api/auth/admin-login')">
+            👑 /api/auth/admin-login (Admin Login)
+        </div>
+        <button onclick="testAllEndpoints()">🚀 Test All Endpoints (Auto-Retry)</button>
+        <button onclick="clearLog()">🗑️ Clear Log</button>
+
+        <h3>Console Log:</h3>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://192.168.137.1:5277';
+        const logDiv = document.getElementById('log');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            logDiv.innerHTML += `<span class="${color}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+
+        async function testEndpoint(endpoint) {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            log(`\n🔄 Testing: ${API_URL}${endpoint}`, 'info');
+            log(`📤 Payload: { username: "${username}", password: "${password}" }`, 'info');
+
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log(`✅ SUCCESS! Status: ${response.status}`, 'success');
+                    log(`📦 Response: ${JSON.stringify(data, null, 2)}`, 'success');
+                    if (data.data && data.data.token) {
+                        log(`🎟️ Token received: ${data.data.token.substring(0, 50)}...`, 'success');
+                    }
+                } else {
+                    log(`❌ FAILED! Status: ${response.status}`, 'error');
+                    log(`📦 Response: ${JSON.stringify(data, null, 2)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ ERROR: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+            }
+        }
+
+        async function testAllEndpoints() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const endpoints = ['/api/auth/login', '/api/auth/owner-login', '/api/auth/admin-login'];
+
+            log(`\n🚀 Starting auto-retry login with username: ${username}`, 'info');
+            log(`📋 Endpoint order: ${endpoints.join(' → ')}`, 'info');
+
+            for (const endpoint of endpoints) {
+                await testEndpoint(endpoint);
+                
+                // Check if successful
+                const lastLog = logDiv.textContent;
+                if (lastLog.includes('✅ SUCCESS')) {
+                    log(`\n🎉 Login successful! Used endpoint: ${endpoint}`, 'success');
+                    return;
+                }
+                
+                // Wait a bit before trying next endpoint
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            log(`\n❌ All endpoints failed!`, 'error');
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            log('✨ Test page loaded. Ready to test!', 'info');
+            log(`📍 API URL: ${API_URL}`, 'info');
+        });
+    </script>
+</body>
+</html>

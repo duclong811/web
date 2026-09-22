@@ -132,6 +132,7 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebCafe SaaS QR Ordering API", Version = "v1" });
+                c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Description = "Nhập token theo định dạng: Bearer {token}",

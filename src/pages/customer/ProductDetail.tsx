@@ -2,15 +2,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
 import MobileBottomNav from '../../components/MobileBottomNav';
-import { ShoppingCart } from 'lucide-react';
 import { trackViewItem } from '../../utils/analytics';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { menuItems, cart, addToCart, currentStoreId } = useStore();
-  const cartCount = cart ? cart.reduce((acc, item) => acc + item.quantity, 0) : 0;
+  const { menuItems, addToCart, currentStoreId } = useStore();
   
   // Find item dynamically from store
   const item = menuItems.find(i => i.id === id || i.id === `hc-${id}`) || menuItems[0] || {
@@ -126,19 +124,6 @@ export default function ProductDetail() {
               {item.name}
             </h2>
           </div>
-
-          <Link 
-            to="/cart" 
-            className="relative p-2 rounded-full hover:bg-surface-variant text-primary flex items-center justify-center transition-colors"
-            aria-label="Giỏ hàng"
-          >
-            <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-primary text-white rounded-full w-5 h-5 text-xs font-bold flex items-center justify-center shadow-md">
-                {cartCount}
-              </span>
-            )}
-          </Link>
         </div>
       </nav>
 

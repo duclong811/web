@@ -451,8 +451,42 @@ namespace WebCafe.Backend.Controllers
             return Ok(ApiResponse<DashboardStatsDto>.Ok(stats));
         }
 
+        [HttpGet("shift-operations/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<ShiftOperationsDto>>> GetShiftOperations(int storeId)
+        {
+            var operations = await _analyticsService.GetShiftOperationsAsync(storeId);
+            return Ok(ApiResponse<ShiftOperationsDto>.Ok(operations));
+        }
+
+        [HttpGet("business-report/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<BusinessAnalyticsReportDto>>> GetBusinessReport(
+            int storeId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-6);
+            var to = toDate ?? DateTime.UtcNow;
+            var report = await _analyticsService.GetBusinessAnalyticsReportAsync(storeId, from, to);
+            return Ok(ApiResponse<BusinessAnalyticsReportDto>.Ok(report));
+        }
+
+        [HttpGet("menu-engineering/store/{storeId}")]
+        [Authorize(Policy = "StaffAccess")]
+        public async Task<ActionResult<ApiResponse<MenuEngineeringSummaryDto>>> GetMenuEngineering(
+            int storeId,
+            [FromQuery] DateTime? fromDate,
+            [FromQuery] DateTime? toDate)
+        {
+            var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-29);
+            var to = toDate ?? DateTime.UtcNow;
+            var summary = await _analyticsService.GetMenuEngineeringMatrixAsync(storeId, from, to);
+            return Ok(ApiResponse<MenuEngineeringSummaryDto>.Ok(summary));
+        }
+
         [HttpGet("revenue/store/{storeId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<RevenueReportDto>>> GetRevenueReport(
             int storeId,
             [FromQuery] DateTime fromDate,
@@ -463,7 +497,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("customers/tenant/{tenantId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<CustomerAnalyticsDto>>> GetCustomerAnalytics(
             int tenantId,
             [FromQuery] DateTime fromDate,
@@ -474,7 +508,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("categories/tenant/{tenantId}")]
-        [Authorize(Policy = "ManagerAccess")]
+        [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<List<CategoryPerformanceDto>>>> GetCategoryPerformance(
             int tenantId,
             [FromQuery] DateTime fromDate,

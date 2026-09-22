@@ -1,268 +1,529 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { useStore } from '../../store/useStore';
 import { useAuthStore } from '../../store/authStore';
-import { inventoryApi } from '../../api/apis';
-import type { LowStockAlertDto } from '../../types/apiTypes';
+import { analyticsApi, orderApi, menuApi } from '../../api/apis';
+import type { ShiftOperationsDto, ActiveTableStatusDto, ShiftStockAlertDto } from '../../types/apiTypes';
+import { 
+  Coffee, 
+  DollarSign, 
+  Users, 
+  Clock, 
+  AlertTriangle, 
+  TrendingUp, 
+  TrendingDown, 
+  RefreshCw, 
+  Layers, 
+  Sparkles, 
+  ChevronRight, 
+  CheckCircle2, 
+  Flame,
+  CreditCard,
+  Banknote,
+  UtensilsCrossed,
+  X
+} from 'lucide-react';
 
 export default function AdminDashboard() {
-  const { orders, currentStoreId } = useStore();
   const { user } = useAuthStore();
-  const activeStoreId = user?.storeId || currentStoreId || 1;
-  const [alerts, setAlerts] = useState<LowStockAlertDto[]>([]);
+  const activeStoreId = user?.storeId || 1;
 
-  useEffect(() => {
-    inventoryApi.getLowStockAlerts(activeStoreId)
-      .then(data => setAlerts(data || []))
-      .catch(err => console.error('Failed to load inventory alerts:', err));
+  const [shiftData, setShiftData] = useState<ShiftOperationsDto | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<ActiveTableStatusDto | null>(null);
+
+  const fetchShiftData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    else setRefreshing(true);
+
+    try {
+      const data = await analyticsApi.getShiftOperations(activeStoreId);
+      setShiftData(data);
+    } catch (err) {
+      console.error('Failed to load shift operations:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [activeStoreId]);
 
-  const todayOrders = orders.filter(o => new Date(o.createdAt).toDateString() === new Date().toDateString());
-  const revenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
-  const activeTables = new Set(orders.filter(o => o.status !== 'paid').map(o => o.tableNumber)).size;
+  useEffect(() => {
+    fetchShiftData(true);
+    // Auto refresh every 30 seconds for live shift monitoring
+    const interval = setInterval(() => fetchShiftData(false), 30000);
+    return () => clearInterval(interval);
+  }, [fetchShiftData]);
+
+  if (loading && !shiftData) {
+    return (
+      <div className="pt-24 px-container-margin pb-stack-lg min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-on-surface-variant font-medium text-sm">Đang tải số liệu ca trực hôm nay...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const d = shiftData;
 
   return (
-    <div className="pt-24 px-container-margin pb-stack-lg animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Welcome Header */}
-      <header className="mb-stack-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-headline-lg text-headline-lg text-primary">
-            {user?.brandName || 'Tổng Quan Cửa Hàng'}
-          </h2>
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            Xin chào {user?.fullName || 'Chủ Quán'}. Đây là tình hình kinh doanh hôm nay.
-          </p>
+    <div className="pt-24 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto pb-16 animate-in fade-in duration-500 font-sans">
+      {/* Shift Header & Action Toolbar */}
+      <header className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 dark:bg-surface-container-low backdrop-blur-md p-5 rounded-3xl border border-primary/10 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white shadow-md">
+            <Coffee size={24} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-black text-on-surface tracking-tight">
+                {d?.storeName || user?.brandName || 'The Coffee House - Quận 1'}
+              </h2>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Đang mở ca trực
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-on-surface-variant mt-0.5">
+              Bảng điều khiển tác chiến ca trực hôm nay ({new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })})
+            </p>
+          </div>
         </div>
-        <Link
-          to="/admin/inventory"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-high hover:bg-secondary-container/50 text-on-surface text-sm font-semibold transition-all border border-outline-variant/30 self-start"
-        >
-          <span className="material-symbols-outlined text-lg">inventory_2</span>
-          Quản Lý Kho FnB
-          {alerts.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500 text-white animate-pulse">
-              {alerts.length} thiếu
-            </span>
-          )}
-        </Link>
+
+        <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <button
+            onClick={() => fetchShiftData(false)}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-bold transition-all border border-outline-variant/30 active:scale-95 disabled:opacity-50"
+            title="Làm mới dữ liệu"
+          >
+            <RefreshCw size={14} className={refreshing ? 'animate-spin text-primary' : ''} />
+            <span>{refreshing ? 'Đang cập nhật...' : 'Cập nhật'}</span>
+          </button>
+          
+          <Link
+            to="/admin/analytics"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-container transition-all shadow-sm active:scale-95"
+          >
+            <span>Báo Cáo Doanh Thu</span>
+            <ChevronRight size={14} />
+          </Link>
+        </div>
       </header>
 
-      {/* Critical Stock Alert Banner */}
-      {alerts.length > 0 && (
-        <div className="mb-6 p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-in slide-in-from-top-2 duration-300">
+      {/* Critical Stock Alert Banner if any */}
+      {d?.lowStockAlerts && d.lowStockAlerts.length > 0 && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-200 text-amber-800 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-xl">warning</span>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
+              <AlertTriangle size={20} className="text-amber-700" />
             </div>
             <div>
-              <p className="font-bold text-sm">
-                Cảnh báo: Có {alerts.length} nguyên liệu trong kho đang ở mức báo động!
+              <p className="font-bold text-sm text-amber-900">
+                Cảnh báo kho ca trực: {d.lowStockAlerts.length} nguyên vật liệu chạm ngưỡng an toàn!
               </p>
-              <p className="text-xs text-amber-800/80">
-                {alerts.slice(0, 3).map(a => `${a.ingredientName} (còn ${a.currentQuantity} ${a.unit})`).join(', ')}
-                {alerts.length > 3 ? '...' : ''}
+              <p className="text-xs text-amber-800/80 mt-0.5">
+                {d.lowStockAlerts.slice(0, 3).map(a => `${a.ingredientName} (còn ${a.currentQuantity} ${a.unit})`).join(' • ')}
+                {d.lowStockAlerts.length > 3 ? ` và +${d.lowStockAlerts.length - 3} món khác` : ''}
               </p>
             </div>
           </div>
           <Link
             to="/admin/inventory"
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all self-start sm:self-auto shadow-sm whitespace-nowrap"
+            className="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-bold transition-all self-start sm:self-auto shadow-xs whitespace-nowrap"
           >
             Nhập Kho Ngay
           </Link>
         </div>
       )}
 
-      {/* Top Level Bento Grid Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-stack-md mb-stack-lg">
-        {/* Revenue Card */}
-        <div className="bg-surface-container-lowest p-stack-md rounded-3xl shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-primary/5 group hover:border-primary/20 transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-secondary-container/30 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-2xl">payments</span>
+      {/* 4 Core Shift Metrics (FnB Operations Scorecard) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Metric 1: Today Revenue */}
+        <div className="bg-white dark:bg-surface-container-lowest p-5 rounded-3xl border border-primary/10 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+          <div className="flex justify-between items-start mb-3">
+            <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+              <DollarSign size={22} />
             </div>
-            <span className="text-green-600 font-label-sm bg-green-50 px-2 py-1 rounded-lg">+12.5%</span>
-          </div>
-          <p className="text-on-surface-variant font-label-md mb-1">Today's Revenue</p>
-          <h3 className="font-headline-md text-headline-md text-on-surface">{revenue.toLocaleString()}đ</h3>
-        </div>
-
-        {/* Orders Card */}
-        <div className="bg-surface-container-lowest p-stack-md rounded-3xl shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-primary/5 group hover:border-primary/20 transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-secondary-container/30 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-2xl">receipt_long</span>
-            </div>
-            <span className="text-on-surface-variant font-label-sm bg-surface-container px-2 py-1 rounded-lg">{todayOrders.length} orders</span>
-          </div>
-          <p className="text-on-surface-variant font-label-md mb-1">Order Volume</p>
-          <h3 className="font-headline-md text-headline-md text-on-surface">{todayOrders.length}</h3>
-        </div>
-
-        {/* Active Tables Card */}
-        <div className="bg-surface-container-lowest p-stack-md rounded-3xl shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-primary/5 group hover:border-primary/20 transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-secondary-container/30 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-2xl">table_restaurant</span>
-            </div>
-            <span className="text-primary font-label-sm bg-primary/5 px-2 py-1 rounded-lg">{activeTables > 0 ? 'Busy' : 'Quiet'}</span>
-          </div>
-          <p className="text-on-surface-variant font-label-md mb-1">Bàn Đang Phục Vụ</p>
-          <h3 className="font-headline-md text-headline-md text-on-surface">{activeTables}/12</h3>
-        </div>
-
-        {/* Best Seller Card */}
-        <div className="bg-surface-container-lowest p-stack-md rounded-3xl shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-primary/5 group hover:border-primary/20 transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-secondary-container/30 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-2xl">star</span>
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-extrabold ${
+              (d?.revenueGrowthPercent ?? 0) >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+            }`}>
+              {(d?.revenueGrowthPercent ?? 0) >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+              <span>{Math.abs(d?.revenueGrowthPercent ?? 0)}% vs hôm qua</span>
             </div>
           </div>
-          <p className="text-on-surface-variant font-label-md mb-1">Signature Choice</p>
-          <h3 className="font-label-md text-primary">Signature Latte</h3>
-        </div>
-      </div>
-
-      {/* Analytics & Trends Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-stack-lg mb-stack-lg">
-        {/* Revenue Trend Chart (Visual Simulation) */}
-        <div className="lg:col-span-2 bg-surface-container-lowest p-stack-lg rounded-[2.5rem] shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-primary/5">
-          <div className="flex justify-between items-center mb-stack-lg">
-            <h4 className="font-headline-md text-primary">Revenue Trends</h4>
-            <select className="bg-surface-container border-none text-sm rounded-full px-4 py-1.5 focus:ring-primary/20 outline-none">
-              <option>Last 7 Days</option>
-              <option>Monthly</option>
-            </select>
-          </div>
-          <div className="h-[180px] w-full relative overflow-hidden flex items-end justify-between gap-2 px-2">
-            <div className="flex-1 bg-primary/10 rounded-t-xl h-[40%] transition-all hover:bg-primary/40"></div>
-            <div className="flex-1 bg-primary/10 rounded-t-xl h-[55%] transition-all hover:bg-primary/40"></div>
-            <div className="flex-1 bg-primary/10 rounded-t-xl h-[45%] transition-all hover:bg-primary/40"></div>
-            <div className="flex-1 bg-primary/10 rounded-t-xl h-[70%] transition-all hover:bg-primary/40"></div>
-            <div className="flex-1 bg-primary/20 rounded-t-xl h-[90%] transition-all hover:bg-primary/60"></div>
-            <div className="flex-1 bg-primary/10 rounded-t-xl h-[65%] transition-all hover:bg-primary/40"></div>
-            <div className="flex-1 bg-primary-container rounded-t-xl h-[85%] transition-all hover:bg-primary shadow-lg"></div>
-          </div>
-          <div className="flex justify-between mt-4 px-2 text-[10px] text-on-surface-variant font-bold uppercase tracking-widest">
-            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span className="text-primary">Today</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Doanh Thu Trong Ca</p>
+          <h3 className="text-2xl font-black text-on-surface mt-1">
+            {(d?.todayRevenue ?? 0).toLocaleString('vi-VN')}đ
+          </h3>
+          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-outline-variant/10 text-xs text-on-surface-variant">
+            <span className="flex items-center gap-1 font-semibold text-emerald-700">
+              <Banknote size={13} /> {(d?.cashRevenue ?? 0).toLocaleString('vi-VN')}đ Tiền mặt
+            </span>
+            <span className="text-outline-variant">•</span>
+            <span className="flex items-center gap-1 font-semibold text-primary">
+              <CreditCard size={13} /> {(d?.bankTransferRevenue ?? 0).toLocaleString('vi-VN')}đ VietQR
+            </span>
           </div>
         </div>
 
-        {/* Best Sellers List */}
-        <div className="bg-surface-container-lowest p-stack-lg rounded-[2.5rem] shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-primary/5">
-          <h4 className="font-headline-md text-primary mb-stack-lg">Top Sellers</h4>
-          <div className="space-y-stack-md">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-surface-container overflow-hidden shrink-0">
-                <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGXjRn8A92In3tf-6hUVu56mwEQ1psqfRr2yc_6r_dS8v2-m9nyBurXTBbMEW0Whb7LmcuPt6QOcwVKaDo55L4FH8ocdiaxdHvA_-2Il-Dksj8HfRq45bxnb9uN9WvUyTpMCUi8R91fJGlUUcwx56BzL_9ZuKnAb1oHt-JfQJyAWRUYjDCSsxLRWLKZA1sEIRVdaPpLtArMcWI6U9BmlHEJYIRO3TDbGsSF4bhpd-iVW3itFcgvRA3" alt="Latte" />
-              </div>
-              <div className="flex-1">
-                <p className="font-label-md text-on-surface">Signature Latte</p>
-                <p className="text-xs text-on-surface-variant">142 orders this week</p>
-              </div>
-              <span className="font-label-md text-primary">65.000đ</span>
+        {/* Metric 2: Barista Kitchen Queue */}
+        <div className="bg-white dark:bg-surface-container-lowest p-5 rounded-3xl border border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex justify-between items-start mb-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-700">
+              <Coffee size={22} />
             </div>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-surface-container overflow-hidden shrink-0">
-                <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDaaoZchupSP2VKB3--PRU2j-EtTS0mFkVm0sbLLVm8bgOjyT7S0kHEVV5FMwpFfX5n90iVrZ-XlTKLixTPiFP8x2Xl3N25c8vKJmeXj_gk4lc-VF93-O03UTUPOKIZcla8hfDpZVyUxahw8DtoymE1ppsD76zOMUilQ8UaezXDixCvm5Z-omeWAwRmKTxrYir0Mge5DK50vVPT3QtaFjo5SBXGZuKvXT9v1MRWzJWcKNjIOd73-Daj" alt="Croissant" />
-              </div>
-              <div className="flex-1">
-                <p className="font-label-md text-on-surface">Butter Croissant</p>
-                <p className="text-xs text-on-surface-variant">98 orders this week</p>
-              </div>
-              <span className="font-label-md text-primary">45.000đ</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-surface-container overflow-hidden shrink-0">
-                <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqNiKdibTt6bFQJ8p52Vm5cE-a0FZ_uWOaErtIWzfFQ-UTOY1cf8pNtAD8eh6hCYQG68w6jTQM_-D-rsQZeaDlaXJxnz49CrKnfWzMqFJPnck0PKALuVz_DqSJW52yaAbXpfi2zmP6isWCMaQxadRca-EmvPmIeEXfAqxmdGxmgDiJsHwzJlMeRwuamvpX22hmzdMpWVc08erBRGDcTvz6E2qaV-U3qHF-CPLGamlSKIcLC1HTzdpa" alt="Cold Brew" />
-              </div>
-              <div className="flex-1">
-                <p className="font-label-md text-on-surface">Cold Brew</p>
-                <p className="text-xs text-on-surface-variant">76 orders this week</p>
-              </div>
-              <span className="font-label-md text-primary">55.000đ</span>
-            </div>
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-surface-container text-on-surface">
+              {d?.todayOrdersCount ?? 0} đơn hôm nay
+            </span>
           </div>
-          <button className="w-full mt-stack-lg py-3 rounded-full border-2 border-primary text-primary font-label-md hover:bg-primary hover:text-on-primary transition-all active:scale-95">
-            View Full Menu Analytics
-          </button>
-        </div>
-      </div>
-
-      {/* Recent Activity & Operational Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-stack-lg">
-        {/* Recent Activity List */}
-        <div className="bg-surface-container-lowest p-stack-lg rounded-[2.5rem] shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-primary/5">
-          <div className="flex justify-between items-center mb-stack-lg">
-            <h4 className="font-headline-md text-primary">Recent Activity</h4>
-            <span className="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">more_horiz</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Hàng Đợi Barista</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <h3 className="text-2xl font-black text-amber-800">
+              {(d?.pendingOrdersCount ?? 0) + (d?.preparingOrdersCount ?? 0)}
+            </h3>
+            <span className="text-xs text-on-surface-variant font-medium">đơn đang chờ & pha</span>
           </div>
-          <div className="space-y-4 max-h-[320px] overflow-y-auto custom-scrollbar pr-2">
-            
-            {orders.slice(0, 4).map((order, idx) => (
-              <div key={order.id} className="flex gap-4 items-start p-3 hover:bg-surface-container-low rounded-2xl transition-colors">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${order.status === 'paid' ? 'bg-secondary-container text-primary' : 'bg-primary/10 text-primary'}`}>
-                  <span className="material-symbols-outlined text-lg" style={order.status === 'paid' ? {fontVariationSettings: "'FILL' 1"} : {}}>
-                    {order.status === 'paid' ? 'check_circle' : 'receipt_long'}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-on-surface">Order #{order.id.slice(-4)} {order.status === 'paid' ? 'Completed' : 'Created'}</p>
-                  <p className="text-xs text-on-surface-variant">{order.items.length} items • Table {order.tableNumber.replace('table-', '')}</p>
-                  <p className="text-[10px] text-on-surface-variant mt-1 font-bold">{idx * 15} MINS AGO</p>
-                </div>
-              </div>
-            ))}
-
-            <div className="flex gap-4 items-start p-3 hover:bg-surface-container-low rounded-2xl transition-colors border-l-4 border-tertiary-fixed">
-              <div className="w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center text-tertiary shrink-0">
-                <span className="material-symbols-outlined text-lg">error</span>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-on-surface">Inventory Alert</p>
-                <p className="text-xs text-on-surface-variant">Whole Milk stock is below 15% threshold.</p>
-                <p className="text-[10px] text-on-surface-variant mt-1 font-bold">1 HOUR AGO</p>
-              </div>
+          <div className="grid grid-cols-3 gap-1 mt-3 pt-3 border-t border-outline-variant/10 text-center text-xs">
+            <div className="bg-amber-50/80 py-1 rounded-lg">
+              <p className="font-extrabold text-amber-800">{d?.pendingOrdersCount ?? 0}</p>
+              <p className="text-[10px] text-amber-700/80">Chờ nhận</p>
+            </div>
+            <div className="bg-blue-50/80 py-1 rounded-lg">
+              <p className="font-extrabold text-blue-800">{d?.preparingOrdersCount ?? 0}</p>
+              <p className="text-[10px] text-blue-700/80">Đang pha</p>
+            </div>
+            <div className="bg-emerald-50/80 py-1 rounded-lg">
+              <p className="font-extrabold text-emerald-800">{d?.servedOrdersCount ?? 0}</p>
+              <p className="text-[10px] text-emerald-700/80">Đã xong</p>
             </div>
           </div>
         </div>
 
-        {/* Table Status Map (Interactive Visualization) */}
-        <div className="bg-surface-container-lowest p-stack-lg rounded-[2.5rem] shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-primary/5">
-          <div className="flex justify-between items-center mb-stack-lg">
-            <h4 className="font-headline-md text-primary">Live Floor Map</h4>
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-primary"></span> {activeTables} Occupied
-              <span className="w-2 h-2 rounded-full bg-surface-container-highest ml-2"></span> {12 - activeTables} Free
+        {/* Metric 3: Live Table Occupancy */}
+        <div className="bg-white dark:bg-surface-container-lowest p-5 rounded-3xl border border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex justify-between items-start mb-3">
+            <div className="w-11 h-11 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary">
+              <Users size={22} />
+            </div>
+            <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${
+              (d?.tableOccupancyPercent ?? 0) > 80 ? 'bg-rose-100 text-rose-800' : 'bg-secondary/15 text-secondary'
+            }`}>
+              {d?.tableOccupancyPercent ?? 0}% công suất
+            </span>
+          </div>
+          <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Tải Trọng Bàn Trực Tiếp</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <h3 className="text-2xl font-black text-on-surface">
+              {d?.occupiedTables ?? 0} <span className="text-sm font-semibold text-on-surface-variant">/ {d?.totalTables ?? 0} bàn</span>
+            </h3>
+          </div>
+          <div className="mt-3 pt-3 border-t border-outline-variant/10 flex items-center justify-between text-xs text-on-surface-variant font-medium">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> {d?.availableTables ?? 0} bàn trống
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-primary"></span> {d?.occupiedTables ?? 0} có khách
+            </span>
+          </div>
+        </div>
+
+        {/* Metric 4: Avg Fulfillment Time */}
+        <div className="bg-white dark:bg-surface-container-lowest p-5 rounded-3xl border border-primary/10 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex justify-between items-start mb-3">
+            <div className="w-11 h-11 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-700">
+              <Clock size={22} />
+            </div>
+            <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 flex items-center gap-1">
+              <CheckCircle2 size={12} /> Tốc độ chuẩn
+            </span>
+          </div>
+          <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Thời Gian Phục Vụ TB</p>
+          <h3 className="text-2xl font-black text-on-surface mt-1">
+            {d?.avgFulfillmentMinutes ?? 5.8} <span className="text-sm font-semibold text-on-surface-variant">phút/đơn</span>
+          </h3>
+          <p className="mt-3 pt-3 border-t border-outline-variant/10 text-xs text-on-surface-variant flex items-center justify-between">
+            <span>Tiêu chuẩn quán: <strong>&lt; 8 phút</strong></span>
+            <span className="text-emerald-700 font-bold">Rất tốt</span>
+          </p>
+        </div>
+      </section>
+
+      {/* Main Grid: Live Floor Map & Hourly Traffic */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+        {/* Left 7 Cols: Live Floor Map */}
+        <div className="lg:col-span-7 bg-white dark:bg-surface-container-lowest p-6 rounded-3xl border border-primary/10 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-black text-on-surface flex items-center gap-2">
+                <Layers size={18} className="text-primary" />
+                Sơ Đồ Bàn Trực Tiếp (Live Floor Map)
+              </h3>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Nhấp vào bàn để xem hóa đơn tạm tính và thời gian khách ngồi
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-surface-container text-on-surface-variant">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Trống
+              </span>
+              <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-primary">
+                <span className="w-2 h-2 rounded-full bg-primary"></span> Có Khách
+              </span>
+              <span className="flex items-center gap-1 px-2 py-1 rounded-md bg-rose-50 text-rose-700">
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span> &gt;90p
+              </span>
             </div>
           </div>
-          
-          <div className="grid grid-cols-4 grid-rows-3 gap-4 h-[280px]">
-            {/* Dynamic Table Grid */}
-            {Array.from({ length: 12 }).map((_, idx) => {
-              const tableNo = idx + 1;
-              const isOccupied = Array.from(orders.filter(o => o.status !== 'paid').map(o => o.tableNumber)).includes(tableNo.toString());
-              
-              if (isOccupied) {
-                return (
-                  <div key={tableNo} className="bg-primary-container/20 rounded-2xl flex flex-col items-center justify-center border-2 border-primary/30 relative overflow-hidden group cursor-pointer hover:bg-primary/20 transition-all">
-                    <span className="text-xs font-bold text-primary mb-1">T-{tableNo.toString().padStart(2, '0')}</span>
-                    <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
-                    <div className="absolute bottom-0 left-0 w-full h-1 bg-primary"></div>
-                  </div>
-                );
+
+          {/* Table Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 my-auto pt-2 pb-2">
+            {d?.activeTablesList.map(table => {
+              const isOccupied = table.status === 'Occupied';
+              const isLong = table.isLongStaying;
+
+              let cardBg = 'bg-surface-container/60 hover:bg-surface-container border-outline-variant/30 text-on-surface-variant';
+              if (isLong) {
+                cardBg = 'bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/40 text-rose-900 shadow-sm';
+              } else if (isOccupied) {
+                cardBg = 'bg-primary/10 hover:bg-primary/15 border-primary/40 text-primary shadow-sm';
               }
-              
+
               return (
-                <div key={tableNo} className="bg-surface-container rounded-2xl flex flex-col items-center justify-center border-2 border-transparent cursor-pointer hover:border-primary/20 transition-all">
-                  <span className="text-xs font-bold text-on-surface-variant mb-1">T-{tableNo.toString().padStart(2, '0')}</span>
-                  <span className="material-symbols-outlined text-on-surface-variant/40">person</span>
-                </div>
+                <button
+                  key={table.tableId}
+                  onClick={() => setSelectedTable(table)}
+                  className={`p-3.5 rounded-2xl border-2 transition-all flex flex-col items-center justify-between min-h-[110px] text-center active:scale-95 group relative overflow-hidden ${cardBg}`}
+                >
+                  <div className="flex justify-between w-full items-center text-[11px] font-bold">
+                    <span className="px-1.5 py-0.5 rounded bg-white/70 shadow-2xs font-mono">{table.tableNumber}</span>
+                    <span>{table.capacity} chỗ</span>
+                  </div>
+
+                  <div className="my-1 flex flex-col items-center">
+                    <span className={`text-sm font-black ${isOccupied ? 'text-primary' : 'text-on-surface-variant/60'}`}>
+                      {isOccupied ? `${table.totalAmount.toLocaleString('vi-VN')}đ` : 'Sẵn sàng'}
+                    </span>
+                    {isOccupied && (
+                      <span className="text-[10px] text-on-surface-variant font-medium">
+                        {table.itemCount} món • {table.occupiedMinutes}p
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="w-full text-center">
+                    {isLong ? (
+                      <span className="text-[10px] font-black px-2 py-0.5 bg-rose-600 text-white rounded-full">Ngồi lâu</span>
+                    ) : isOccupied ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-primary text-white rounded-full">Phục vụ</span>
+                    ) : (
+                      <span className="text-[10px] text-emerald-600 font-bold">Trống</span>
+                    )}
+                  </div>
+                </button>
               );
             })}
           </div>
         </div>
+
+        {/* Right 5 Cols: Hourly Traffic Today */}
+        <div className="lg:col-span-5 bg-white dark:bg-surface-container-lowest p-6 rounded-3xl border border-primary/10 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-black text-on-surface flex items-center gap-2">
+                <Flame size={18} className="text-amber-600" />
+                Tải Trọng Giờ Cao Điểm Hôm Nay
+              </h3>
+              <p className="text-xs text-on-surface-variant mt-0.5">Phân bổ doanh số theo từng khung giờ trong ngày</p>
+            </div>
+            <span className="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold">
+              7:00 - 22:00
+            </span>
+          </div>
+
+          {/* Bar Chart */}
+          <div className="flex-1 min-h-[200px] flex items-end justify-between gap-1.5 pt-4 pb-2 px-1">
+            {d?.hourlyTraffic.map((hour, idx) => {
+              const maxRev = Math.max(...(d.hourlyTraffic.map(h => h.revenue) || [100000]), 100000);
+              const heightPercent = Math.max(8, Math.round((hour.revenue / maxRev) * 100));
+
+              return (
+                <div key={idx} className="flex-1 flex flex-col items-center gap-1 group relative">
+                  {/* Tooltip */}
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20 shadow-md">
+                    <p className="font-bold">{hour.timeLabel}: {hour.revenue.toLocaleString('vi-VN')}đ</p>
+                    <p className="text-stone-300">{hour.orderCount} đơn hàng</p>
+                  </div>
+
+                  {/* Bar */}
+                  <div className="w-full bg-surface-container rounded-t-md h-36 flex items-end overflow-hidden">
+                    <div 
+                      className={`w-full rounded-t-md transition-all duration-500 ${
+                        hour.isPeakHour 
+                          ? 'bg-gradient-to-t from-amber-600 to-amber-400 group-hover:brightness-110 shadow-xs' 
+                          : 'bg-primary/30 group-hover:bg-primary/50'
+                      }`}
+                      style={{ height: `${heightPercent}%` }}
+                    ></div>
+                  </div>
+                  <span className={`text-[9px] font-bold ${hour.isPeakHour ? 'text-amber-700' : 'text-on-surface-variant'}`}>
+                    {hour.hour}h
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-outline-variant/10 flex items-center justify-between text-xs text-on-surface-variant">
+            <span className="flex items-center gap-1.5 font-medium">
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-amber-600 to-amber-400"></span> Khung giờ cao điểm (Sáng 8-10h, Tối 19-21h)
+            </span>
+            <span className="font-bold text-primary">Tối ưu điều phối Barista</span>
+          </div>
+        </div>
       </div>
+
+      {/* Bottom Row: Today's Top Products & Fast Management Toolbox */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Top 5 Products Today */}
+        <div className="lg:col-span-7 bg-white dark:bg-surface-container-lowest p-6 rounded-3xl border border-primary/10 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-black text-on-surface flex items-center gap-2">
+                <Sparkles size={18} className="text-primary" />
+                Món Bán Chạy Nhất Hôm Nay
+              </h3>
+              <p className="text-xs text-on-surface-variant mt-0.5">Top đồ uống được gọi nhiều nhất trong ca trực</p>
+            </div>
+            <Link to="/admin/menu" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+              Xem thực đơn <ChevronRight size={14} />
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {d?.topProductsToday && d.topProductsToday.length > 0 ? (
+              d.topProductsToday.map((item, idx) => (
+                <div key={item.menuItemId} className="flex items-center justify-between p-3 rounded-2xl bg-surface-container-low/50 hover:bg-surface-container-low transition-colors border border-outline-variant/20">
+                  <div className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center">
+                      #{idx + 1}
+                    </span>
+                    <div>
+                      <h4 className="font-bold text-sm text-on-surface">{item.name}</h4>
+                      <p className="text-xs text-on-surface-variant">Đã bán {item.soldCount} ly hôm nay</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-extrabold text-sm text-primary">{item.totalRevenue.toLocaleString('vi-VN')}đ</p>
+                    <p className="text-[10px] text-emerald-600 font-bold">Doanh số ca</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-on-surface-variant py-6 text-center">Chưa có đơn hoàn tất trong ca hôm nay</p>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Manager Toolbox */}
+        <div className="lg:col-span-5 bg-gradient-to-br from-secondary-container/40 to-primary/5 p-6 rounded-3xl border border-primary/15 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-black text-primary flex items-center gap-2 mb-1">
+              <UtensilsCrossed size={18} />
+              Thao Tác Quản Lý Nhanh
+            </h3>
+            <p className="text-xs text-on-surface-variant mb-4">Các tác vụ điều phối khẩn cấp dành cho Trưởng ca</p>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <Link
+                to="/admin/menu"
+                className="p-3.5 rounded-2xl bg-white dark:bg-surface-container border border-primary/10 shadow-2xs hover:shadow-xs transition-all flex flex-col gap-1 active:scale-95"
+              >
+                <span className="text-xs font-black text-primary">Khóa / Mở Món</span>
+                <span className="text-[11px] text-on-surface-variant">Bật tắt món khi quầy bar hết đá/sữa</span>
+              </Link>
+
+              <Link
+                to="/admin/inventory"
+                className="p-3.5 rounded-2xl bg-white dark:bg-surface-container border border-primary/10 shadow-2xs hover:shadow-xs transition-all flex flex-col gap-1 active:scale-95"
+              >
+                <span className="text-xs font-black text-primary">Nhập Kho Nhanh</span>
+                <span className="text-[11px] text-on-surface-variant">Ghi nhận nhập thêm sữa, cafe, đá</span>
+              </Link>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white/90 border border-primary/10">
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-on-surface-variant">Đồng bộ ca trực với máy POS</span>
+              <span className="text-emerald-700 font-bold flex items-center gap-1">
+                <CheckCircle2 size={12} /> Thời gian thực
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Selected Table Detail Modal */}
+      {selectedTable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 border border-outline-variant/30 animate-in zoom-in-95">
+            <div className="flex justify-between items-start mb-4 border-b pb-3">
+              <div>
+                <h3 className="text-xl font-black text-primary">Chi Tiết Bàn {selectedTable.tableNumber}</h3>
+                <p className="text-xs text-on-surface-variant">Sức chứa: {selectedTable.capacity} khách</p>
+              </div>
+              <button 
+                onClick={() => setSelectedTable(null)} 
+                className="p-1.5 rounded-full hover:bg-stone-100 text-stone-500"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm mb-6">
+              <div className="flex justify-between py-1.5 border-b border-stone-100">
+                <span className="text-stone-500">Trạng thái:</span>
+                <span className="font-bold text-primary">
+                  {selectedTable.status === 'Occupied' ? 'Đang có khách' : 'Bàn trống'}
+                </span>
+              </div>
+              {selectedTable.activeOrderCode && (
+                <div className="flex justify-between py-1.5 border-b border-stone-100">
+                  <span className="text-stone-500">Mã đơn hàng:</span>
+                  <span className="font-mono font-bold">{selectedTable.activeOrderCode}</span>
+                </div>
+              )}
+              {selectedTable.status === 'Occupied' && (
+                <>
+                  <div className="flex justify-between py-1.5 border-b border-stone-100">
+                    <span className="text-stone-500">Thời gian khách ngồi:</span>
+                    <span className="font-bold">{selectedTable.occupiedMinutes} phút</span>
+                  </div>
+                  <div className="flex justify-between py-1.5 border-b border-stone-100">
+                    <span className="text-stone-500">Số lượng món:</span>
+                    <span className="font-bold">{selectedTable.itemCount} món</span>
+                  </div>
+                  <div className="flex justify-between py-1.5 text-base font-black text-primary">
+                    <span>Tổng tiền tạm tính:</span>
+                    <span>{selectedTable.totalAmount.toLocaleString('vi-VN')}đ</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex">
+              <button
+                onClick={() => setSelectedTable(null)}
+                className="w-full py-2.5 rounded-xl bg-stone-100 dark:bg-surface-container font-bold text-xs text-stone-700 dark:text-stone-300 hover:bg-stone-200 transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

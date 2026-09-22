@@ -1,7 +1,6 @@
 import { useStore } from '../../store/useStore';
 import { Link, useNavigate } from 'react-router-dom';
 import MobileBottomNav from '../../components/MobileBottomNav';
-import { ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Cart() {
@@ -63,34 +62,8 @@ export default function Cart() {
   };
 
   return (
-    <div className="font-body-md text-on-surface custom-scrollbar min-h-screen flex flex-col bg-background">
-      {/* TopNavBar */}
-      <nav className="bg-surface sticky top-0 z-50 shadow-sm transition-all duration-200 border-b border-outline-variant/10">
-        <div className="flex justify-between items-center px-container-margin py-4 max-w-7xl mx-auto">
-          <Link to="/" className="font-headline-md text-headline-md font-bold text-primary">AI-SMARTSERVE</Link>
-          <div className="hidden md:flex gap-8 items-center">
-            <Link to="/" className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md">Thực Đơn</Link>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Ưu Đãi</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Câu Chuyện</a>
-            <a className="text-on-surface-variant hover:text-primary transition-colors font-label-md text-label-md cursor-pointer">Cửa Hàng</a>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link to="/cart" className="relative p-2 hover:bg-surface-container-low dark:hover:bg-surface-container-highest rounded-lg transition-all active:scale-95">
-              <ShoppingCart className="text-primary" size={24} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
-                  {cartCount}
-                </span>
-              )}
-            </Link>
-            <Link to="/staff/login" className="p-2 hover:bg-surface-container-low rounded-lg transition-all active:scale-95 duration-200">
-              <span className="material-symbols-outlined text-primary">person</span>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      <main className="flex-grow max-w-7xl mx-auto w-full px-container-margin py-stack-lg">
+    <div className="font-body-md text-on-surface custom-scrollbar py-stack-md">
+      <main className="max-w-7xl mx-auto w-full px-container-margin">
         <div className="flex flex-col lg:flex-row gap-stack-lg">
           {/* Left Side: Cart Items & Payment */}
           <div className="flex-grow space-y-stack-lg">
@@ -294,10 +267,6 @@ export default function Cart() {
           )}
         </div>
       </main>
-
-      <footer className="w-full mt-auto bg-surface-container-highest border-t border-outline-variant/20 py-6 px-container-margin text-center text-xs text-on-surface-variant">
-        © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
-      </footer>
       <MobileBottomNav />
     </div>
   );

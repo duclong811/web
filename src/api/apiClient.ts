@@ -1,9 +1,15 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
-// Mobile Hotspot IP (máy tính làm hotspot host)
-// iPhone connected: 192.168.137.102
-export const API_BASE_URL = 'http://192.168.137.1:5277/api';
-export const HUB_URL = 'http://192.168.137.102:5277/hubs/orders';
+// Dynamic Base URL: Tự động nhận diện hostname (localhost hoặc IP mạng LAN/Hotspot)
+const getApiHost = () => {
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
+export const API_BASE_URL = `http://${getApiHost()}:5277/api`;
+export const HUB_URL = `http://${getApiHost()}:5277/hubs/orders`;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebCafe.Backend.Models.DTOs.Auth
 {
@@ -25,9 +25,8 @@ namespace WebCafe.Backend.Models.DTOs.Auth
 
     public class RegisterRequest
     {
-        [Required(ErrorMessage = "Email là bắt buộc.")]
         [EmailAddress(ErrorMessage = "Email không đúng định dạng. Vui lòng nhập email hợp lệ (vd: example@email.com).")]
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; }
 
         [Required(ErrorMessage = "Số điện thoại là bắt buộc.")]
         [Phone(ErrorMessage = "Số điện thoại không đúng định dạng.")]
@@ -48,9 +47,12 @@ namespace WebCafe.Backend.Models.DTOs.Auth
     public class RegisterResponse
     {
         public int CustomerId { get; set; }
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; }
         public string Phone { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
+        public string? Token { get; set; }
+        public string Role { get; set; } = "Customer";
+        public int TenantId { get; set; } = 1;
     }
 }

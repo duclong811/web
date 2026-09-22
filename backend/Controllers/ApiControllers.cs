@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Common.Models;
 using WebCafe.Backend.Models.DTOs.Analytics;
 using WebCafe.Backend.Models.DTOs.Auth;
@@ -31,29 +32,80 @@ namespace WebCafe.Backend.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<LoginResponse>>> Login([FromBody] LoginRequest request)
         {
-            var res = await _authService.LoginStaffAsync(request);
-            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập nhân viên thành công."));
+            try
+            {
+                var res = await _authService.LoginStaffAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập nhân viên thành công."));
+            }
+            catch (Exception)
+            {
+                // Nếu không phải nhân viên, thử đăng nhập dưới dạng khách hàng
+                try
+                {
+                    var customerRes = await _authService.LoginCustomerAsync(request);
+                    return Ok(ApiResponse<LoginResponse>.Ok(customerRes, "Đăng nhập khách hàng thành công."));
+                }
+                catch (AppException appEx)
+                {
+                    return BadRequest(ApiResponse<LoginResponse>.Fail(appEx.Message));
+                }
+            }
+        }
+
+        [HttpPost("customer-login")]
+        public async Task<ActionResult<ApiResponse<LoginResponse>>> CustomerLogin([FromBody] LoginRequest request)
+        {
+            try
+            {
+                var res = await _authService.LoginCustomerAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập khách hàng thành công."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<LoginResponse>.Fail(ex.Message));
+            }
         }
 
         [HttpPost("owner-login")]
         public async Task<ActionResult<ApiResponse<LoginResponse>>> OwnerLogin([FromBody] LoginRequest request)
         {
-            var res = await _authService.LoginTenantOwnerAsync(request);
-            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập chủ quán thành công."));
+            try
+            {
+                var res = await _authService.LoginTenantOwnerAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập chủ quán thành công."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<LoginResponse>.Fail(ex.Message));
+            }
         }
 
         [HttpPost("admin-login")]
         public async Task<ActionResult<ApiResponse<LoginResponse>>> AdminLogin([FromBody] LoginRequest request)
         {
-            var res = await _authService.LoginSystemAdminAsync(request);
-            return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập quản trị viên thành công."));
+            try
+            {
+                var res = await _authService.LoginSystemAdminAsync(request);
+                return Ok(ApiResponse<LoginResponse>.Ok(res, "Đăng nhập quản trị viên thành công."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<LoginResponse>.Fail(ex.Message));
+            }
         }
 
         [HttpPost("register")]
         public async Task<ActionResult<ApiResponse<RegisterResponse>>> Register([FromBody] RegisterRequest request)
         {
-            var res = await _authService.RegisterCustomerAsync(request);
-            return Ok(ApiResponse<RegisterResponse>.Ok(res, "Đăng ký tài khoản thành công."));
+            try
+            {
+                var res = await _authService.RegisterCustomerAsync(request);
+                return Ok(ApiResponse<RegisterResponse>.Ok(res, "Đăng ký tài khoản thành công."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<RegisterResponse>.Fail(ex.Message));
+            }
         }
     }
 

@@ -19,8 +19,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   });
 
   const [registerData, setRegisterData] = useState({
-    username: '',
-    email: '',
     password: '',
     fullName: '',
     phoneNumber: '',
@@ -32,7 +30,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/auth/login', loginData);
+      const payload = {
+        username: loginData.username.trim().replace(/\s/g, ''),
+        password: loginData.password,
+      };
+      const response = await apiClient.post('/auth/login', payload);
       const { token, username, fullName, role, tenantId, storeId, storeName, brandName } = response.data.data;
 
       localStorage.setItem('token', token);
@@ -92,10 +94,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
 
     try {
+      const cleanPhone = registerData.phoneNumber.trim().replace(/\s/g, '');
       const payload = {
-        fullName: registerData.fullName,
-        email: registerData.email,
-        phone: registerData.phoneNumber.trim(),
+        fullName: registerData.fullName.trim(),
+        phone: cleanPhone,
         password: registerData.password,
       };
 
@@ -120,7 +122,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setAuth({
           token: resData.token,
           user: { 
-            username: resData.username || resData.email, 
+            username: resData.phone, 
             fullName: resData.fullName, 
             role: resData.role || 'Customer', 
             tenantId: resData.tenantId || 1 
@@ -253,7 +255,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên đăng nhập
+                Số điện thoại hoặc Tên đăng nhập
               </label>
               <input
                 type="text"
@@ -261,8 +263,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="Nhập tên đăng nhập"
+                placeholder="VD: 0912345678 hoặc staff_q1"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Khách hàng vui lòng nhập Số điện thoại để đăng nhập & tích điểm
+              </p>
             </div>
 
             <div>
@@ -305,35 +310,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tên đăng nhập
-              </label>
-              <input
-                type="text"
-                value={registerData.username}
-                onChange={(e) => setRegisterData({ ...registerData, username: e.target.value })}
-                required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="username123"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                value={registerData.email}
-                onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                required
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="email@example.com"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Số điện thoại
+                Số điện thoại <span className="text-xs text-orange-600 font-normal">(Dùng để đăng nhập & tích điểm)</span>
               </label>
               <input
                 type="tel"
@@ -341,7 +318,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 onChange={(e) => setRegisterData({ ...registerData, phoneNumber: e.target.value })}
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="0912345678"
+                placeholder="VD: 0912345678"
               />
             </div>
 
@@ -355,7 +332,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
                 required
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder="Tối thiểu 8 ký tự (gồm số và ký tự đặc biệt)"
               />
             </div>
 

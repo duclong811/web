@@ -19,16 +19,16 @@ export default function MobileBottomNav() {
         <span className="material-symbols-outlined" style={(isHome || !isOrderActive) ? { fontVariationSettings: "'FILL' 1" } : {}}>menu_book</span>
         <span className="text-[10px] font-bold mt-1">Thực đơn</span>
       </Link>
-      <Link to="/tracking" className={`flex flex-col items-center transition-colors ${isOrderActive ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
+      <Link to="/history" className={`flex flex-col items-center transition-colors ${(path === '/history' || isOrderActive) ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
         <div className="relative">
-          <span className="material-symbols-outlined" style={isOrderActive ? { fontVariationSettings: "'FILL' 1" } : {}}>receipt_long</span>
+          <span className="material-symbols-outlined" style={(path === '/history' || isOrderActive) ? { fontVariationSettings: "'FILL' 1" } : {}}>receipt_long</span>
           {isOrderActive && <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full animate-pulse"></span>}
         </div>
         <span className="text-[10px] font-bold mt-1">Đơn hàng</span>
       </Link>
-      <Link to="/" className={`flex flex-col items-center transition-colors text-on-surface-variant hover:text-primary`}>
-        <span className="material-symbols-outlined">loyalty</span>
-        <span className="text-[10px] font-bold mt-1">Ưu đãi</span>
+      <Link to="/profile" className={`flex flex-col items-center transition-colors ${path === '/profile' ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
+        <span className="material-symbols-outlined" style={path === '/profile' ? { fontVariationSettings: "'FILL' 1" } : {}}>person</span>
+        <span className="text-[10px] font-bold mt-1">Cá nhân</span>
       </Link>
     </div>
   );

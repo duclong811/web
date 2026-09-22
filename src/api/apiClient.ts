@@ -1,9 +1,18 @@
 ﻿import axios from 'axios';
 
-// Mobile Hotspot IP (máy tính làm hotspot host)
-// iPhone connected: 192.168.137.102
+// DEVELOPMENT MODE - Choose based on your setup:
+
+// Option 1: Mobile Hotspot (for mobile demo with iPhone)
 export const API_BASE_URL = 'http://192.168.137.1:5277/api';
-export const HUB_URL = 'http://192.168.137.102:5277/hubs/orders';
+export const HUB_URL = 'http://192.168.137.1:5277/hubs/orders';
+
+// Option 2: School WiFi (fu.edu.vn - when at school)
+// export const API_BASE_URL = 'http://10.33.117.80:5277/api';
+// export const HUB_URL = 'http://10.33.117.80:5277/hubs/orders';
+
+// Option 3: Localhost (development on same laptop)
+// export const API_BASE_URL = 'http://localhost:5277/api';
+// export const HUB_URL = 'http://localhost:5277/hubs/orders';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

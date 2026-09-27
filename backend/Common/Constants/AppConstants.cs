@@ -1,4 +1,4 @@
-﻿namespace WebCafe.Backend.Common.Constants
+namespace WebCafe.Backend.Common.Constants
 {
     public static class AppRoles
     {
@@ -12,12 +12,14 @@
 
     public static class OrderStatus
     {
+        public const string AwaitingPayment = "awaiting_payment";
         public const string Pending = "pending";
         public const string Confirmed = "confirmed";
         public const string Preparing = "preparing";
         public const string Ready = "ready";
         public const string Served = "served";
         public const string Paid = "paid";
+        public const string Completed = "completed";
         public const string Cancelled = "cancelled";
     }
 
@@ -25,6 +27,7 @@
     {
         public const string Cash = "cash";
         public const string VietQR = "vietqr";
+        public const string PayOS = "payos";
         public const string Momo = "momo";
         public const string BankTransfer = "bank_transfer";
     }

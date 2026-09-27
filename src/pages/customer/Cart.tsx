@@ -51,7 +51,7 @@ export default function Cart() {
       }
       
       const tableToUse = guestSession?.tableId || currentTable || 'T01';
-      const order = await createOrder(tableToUse, customerPhone, customerName, orderNote);
+      const order = await createOrder(tableToUse, customerPhone, customerName, orderNote, 'qr_table');
       navigate(`/order-success?code=${order.orderCode}&orderId=${order.id}`);
     } catch (err) {
       console.error('Order creation error:', err);

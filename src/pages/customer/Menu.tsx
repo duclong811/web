@@ -196,6 +196,43 @@ export default function Menu() {
             </div>
           </section>
 
+          {/* AI Sommelier Spotlight Banner */}
+          <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#281E19] via-[#3D2C24] to-[#1E1715] p-4 sm:p-5 text-white shadow-md border border-amber-500/25 group transition-all hover:border-amber-500/40">
+            {/* Glowing Orb Accents */}
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-amber-500/15 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-primary/20 rounded-full blur-xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-300 flex items-center justify-center text-stone-950 shadow-md shrink-0 group-hover:rotate-6 transition-transform">
+                  <span className="material-symbols-outlined text-2xl font-bold">auto_awesome</span>
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-[10px] font-bold text-amber-300 uppercase tracking-wider mb-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    Chuyên Gia Ẩm Thực AI Sommelier
+                  </div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white leading-tight">
+                    Hôm nay bạn muốn thưởng thức món gì?
+                  </h3>
+                  <p className="text-xs text-stone-300 mt-0.5">
+                    Tư vấn món theo tâm trạng, độ ngọt, mức đá và gợi ý kết hợp đồ uống thông minh.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <Link
+                  to="/ai-suggest"
+                  className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-stone-950 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                >
+                  <span>Hỏi AI Sommelier</span>
+                  <span className="material-symbols-outlined text-base">arrow_forward</span>
+                </Link>
+              </div>
+            </div>
+          </section>
+
           {/* Dynamic Menu Grid */}
           <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-stack-lg">
             {paginatedItems.length === 0 ? (

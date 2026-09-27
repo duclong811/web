@@ -36,7 +36,16 @@ import type {
   PlatformStatsDto,
   TenantDetailDto,
   CreateTenantDto,
-  UpdateTenantPlanDto
+  UpdateTenantPlanDto,
+  CreatePayOSPaymentRequest,
+  PayOSPaymentDto,
+  PayOSStatusCheckDto,
+  CreatePaymentDto,
+  PaymentResultDto,
+  StorePaymentConfigDto,
+  UpdateStorePaymentConfigDto,
+  TestStorePaymentConfigRequest,
+  TestPaymentConfigResultDto
 } from '../types/apiTypes';
 
 // Menu API
@@ -254,6 +263,48 @@ export const systemAdminApi = {
   updateTenantPlan: async (tenantId: number, payload: UpdateTenantPlanDto) => {
     const res = await apiClient.put<ApiResponse<any>>(`/system/tenants/${tenantId}/plan`, payload);
     return res.data;
+  }
+};
+
+// Payment & PayOS Gateway API
+export const paymentApi = {
+  processPayment: async (payload: CreatePaymentDto) => {
+    const res = await apiClient.post<ApiResponse<PaymentResultDto>>('/payments', payload);
+    return res.data.data;
+  },
+  createPayOSPayment: async (payload: CreatePayOSPaymentRequest) => {
+    const res = await apiClient.post<ApiResponse<PayOSPaymentDto>>('/payments/payos/create-link', payload);
+    return res.data.data;
+  },
+  getPayOSStatus: async (orderCode: number) => {
+    const res = await apiClient.get<ApiResponse<PayOSStatusCheckDto>>(`/payments/payos/status/${orderCode}`);
+    return res.data.data;
+  },
+  cancelPayOSPayment: async (orderCode: number, reason?: string) => {
+    const res = await apiClient.post<ApiResponse<any>>(`/payments/payos/cancel/${orderCode}`, null, {
+      params: { reason }
+    });
+    return res.data;
+  },
+  createVietQRPayment: async (orderId: number) => {
+    const res = await apiClient.post<ApiResponse<any>>('/payments/vietqr/create', { orderId });
+    return res.data.data;
+  },
+  getVietQRStatus: async (orderId: number) => {
+    const res = await apiClient.get<ApiResponse<any>>(`/payments/vietqr/status/${orderId}`);
+    return res.data.data;
+  },
+  getStorePaymentConfig: async (storeId: number) => {
+    const res = await apiClient.get<ApiResponse<StorePaymentConfigDto>>(`/payments/store/${storeId}/config`);
+    return res.data.data;
+  },
+  updateStorePaymentConfig: async (storeId: number, payload: UpdateStorePaymentConfigDto) => {
+    const res = await apiClient.put<ApiResponse<StorePaymentConfigDto>>(`/payments/store/${storeId}/config`, payload);
+    return res.data.data;
+  },
+  testStorePaymentConfig: async (payload: TestStorePaymentConfigRequest) => {
+    const res = await apiClient.post<ApiResponse<TestPaymentConfigResultDto>>('/payments/store/test-connection', payload);
+    return res.data.data;
   }
 };
 

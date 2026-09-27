@@ -41,27 +41,39 @@ export default function StaffOrderDashboard() {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Convert store orders to component format (memoized to prevent re-creation)
-  const orders: Order[] = useMemo(() => storeOrders.map(o => ({
-    orderId: parseInt(o.id),
-    orderCode: o.orderCode || '',
-    tableNumber: o.tableNumber || 'Mang về',
-    customerName: o.rawDto?.customerName || o.rawDto?.guestName || 'Khách',
-    status: o.status,
-    subTotal: o.rawDto?.subTotal || o.total,
-    totalAmount: o.total,
-    items: o.items.map(item => ({
-      menuItemName: item.name,
-      sizeName: item.sizeName,
-      quantity: item.quantity,
-      unitPrice: item.price,
-      sugarLevel: item.sugarLevel || '100%',
-      iceLevel: item.iceLevel || '100%',
-      toppings: item.toppingNames,
-      note: item.note,
-    })),
-    createdAt: o.createdAt,
-    note: o.rawDto?.note || undefined,
-  })), [storeOrders]);
+  const orders: Order[] = useMemo(() => {
+    const seen = new Set<string>();
+    const uniqueStoreOrders: typeof storeOrders = [];
+    for (const o of storeOrders) {
+      const idKey = o.id || o.orderCode;
+      if (idKey && !seen.has(idKey)) {
+        seen.add(idKey);
+        uniqueStoreOrders.push(o);
+      }
+    }
+
+    return uniqueStoreOrders.map(o => ({
+      orderId: parseInt(o.id),
+      orderCode: o.orderCode || '',
+      tableNumber: o.tableNumber || 'Mang về',
+      customerName: o.rawDto?.customerName || o.rawDto?.guestName || 'Khách',
+      status: o.status,
+      subTotal: o.rawDto?.subTotal || o.total,
+      totalAmount: o.total,
+      items: o.items.map(item => ({
+        menuItemName: item.name,
+        sizeName: item.sizeName,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        sugarLevel: item.sugarLevel || '100%',
+        iceLevel: item.iceLevel || '100%',
+        toppings: item.toppingNames,
+        note: item.note,
+      })),
+      createdAt: o.createdAt,
+      note: o.rawDto?.note || undefined,
+    }));
+  }, [storeOrders]);
 
   // Fetch orders from API and update store
   const fetchOrders = async () => {
@@ -72,8 +84,17 @@ export default function StaffOrderDashboard() {
       const response = await apiClient.get(`/orders/active/store/${storeId}`);
       const ordersData = response.data.data || [];
       
+      // Deduplicate by orderId
+      const seenIds = new Set<number>();
+      const uniqueOrdersData = ordersData.filter((dto: any) => {
+        if (!dto.orderId) return true;
+        if (seenIds.has(dto.orderId)) return false;
+        seenIds.add(dto.orderId);
+        return true;
+      });
+
       // Map to store format
-      const mappedOrders = ordersData.map((dto: any) => ({
+      const mappedOrders = uniqueOrdersData.map((dto: any) => ({
         id: dto.orderId.toString(),
         orderCode: dto.orderCode,
         tableNumber: dto.tableNumber || 'Mang về',
@@ -126,12 +147,17 @@ export default function StaffOrderDashboard() {
 
   // Filter orders by status (memoized to prevent infinite loops)
   const filterOrders = useCallback((ordersList: Order[], status: LocalOrderStatus) => {
+    // Luôn ẩn các đơn đang chờ thanh toán PayOS (awaiting_payment) để chống spam
+    const validOrders = ordersList.filter(order => order.status !== 'awaiting_payment');
+    
     if (status === 'all') {
-      setFilteredOrders(ordersList);
+      setFilteredOrders(validOrders);
+    } else if (status === 'pending') {
+      setFilteredOrders(validOrders.filter(order => order.status === 'pending' || order.status === 'confirmed'));
     } else if (status === 'paid') {
-      setFilteredOrders(ordersList.filter(order => order.status === 'paid' || (order.status as string) === 'served' || (order.status as string) === 'completed'));
+      setFilteredOrders(validOrders.filter(order => order.status === 'paid' || (order.status as string) === 'served' || (order.status as string) === 'completed'));
     } else {
-      setFilteredOrders(ordersList.filter(order => order.status === status));
+      setFilteredOrders(validOrders.filter(order => order.status === status));
     }
   }, []);
 
@@ -144,14 +170,15 @@ export default function StaffOrderDashboard() {
     setActiveFilter(status);
   };
 
-  // Count orders by status
+  // Count orders by status (không đếm đơn awaiting_payment chưa trả tiền)
   const getStatusCounts = () => {
+    const validOrders = orders.filter(o => o.status !== 'awaiting_payment');
     return {
-      all: orders.length,
-      pending: orders.filter(o => o.status === 'pending').length,
-      preparing: orders.filter(o => o.status === 'preparing').length,
-      ready: orders.filter(o => o.status === 'ready').length,
-      paid: orders.filter(o => o.status === 'paid' || (o.status as string) === 'served' || (o.status as string) === 'completed').length,
+      all: validOrders.length,
+      pending: validOrders.filter(o => o.status === 'pending' || o.status === 'confirmed').length,
+      preparing: validOrders.filter(o => o.status === 'preparing').length,
+      ready: validOrders.filter(o => o.status === 'ready').length,
+      paid: validOrders.filter(o => o.status === 'paid' || (o.status as string) === 'served' || (o.status as string) === 'completed').length,
     };
   };
 
@@ -256,9 +283,9 @@ export default function StaffOrderDashboard() {
         ) : (
           /* Orders Grid */
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredOrders.map((order) => (
+            {filteredOrders.map((order, idx) => (
               <OrderCard
-                key={order.orderId}
+                key={order.orderId ? `order-${order.orderId}` : `order-idx-${idx}`}
                 order={order}
                 onStatusUpdate={handleOrderUpdate}
               />

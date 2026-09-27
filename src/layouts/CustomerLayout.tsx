@@ -1,5 +1,5 @@
 import { Outlet, Link } from 'react-router-dom';
-import { Coffee, ShoppingCart, User } from 'lucide-react';
+import { Coffee, ShoppingCart, User, Sparkles } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuthStore } from '../store/authStore';
 import { useState } from 'react';
@@ -27,7 +27,7 @@ export default function CustomerLayout() {
     <div className="min-h-screen flex flex-col bg-background font-body-md text-on-surface">
       {/* Header/TopAppBar - Responsive */}
       <header className="sticky top-0 z-50 w-full bg-surface/95 backdrop-blur-md border-b border-outline-variant/10 shadow-sm">
-        <div className="flex justify-between items-center px-4 sm:px-6 md:px-8 py-4 max-w-7xl mx-auto">
+        <div className="flex justify-between items-center px-4 sm:px-6 md:px-8 py-3.5 max-w-7xl mx-auto">
           {/* Left: Logo + Brand */}
           <Link 
             to="/menu" 
@@ -41,8 +41,17 @@ export default function CustomerLayout() {
             </h1>
           </Link>
 
-          {/* Right: Table Badge + Login/User + Cart */}
+          {/* Right: Table Badge + Ask AI + Login/User + Cart */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Ask AI Sommelier Button (Desktop & Tablet only - Mobile uses bottom nav) */}
+            <Link
+              to="/ai-suggest"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-gradient-to-r from-amber-500/15 via-amber-400/20 to-primary/10 border border-amber-500/40 rounded-full text-xs font-bold text-amber-900 hover:shadow-xs hover:scale-105 active:scale-95 transition-all"
+            >
+              <Sparkles size={14} className="text-amber-600 animate-pulse" />
+              <span>Hỏi AI Sommelier</span>
+            </Link>
+
             {/* Table Badge */}
             {guestSession?.tableId && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-secondary-container text-on-secondary-container rounded-full">
@@ -89,8 +98,8 @@ export default function CustomerLayout() {
         <Outlet />
       </main>
 
-      {/* Footer */}
-      <footer className="w-full mt-auto bg-surface-container-highest border-t border-outline-variant/20 py-6 px-4 sm:px-6 md:px-8">
+      {/* Footer (Desktop & Tablet only - Mobile uses bottom nav) */}
+      <footer className="hidden md:block w-full mt-auto bg-surface-container-highest border-t border-outline-variant/20 py-6 px-4 sm:px-6 md:px-8">
         <div className="flex flex-col md:flex-row justify-between items-center max-w-7xl mx-auto gap-4">
           <div className="flex flex-col gap-1 items-center md:items-start text-center md:text-left">
             <span className="text-base sm:text-xl text-primary font-bold">AI-SMARTSERVE</span>

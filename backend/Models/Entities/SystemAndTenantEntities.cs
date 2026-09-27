@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using WebCafe.Backend.Models.Common;
 
@@ -98,6 +98,15 @@ namespace WebCafe.Backend.Models.Entities
 
         [MaxLength(100)]
         public string? BankAccountName { get; set; }
+
+        [MaxLength(100)]
+        public string? PayOSClientId { get; set; }
+
+        [MaxLength(100)]
+        public string? PayOSApiKey { get; set; }
+
+        [MaxLength(100)]
+        public string? PayOSChecksumKey { get; set; }
 
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

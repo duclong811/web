@@ -90,6 +90,11 @@ export interface CreateOrderDto {
   tableId?: number | null;
   customerPhone?: string | null;
   customerName?: string | null;
+  guestId?: string | null;
+  guestName?: string | null;
+  guestPhone?: string | null;
+  source?: 'qr_table' | 'pos_staff';
+  paymentMethod?: 'cash' | 'payos' | 'unpaid' | string | null;
   voucherCode?: string | null;
   pointsToUse: number;
   note?: string | null;
@@ -611,5 +616,96 @@ export interface UpdateTenantPlanDto {
   plan: string;
   maxStores: number;
 }
+
+// --- PayOS Payment Gateway Types ---
+export interface CreatePayOSPaymentRequest {
+  orderId?: number;
+  orderCode?: string;
+  returnUrl?: string;
+  cancelUrl?: string;
+}
+
+export interface PayOSPaymentDto {
+  paymentId: number;
+  orderId: number;
+  orderCode: string;
+  payOSOrderCode: number;
+  amount: number;
+  status: string;
+  checkoutUrl?: string;
+  qrCode?: string;
+  paymentLinkId?: string;
+  accountNumber?: string;
+  accountName?: string;
+  bin?: string;
+  description?: string;
+  storeBankAccount?: string;
+  storeBankName?: string;
+  createdAt: string;
+}
+
+export interface PayOSStatusCheckDto {
+  orderCode: number;
+  orderId: number;
+  status: string; // PENDING, PAID, CANCELLED
+  amount: number;
+  amountPaid: number;
+  amountRemaining: number;
+  isSuccess: boolean;
+  message?: string;
+}
+
+export interface CreatePaymentDto {
+  orderId: number;
+  method: 'cash' | 'bank_transfer' | 'momo' | 'vnpay' | string;
+  amount: number;
+  transactionRef?: string;
+}
+
+export interface PaymentResultDto {
+  paymentId: number;
+  orderId: number;
+  method: string;
+  amount: number;
+  status: string;
+  qrCodeUrl?: string;
+  message?: string;
+}
+
+export interface StorePaymentConfigDto {
+  storeId: number;
+  storeName: string;
+  hasCustomPayOS: boolean;
+  payOSClientId?: string;
+  maskedApiKey?: string;
+  maskedChecksumKey?: string;
+  bankAccount?: string;
+  bankName?: string;
+  bankAccountName?: string;
+}
+
+export interface UpdateStorePaymentConfigDto {
+  payOSClientId?: string;
+  payOSApiKey?: string;
+  payOSChecksumKey?: string;
+  bankAccount?: string;
+  bankName?: string;
+  bankAccountName?: string;
+}
+
+export interface TestStorePaymentConfigRequest {
+  clientId: string;
+  apiKey: string;
+  checksumKey: string;
+}
+
+export interface TestPaymentConfigResultDto {
+  isValid: boolean;
+  message: string;
+  accountName?: string;
+  accountNumber?: string;
+}
+
+
 
 

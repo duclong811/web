@@ -57,6 +57,12 @@ namespace WebCafe.Backend.Models.DTOs.Order
         [Range(0, int.MaxValue, ErrorMessage = "Điểm sử dụng không hợp lệ.")]
         public int PointsToUse { get; set; } = 0;
         
+        // Order Source (qr_table vs pos_staff)
+        public string? Source { get; set; } = "qr_table";
+
+        // Payment Method for POS Orders (cash, payos)
+        public string? PaymentMethod { get; set; }
+
         [MaxLength(500, ErrorMessage = "Ghi chú không được vượt quá 500 ký tự.")]
         public string? Note { get; set; }
         
@@ -123,8 +129,8 @@ namespace WebCafe.Backend.Models.DTOs.Order
     public class UpdateOrderStatusDto
     {
         [Required(ErrorMessage = "Trạng thái đơn hàng là bắt buộc.")]
-        [RegularExpression(@"^(pending|confirmed|preparing|ready|served|paid|completed|cancelled)$", 
-            ErrorMessage = "Trạng thái phải là: pending, confirmed, preparing, ready, served, paid, completed hoặc cancelled.")]
+        [RegularExpression(@"^(pending|confirmed|preparing|ready|served|paid|completed|cancelled|awaiting_payment)$", 
+            ErrorMessage = "Trạng thái phải là: pending, confirmed, preparing, ready, served, paid, completed, cancelled hoặc awaiting_payment.")]
         public string Status { get; set; } = "confirmed";
     }
 }

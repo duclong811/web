@@ -76,10 +76,11 @@ export default function OrderTracking() {
   }, [codeParam, guestIdParam, activeOrder, orders, guestSession]);
 
   const status = currentOrder?.status || 'pending';
+  const isAwaitingPayment = status === 'awaiting_payment';
   const isStep1 = true;
-  const isStep2 = status === 'preparing' || status === 'ready' || status === 'served' || status === 'paid' || status === 'done';
-  const isStep3 = status === 'ready' || status === 'served' || status === 'paid' || status === 'done';
-  const isStep4 = status === 'served' || status === 'paid' || status === 'done';
+  const isStep2 = ['preparing', 'ready', 'served', 'completed', 'paid'].includes(status) && status !== 'confirmed' && status !== 'pending' && status !== 'awaiting_payment';
+  const isStep3 = ['ready', 'served', 'completed', 'paid'].includes(status) && status !== 'confirmed' && status !== 'pending' && status !== 'awaiting_payment' && status !== 'preparing';
+  const isStep4 = status === 'served' || status === 'completed' || status === 'paid';
 
   return (
     <div className="min-h-screen flex flex-col font-body-md text-body-md bg-background text-on-surface pb-24 md:pb-12">
@@ -117,11 +118,38 @@ export default function OrderTracking() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
             {/* Tracking Card */}
             <div className="lg:col-span-8 space-y-gutter">
+              {isAwaitingPayment && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center justify-between text-amber-900 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-amber-600 text-lg">schedule</span>
+                    <span>Đơn hàng đang chờ thanh toán PayOS để gửi sang quầy Barista pha chế.</span>
+                  </div>
+                  <Link 
+                    to={`/order-success?code=${currentOrder.orderCode}&orderId=${currentOrder.id}`}
+                    className="font-bold underline text-primary hover:text-primary-container whitespace-nowrap ml-2"
+                  >
+                    Quét mã PayOS ngay
+                  </Link>
+                </div>
+              )}
+
               <div className="bg-surface-container-lowest p-stack-lg rounded-xl shadow-sm border border-outline-variant/30">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-stack-lg">
                   <div>
                     <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-widest font-bold">
-                      {status === 'pending' ? 'Đã Tiếp Nhận' : status === 'preparing' ? 'Đang Pha Chế' : (status === 'ready' || status === 'served') ? 'Món Đã Sẵn Sàng' : 'Hoàn Thành'}
+                      {status === 'awaiting_payment'
+                        ? 'Đang Chờ Thanh Toán PayOS...'
+                        : status === 'pending' 
+                        ? 'Đã Tiếp Nhận Đơn Hàng' 
+                        : status === 'confirmed' 
+                        ? 'Đã Thanh Toán • Chờ Quầy Bar Nhận Đơn' 
+                        : status === 'preparing' 
+                        ? 'Đang Pha Chế Thức Uống' 
+                        : status === 'ready' 
+                        ? 'Món Đã Sẵn Sàng Phục Vụ' 
+                        : status === 'served'
+                        ? 'Đã Phục Vụ Tại Bàn'
+                        : 'Đơn Hàng Đã Hoàn Thành'}
                     </span>
                     <h2 className="font-headline-lg text-headline-lg text-primary mt-1 font-bold">
                       Đơn hàng #{currentOrder.orderCode || currentOrder.id}
@@ -129,7 +157,13 @@ export default function OrderTracking() {
                   </div>
                   <div className="bg-primary-fixed px-4 py-2 rounded-full">
                     <span className="text-on-primary-fixed font-label-md text-label-md font-bold">
-                      {status === 'pending' ? 'Dự kiến: 10-15 phút' : status === 'preparing' ? 'Dự kiến: 5 phút nữa' : 'Đã chuẩn bị xong'}
+                      {status === 'awaiting_payment'
+                        ? 'Chờ thanh toán'
+                        : status === 'pending' || status === 'confirmed'
+                        ? 'Dự kiến: 10-15 phút' 
+                        : status === 'preparing' 
+                        ? 'Dự kiến: 5 phút nữa' 
+                        : 'Đã chuẩn bị xong'}
                     </span>
                   </div>
                 </div>
@@ -143,7 +177,13 @@ export default function OrderTracking() {
                         <span className="material-symbols-outlined text-xl">check</span>
                       </div>
                       <span className={`text-label-md font-label-md text-center ${isStep1 ? 'text-secondary font-bold' : 'text-on-surface-variant'}`}>Đã tiếp nhận</span>
-                      <span className="text-xs text-on-surface-variant mt-1">Đã xác nhận</span>
+                      <span className="text-xs text-on-surface-variant mt-1">
+                        {status === 'awaiting_payment'
+                          ? 'Chờ thanh toán'
+                          : status === 'confirmed' 
+                          ? '✓ Đã TT PayOS' 
+                          : 'Đã xác nhận'}
+                      </span>
                     </div>
 
                     {/* Step 2: Preparing */}

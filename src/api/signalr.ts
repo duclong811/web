@@ -1,4 +1,4 @@
-﻿import * as signalR from '@microsoft/signalr';
+import * as signalR from '@microsoft/signalr';
 import { HUB_URL } from './apiClient';
 import type { OrderDto } from '../types/apiTypes';
 
@@ -57,15 +57,42 @@ class SignalRService {
     }
   }
 
+  public offNewOrder(callback?: (...args: any[]) => void) {
+    if (this.connection) {
+      if (callback) this.connection.off('NewOrderReceived', callback);
+      else this.connection.off('NewOrderReceived');
+    }
+  }
+
   public onOrderStatusChanged(callback: (orderId: number, status: string, orderCode: string) => void) {
     if (this.connection) {
       this.connection.on('OrderStatusChanged', callback);
     }
   }
 
+  public offOrderStatusChanged(callback?: (...args: any[]) => void) {
+    if (this.connection) {
+      if (callback) this.connection.off('OrderStatusChanged', callback);
+      else this.connection.off('OrderStatusChanged');
+    }
+  }
+
   public onTableStatusChanged(callback: (tableId: number, status: string) => void) {
     if (this.connection) {
       this.connection.on('TableStatusChanged', callback);
+      this.connection.on('tablestatuschanged', callback);
+    }
+  }
+
+  public offTableStatusChanged(callback?: (...args: any[]) => void) {
+    if (this.connection) {
+      if (callback) {
+        this.connection.off('TableStatusChanged', callback);
+        this.connection.off('tablestatuschanged', callback);
+      } else {
+        this.connection.off('TableStatusChanged');
+        this.connection.off('tablestatuschanged');
+      }
     }
   }
 

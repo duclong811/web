@@ -163,8 +163,8 @@ namespace WebCafe.Backend.Services.Implementation
 
             await _db.SaveChangesAsync();
 
-            // Cập nhật trạng thái đơn hàng
-            await _orderService.UpdateStatusAsync(order.OrderId, OrderStatus.Paid, null);
+            // Cập nhật trạng thái đơn hàng sang Confirmed (Đã thanh toán - Chờ pha chế)
+            await _orderService.UpdateStatusAsync(order.OrderId, OrderStatus.Confirmed, null);
 
             // Tự động trừ kho
             try

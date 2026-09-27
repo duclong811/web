@@ -294,11 +294,6 @@ export default function ProductDetail() {
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      <footer className="w-full mt-auto bg-surface-container-highest dark:bg-surface-container border-t border-outline-variant/20 py-6 px-4 text-center text-xs text-on-surface-variant hidden md:block">
-        © 2024 AI-SMARTSERVE. Pha chế thủ công cho thói quen mỗi ngày của bạn.
-      </footer>
       
       <MobileBottomNav />
     </div>

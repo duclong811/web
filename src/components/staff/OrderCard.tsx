@@ -32,41 +32,53 @@ const STATUS_CONFIG: Record<string, {
   icon: string;
   nextAction: { status: string; label: string; color: string } | null;
 }> = {
+  awaiting_payment: {
+    label: 'Chờ thanh toán PayOS',
+    color: 'bg-amber-50 text-amber-700 border-amber-200',
+    icon: 'hourglass_empty',
+    nextAction: null
+  },
   pending: {
     label: 'Chờ xác nhận',
     color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     icon: 'schedule',
-    nextAction: { status: 'preparing', label: 'Chấp nhận', color: 'bg-blue-600 hover:bg-blue-700' }
+    nextAction: { status: 'preparing', label: 'Chấp nhận & Pha chế', color: 'bg-blue-600 hover:bg-blue-700 text-white' }
+  },
+  confirmed: {
+    label: 'Đã TT PayOS (Chờ làm)',
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    icon: 'verified',
+    nextAction: { status: 'preparing', label: 'Nhận đơn pha chế', color: 'bg-primary hover:bg-primary/90 text-white' }
   },
   preparing: {
     label: 'Đang chuẩn bị',
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: 'restaurant',
-    nextAction: { status: 'ready', label: 'Hoàn thành', color: 'bg-green-600 hover:bg-green-700' }
+    nextAction: { status: 'ready', label: 'Hoàn thành pha chế', color: 'bg-green-600 hover:bg-green-700 text-white' }
   },
   ready: {
-    label: 'Sẵn sàng',
+    label: 'Sẵn sàng phục vụ',
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: 'check_circle',
-    nextAction: { status: 'paid', label: 'Đã phục vụ', color: 'bg-gray-600 hover:bg-gray-700' }
+    nextAction: { status: 'served', label: 'Đã phục vụ', color: 'bg-purple-600 hover:bg-purple-700 text-white' }
   },
   served: {
     label: 'Đã phục vụ',
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: 'room_service',
-    nextAction: { status: 'paid', label: 'Thanh toán', color: 'bg-emerald-600 hover:bg-emerald-700' }
+    nextAction: { status: 'completed', label: 'Hoàn tất đơn', color: 'bg-gray-700 hover:bg-gray-800 text-white' }
   },
   paid: {
     label: 'Đã thanh toán',
-    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
     icon: 'paid',
-    nextAction: null
+    nextAction: null // Khóa chặt: Không cho lặp lại
   },
   completed: {
-    label: 'Hoàn thành',
+    label: 'Đã hoàn thành',
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: 'task_alt',
-    nextAction: null
+    nextAction: null // Khóa chặt: Đơn đã kết thúc
   },
   cancelled: {
     label: 'Đã hủy',
@@ -243,11 +255,12 @@ export default function OrderCard({ order, onStatusUpdate }: OrderCardProps) {
             </button>
           )}
           
-          {order.status === 'pending' && (
+          {(order.status === 'pending' || order.status === 'confirmed') && (
             <button
               onClick={handleCancelOrder}
               disabled={loading}
               className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Hủy đơn hàng"
             >
               <span className="material-symbols-outlined text-xl">close</span>
             </button>

@@ -10,7 +10,7 @@ import type {
 } from '../types/apiTypes';
 
 // --- UI Compatible Types ---
-export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'done' | 'served' | 'paid' | 'cancelled';
+export type OrderStatus = 'awaiting_payment' | 'pending' | 'confirmed' | 'preparing' | 'ready' | 'done' | 'served' | 'paid' | 'completed' | 'cancelled';
 
 export interface MenuItem {
   id: string;
@@ -112,7 +112,15 @@ interface StoreState {
   setVoucher: (code: string, discount: number) => void;
   
   placeOrder: () => void;
-  createOrder: (tableId: string, customerPhone?: string, customerName?: string, note?: string, pointsToUse?: number) => Promise<Order>;
+  createOrder: (
+    tableId: string, 
+    customerPhone?: string, 
+    customerName?: string, 
+    note?: string, 
+    sourceOrPoints?: 'qr_table' | 'pos_staff' | number, 
+    paymentMethod?: 'cash' | 'payos' | 'unpaid',
+    pointsToUse?: number
+  ) => Promise<Order>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => Promise<void>;
   
   initRealtime: (storeId?: number) => void;
@@ -359,7 +367,17 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ orders: [newOrder, ...get().orders], activeOrder: newOrder, cart: [] });
   },
 
-  createOrder: async (tableId, customerPhone, customerName, note, pointsToUse = 0) => {
+  createOrder: async (tableId, customerPhone, customerName, note, sourceOrPoints = 'qr_table', paymentMethod, pointsToUseParam) => {
+    let source: 'qr_table' | 'pos_staff' = 'qr_table';
+    let pointsToUse = 0;
+
+    if (typeof sourceOrPoints === 'number') {
+      pointsToUse = sourceOrPoints;
+      source = 'qr_table';
+    } else if (sourceOrPoints) {
+      source = sourceOrPoints;
+      pointsToUse = pointsToUseParam || 0;
+    }
     const { cart, currentStoreId, currentTable, appliedVoucherCode, guestSession } = get();
     if (cart.length === 0) throw new Error('Giỏ hàng trống');
 
@@ -379,6 +397,8 @@ export const useStore = create<StoreState>((set, get) => ({
         guestId: guestSession?.guestId || undefined,
         guestName: guestSession?.guestName || customerName || undefined,
         guestPhone: guestSession?.guestPhone || customerPhone || undefined,
+        source: source,
+        paymentMethod: paymentMethod || undefined,
         
         voucherCode: appliedVoucherCode || undefined,
         pointsToUse: pointsToUse || 0,
@@ -404,14 +424,15 @@ export const useStore = create<StoreState>((set, get) => ({
         orderCode: res.orderCode,
         tableNumber: res.tableNumber || tableStr,
         total: res.totalAmount,
-        status: 'pending',
+        status: (res.status as OrderStatus) || (source === 'pos_staff' ? (paymentMethod === 'cash' ? 'paid' : 'awaiting_payment') : 'awaiting_payment'),
         createdAt: res.createdAt,
         rawDto: res,
         items: [...cart],
       };
 
+      const existingOrders = get().orders.filter(o => o.id !== newOrder.id);
       set({
-        orders: [newOrder, ...get().orders],
+        orders: [newOrder, ...existingOrders],
         activeOrder: newOrder,
         cart: [],
         appliedVoucherCode: null,
@@ -428,10 +449,11 @@ export const useStore = create<StoreState>((set, get) => ({
         tableNumber: tableStr,
         items: [...cart],
         total,
-        status: 'pending',
+        status: source === 'pos_staff' && paymentMethod === 'cash' ? 'paid' : 'awaiting_payment',
         createdAt: new Date().toISOString()
       };
-      set({ orders: [fallbackOrder, ...get().orders], activeOrder: fallbackOrder, cart: [] });
+      const existingOrders = get().orders.filter(o => o.id !== fallbackOrder.id);
+      set({ orders: [fallbackOrder, ...existingOrders], activeOrder: fallbackOrder, cart: [] });
       return fallbackOrder;
     }
   },
@@ -492,6 +514,10 @@ export const useStore = create<StoreState>((set, get) => ({
       set({
         orders: get().orders.map(o => o.id === orderId.toString() ? { ...o, status: status as OrderStatus } : o)
       });
+    });
+
+    signalRService.onTableStatusChanged((tableId, status) => {
+      console.log(`📡 SignalR Table #${tableId} status: ${status}`);
     });
 
     // Then start connection

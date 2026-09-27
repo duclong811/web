@@ -1,7 +1,8 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStore, type MenuItem } from '../../store/useStore';
+import { useStore, type MenuItem, type Order } from '../../store/useStore';
 import Pagination from '../../components/Pagination';
+import { PayOSCounterModal } from '../../components/staff/PayOSCounterModal';
 
 interface PosCartItem {
   cartId: string;
@@ -34,7 +35,12 @@ export default function NewOrder() {
   const [posCart, setPosCart] = useState<PosCartItem[]>([]);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittingAction, setSubmittingAction] = useState<'cash' | 'payos' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // PayOS Counter Modal State
+  const [payOSModalOpen, setPayOSModalOpen] = useState(false);
+  const [currentPayOSOrder, setCurrentPayOSOrder] = useState<Order | null>(null);
 
   // Customization Modal State
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
@@ -145,13 +151,15 @@ export default function NewOrder() {
 
   const totalItemsCount = posCart.reduce((sum, ci) => sum + ci.quantity, 0);
 
-  const handleConfirmOrder = async () => {
+  // 1-Click Cash Payment Checkout (F2)
+  const handleCashCheckout = async () => {
     if (posCart.length === 0) {
       showToast('Vui lòng chọn ít nhất 1 món!');
       return;
     }
 
     setIsSubmitting(true);
+    setSubmittingAction('cash');
     try {
       useStore.setState({
         cart: posCart.map(ci => ({
@@ -170,26 +178,104 @@ export default function NewOrder() {
         tableIdentifier, 
         undefined, 
         'Khách tại quầy', 
-        `${orderType === 'Takeaway' ? '[Mang Về]' : `[Tại Bàn ${selectedTable}]`} Tạo đơn tại quầy POS`
+        `${orderType === 'Takeaway' ? '[Mang Về]' : `[Tại Bàn ${selectedTable}]`} POS Thu Tiền Mặt`,
+        'pos_staff',
+        'cash'
       );
       
-      showToast('Tạo đơn hàng thành công!');
+      showToast('Đã thu tiền mặt & kích hoạt đơn sang Bếp!');
       setPosCart([]);
       setIsMobileCartOpen(false);
       
       setTimeout(() => {
         navigate('/staff/orders');
-      }, 600);
-    } catch (err) {
-      console.error('POS order failed:', err);
+      }, 700);
+    } catch (err: any) {
+      console.error('POS Cash order failed:', err);
       showToast('Đã ghi nhận đơn hàng tại quầy!');
       setPosCart([]);
       setIsMobileCartOpen(false);
       navigate('/staff/orders');
     } finally {
       setIsSubmitting(false);
+      setSubmittingAction(null);
     }
   };
+
+  // PayOS QR Checkout Flow (F4)
+  const handlePayOSCheckout = async () => {
+    if (posCart.length === 0) {
+      showToast('Vui lòng chọn ít nhất 1 món!');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmittingAction('payos');
+    try {
+      useStore.setState({
+        cart: posCart.map(ci => ({
+          ...ci.item,
+          quantity: ci.quantity,
+          sizeName: ci.sizeName,
+          price: (ci.item.price || 0) + ci.sizeExtra,
+          sugarLevel: ci.sugarLevel,
+          iceLevel: ci.iceLevel,
+          note: ci.note,
+        }))
+      });
+
+      const tableIdentifier = orderType === 'Dine-in' ? selectedTable : 'Mang Về';
+      const createdOrder = await createOrder(
+        tableIdentifier, 
+        undefined, 
+        'Khách tại quầy', 
+        `${orderType === 'Takeaway' ? '[Mang Về]' : `[Tại Bàn ${selectedTable}]`} POS Quét VietQR PayOS`,
+        'pos_staff',
+        'payos'
+      );
+      
+      setCurrentPayOSOrder(createdOrder);
+      setPayOSModalOpen(true);
+      setPosCart([]);
+      setIsMobileCartOpen(false);
+    } catch (err: any) {
+      console.error('POS PayOS order failed:', err);
+      showToast('Không thể tạo đơn PayOS: ' + (err?.message || 'Lỗi kết nối'));
+    } finally {
+      setIsSubmitting(false);
+      setSubmittingAction(null);
+    }
+  };
+
+  const handlePayOSSuccess = (_paidOrder: Order) => {
+    showToast('Thanh toán PayOS thành công! Đã gửi đơn sang Bếp.');
+    setPayOSModalOpen(false);
+    setCurrentPayOSOrder(null);
+    setTimeout(() => {
+      navigate('/staff/orders');
+    }, 600);
+  };
+
+  // Keyboard Shortcuts (F2: Cash, F4: PayOS)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
+        return;
+      }
+      if (payOSModalOpen || customizingItem) return;
+
+      if (e.key === 'F2') {
+        e.preventDefault();
+        handleCashCheckout();
+      } else if (e.key === 'F4') {
+        e.preventDefault();
+        handlePayOSCheckout();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [posCart, isSubmitting, payOSModalOpen, customizingItem, orderType, selectedTable]);
 
   // Filter & Pagination
   const filteredItems = menuItems.filter(item => {
@@ -449,18 +535,43 @@ export default function NewOrder() {
             <span>{subTotal.toLocaleString('vi-VN')}đ</span>
           </div>
 
-          <button
-            disabled={posCart.length === 0 || isSubmitting}
-            onClick={handleConfirmOrder}
-            className={`w-full py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all ${
-              posCart.length === 0 || isSubmitting
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              : 'bg-primary text-white hover:bg-primary-container active:scale-95'
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg">check_circle</span>
-            {isSubmitting ? 'Đang gửi đơn...' : 'Xác Nhận & Tạo Đơn'}
-          </button>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            {/* Cash Checkout Button (F2) */}
+            <button
+              disabled={posCart.length === 0 || isSubmitting}
+              onClick={handleCashCheckout}
+              className={`py-3 px-2 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-sm transition-all ${
+                posCart.length === 0 || isSubmitting
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95 shadow-emerald-600/20'
+              }`}
+              title="Phím tắt: F2"
+            >
+              <div className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-base">payments</span>
+                <span>{submittingAction === 'cash' ? 'Đang gửi...' : 'Tiền Mặt'}</span>
+              </div>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/20 text-white/90">F2</span>
+            </button>
+
+            {/* PayOS QR Checkout Button (F4) */}
+            <button
+              disabled={posCart.length === 0 || isSubmitting}
+              onClick={handlePayOSCheckout}
+              className={`py-3 px-2 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 shadow-sm transition-all ${
+                posCart.length === 0 || isSubmitting
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                : 'bg-primary hover:bg-primary-container text-white active:scale-95 shadow-primary/20'
+              }`}
+              title="Phím tắt: F4"
+            >
+              <div className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-base">qr_code_scanner</span>
+                <span>{submittingAction === 'payos' ? 'Tạo QR...' : 'QR PayOS'}</span>
+              </div>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/20 text-white/90">F4</span>
+            </button>
+          </div>
         </div>
       </aside>
       {/* Mobile Floating Bottom Bar */}
@@ -605,14 +716,33 @@ export default function NewOrder() {
                 <span className="text-base">{subTotal.toLocaleString('vi-VN')}đ</span>
               </div>
 
-              <button
-                disabled={isSubmitting || posCart.length === 0}
-                onClick={handleConfirmOrder}
-                className="w-full py-3.5 bg-primary text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 active:scale-95 shadow-md"
-              >
-                <span className="material-symbols-outlined text-lg">check_circle</span>
-                {isSubmitting ? 'Đang gửi đơn...' : 'Xác Nhận & Đặt Đơn'}
-              </button>
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  disabled={isSubmitting || posCart.length === 0}
+                  onClick={handleCashCheckout}
+                  className={`py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all ${
+                    posCart.length === 0 || isSubmitting
+                    ? 'bg-gray-200 text-gray-400'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">payments</span>
+                  <span>{submittingAction === 'cash' ? 'Đang gửi...' : 'Thu Tiền Mặt'}</span>
+                </button>
+
+                <button
+                  disabled={isSubmitting || posCart.length === 0}
+                  onClick={handlePayOSCheckout}
+                  className={`py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all ${
+                    posCart.length === 0 || isSubmitting
+                    ? 'bg-gray-200 text-gray-400'
+                    : 'bg-primary hover:bg-primary-container text-white shadow-primary/20'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">qr_code_scanner</span>
+                  <span>{submittingAction === 'payos' ? 'Tạo QR...' : 'Quét QR PayOS'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -786,6 +916,17 @@ export default function NewOrder() {
           </div>
         </div>
       )}
+
+      {/* POS PayOS VietQR Modal */}
+      <PayOSCounterModal
+        isOpen={payOSModalOpen}
+        order={currentPayOSOrder}
+        onClose={() => {
+          setPayOSModalOpen(false);
+          setCurrentPayOSOrder(null);
+        }}
+        onPaidSuccess={handlePayOSSuccess}
+      />
     </div>
   );
 }

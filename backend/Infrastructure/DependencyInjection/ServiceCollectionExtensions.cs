@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using PayOS;
 using WebCafe.Backend.Hubs;
 using WebCafe.Backend.Infrastructure.Data;
 using WebCafe.Backend.Infrastructure.Storage;
@@ -124,15 +125,26 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
             services.AddScoped<IAnalyticsService, AnalyticsService>();
             services.AddScoped<IInventoryService, InventoryService>();
             services.AddScoped<IVietQRPaymentService, VietQRPaymentService>();
+            services.AddScoped<IPayOSService, PayOSService>();
             services.AddScoped<IRecommendationService, RecommendationService>();
             services.AddScoped<IGeminiService, GeminiService>();
+
+            // 5.1. PayOS Gateway Client Registration
+            services.AddSingleton(sp =>
+            {
+                var config = sp.GetRequiredService<IConfiguration>();
+                var clientId = config["PayOS:ClientId"] ?? "";
+                var apiKey = config["PayOS:ApiKey"] ?? "";
+                var checksumKey = config["PayOS:ChecksumKey"] ?? "";
+                return new PayOSClient(clientId, apiKey, checksumKey);
+            });
 
             // 6. Swagger with Bearer Support
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "WebCafe SaaS QR Ordering API", Version = "v1" });
-                c.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+                c.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
                     Description = "Nhập token theo định dạng: Bearer {token}",

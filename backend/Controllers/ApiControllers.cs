@@ -16,7 +16,9 @@ using WebCafe.Backend.Models.DTOs.AI;
 using WebCafe.Backend.Models.DTOs.Inventory;
 using WebCafe.Backend.Services.Abstraction;
 using WebCafe.Backend.Services.Implementation;
-using Microsoft.Extensions.Logging;
+using PayOS;
+using PayOS.Models.V2.PaymentRequests;
+using PayOS.Models.Webhooks;
 
 namespace WebCafe.Backend.Controllers
 {
@@ -337,15 +339,18 @@ namespace WebCafe.Backend.Controllers
     {
         private readonly IPaymentService _paymentService;
         private readonly IVietQRPaymentService _vietQRPaymentService;
+        private readonly IPayOSService _payOSService;
         private readonly ILogger<PaymentsController> _logger;
 
         public PaymentsController(
             IPaymentService paymentService, 
             IVietQRPaymentService vietQRPaymentService,
+            IPayOSService payOSService,
             ILogger<PaymentsController> logger)
         {
             _paymentService = paymentService;
             _vietQRPaymentService = vietQRPaymentService;
+            _payOSService = payOSService;
             _logger = logger;
         }
 
@@ -360,6 +365,76 @@ namespace WebCafe.Backend.Controllers
             return Ok(ApiResponse<PaymentResultDto>.Ok(result, "Thanh toán thành công."));
         }
 
+        #region PayOS Gateway
+        [HttpPost("payos/create-link")]
+        public async Task<ActionResult<ApiResponse<PayOSPaymentDto>>> CreatePayOSPayment([FromBody] CreatePayOSPaymentRequest request)
+        {
+            var payment = await _payOSService.CreatePaymentLinkAsync(request.OrderId, request.OrderCode, request.ReturnUrl, request.CancelUrl);
+            return Ok(ApiResponse<PayOSPaymentDto>.Ok(payment, "Đã tạo link thanh toán PayOS."));
+        }
+
+        [HttpGet("payos/status/{orderCode}")]
+        public async Task<ActionResult<ApiResponse<PayOSStatusCheckDto>>> GetPayOSPaymentStatus(long orderCode)
+        {
+            var status = await _payOSService.GetPaymentStatusAsync(orderCode);
+            return Ok(ApiResponse<PayOSStatusCheckDto>.Ok(status));
+        }
+
+        [HttpPost("payos/cancel/{orderCode}")]
+        public async Task<ActionResult<ApiResponse<object>>> CancelPayOSPayment(long orderCode, [FromQuery] string? reason)
+        {
+            var result = await _payOSService.CancelPaymentLinkAsync(orderCode, reason);
+            return Ok(ApiResponse<object>.Ok(result, "Đã hủy link thanh toán PayOS."));
+        }
+
+        [HttpPost("payos/webhook")]
+        [AllowAnonymous] // Webhook IPN từ PayOS Server
+        public async Task<IActionResult> PayOSWebhook([FromBody] object webhookPayload)
+        {
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(webhookPayload);
+                var webhook = System.Text.Json.JsonSerializer.Deserialize<Webhook>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (webhook == null) return BadRequest(new { error = -1, message = "Payload rỗng hoặc không hợp lệ" });
+
+                var result = await _payOSService.ProcessWebhookAsync(webhook);
+                return Ok(new 
+                { 
+                    error = 0, 
+                    message = "Webhook processed successfully",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing PayOS webhook");
+                return BadRequest(new { error = -1, message = ex.Message });
+            }
+        }
+
+        [HttpGet("store/{storeId}/config")]
+        public async Task<ActionResult<ApiResponse<StorePaymentConfigDto>>> GetStorePaymentConfig(int storeId)
+        {
+            var config = await _payOSService.GetStorePaymentConfigAsync(storeId);
+            return Ok(ApiResponse<StorePaymentConfigDto>.Ok(config));
+        }
+
+        [HttpPut("store/{storeId}/config")]
+        public async Task<ActionResult<ApiResponse<StorePaymentConfigDto>>> UpdateStorePaymentConfig(int storeId, [FromBody] UpdateStorePaymentConfigDto dto)
+        {
+            var updated = await _payOSService.UpdateStorePaymentConfigAsync(storeId, dto);
+            return Ok(ApiResponse<StorePaymentConfigDto>.Ok(updated, "Đã cập nhật cấu hình thanh toán cửa hàng thành công."));
+        }
+
+        [HttpPost("store/test-connection")]
+        public async Task<ActionResult<ApiResponse<TestPaymentConfigResultDto>>> TestStorePaymentConfig([FromBody] TestStorePaymentConfigRequest request)
+        {
+            var result = await _payOSService.TestStorePaymentConfigAsync(request);
+            return Ok(ApiResponse<TestPaymentConfigResultDto>.Ok(result, result.Message));
+        }
+        #endregion
+
+        #region VietQR Legacy
         [HttpPost("vietqr/create")]
         public async Task<ActionResult<ApiResponse<VietQRPaymentDto>>> CreateVietQRPayment([FromBody] CreateVietQRPaymentRequest request)
         {
@@ -412,6 +487,7 @@ namespace WebCafe.Backend.Controllers
                 return BadRequest(new { success = false, message = ex.Message });
             }
         }
+        #endregion
     }
 
     public class CreateVietQRPaymentRequest

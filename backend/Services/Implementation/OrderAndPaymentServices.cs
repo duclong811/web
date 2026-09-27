@@ -305,6 +305,14 @@ namespace WebCafe.Backend.Services.Implementation
 
             var orderCode = $"OD-{DateTime.UtcNow:yyMMdd}-{Random.Shared.Next(1000, 9999)}";
 
+            bool isPosStaffOrder = dto.Source == "pos_staff";
+            bool isCashPos = isPosStaffOrder && (dto.PaymentMethod == "cash" || dto.PaymentMethod == PaymentMethods.Cash);
+            bool isPayOSPos = isPosStaffOrder && (dto.PaymentMethod == "payos" || dto.PaymentMethod == PaymentMethods.PayOS);
+
+            string initialStatus = isCashPos 
+                ? OrderStatus.Paid 
+                : (isPayOSPos || !isPosStaffOrder ? OrderStatus.AwaitingPayment : OrderStatus.Pending);
+
             var order = new Order
             {
                 TenantId = store.TenantId,
@@ -318,7 +326,7 @@ namespace WebCafe.Backend.Services.Implementation
                 GuestName = dto.GuestName ?? dto.CustomerName,
                 GuestPhone = dto.GuestPhone ?? dto.CustomerPhone,
                 
-                Status = OrderStatus.Pending,
+                Status = initialStatus,
                 SubTotal = subTotal,
                 DiscountAmount = totalDiscount,
                 PointsUsed = pointsUsed,
@@ -346,13 +354,44 @@ namespace WebCafe.Backend.Services.Implementation
                 await _db.SaveChangesAsync();
             }
 
+            // Nếu là đơn tiền mặt tại quầy (isCashPos): tạo Payment Cash + trừ kho
+            if (isCashPos)
+            {
+                var payment = new Payment
+                {
+                    OrderId = order.OrderId,
+                    Method = PaymentMethods.Cash,
+                    Amount = order.TotalAmount,
+                    Status = PaymentStatuses.Completed,
+                    PaidAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _db.Payments.Add(payment);
+                await _db.SaveChangesAsync();
+
+                try
+                {
+                    await _inventoryService.DeductInventoryForOrderAsync(order.OrderId, null);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Deduct inventory failed for cash POS order {order.OrderCode}: {ex.Message}");
+                }
+            }
+
             var resultDto = (await GetByIdAsync(order.OrderId))!;
 
-            // Gửi SignalR Realtime đến Bếp / Thu ngân của Store
-            await _notificationService.NotifyNewOrderAsync(store.StoreId, resultDto);
-            if (table != null)
+            // Mô hình A tại quầy:
+            // 1. Đơn tiền mặt (isCashPos) hoặc đơn POS thông thường: Báo Bếp ngay và chiếm bàn
+            // 2. Đơn PayOS (isPayOSPos hoặc qr_table): Đơn ở awaiting_payment, chỉ kích hoạt sang Bếp khi khách quét PayOS xong
+            if (isCashPos || (isPosStaffOrder && !isPayOSPos))
             {
-                await _notificationService.NotifyTableStatusChangedAsync(store.StoreId, table.TableId, TableStatuses.Occupied);
+                await _notificationService.NotifyNewOrderAsync(store.StoreId, resultDto);
+                if (table != null)
+                {
+                    table.Status = TableStatuses.Occupied;
+                    await _notificationService.NotifyTableStatusChangedAsync(store.StoreId, table.TableId, TableStatuses.Occupied);
+                }
             }
 
             return resultDto;
@@ -393,7 +432,8 @@ namespace WebCafe.Backend.Services.Implementation
             var today = DateTime.UtcNow.Date;
             var activeStatuses = new[] { OrderStatus.Pending, OrderStatus.Confirmed, OrderStatus.Preparing, OrderStatus.Ready, OrderStatus.Served };
             var orders = await _db.Orders
-                .Where(o => o.StoreId == storeId && (activeStatuses.Contains(o.Status) || (o.Status == OrderStatus.Paid && o.CreatedAt >= today)))
+                .AsSplitQuery()
+                .Where(o => o.StoreId == storeId && (activeStatuses.Contains(o.Status) || ((o.Status == OrderStatus.Paid || o.Status == OrderStatus.Completed) && o.CreatedAt >= today)))
                 .Include(o => o.Store)
                 .Include(o => o.Table)
                 .Include(o => o.Customer)
@@ -403,7 +443,7 @@ namespace WebCafe.Backend.Services.Implementation
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
 
-            return orders.Select(MapToDto).ToList();
+            return orders.DistinctBy(o => o.OrderId).Select(MapToDto).ToList();
         }
 
         public async Task<PaginationRes<OrderDto>> SearchOrdersAsync(int storeId, PagedReq req, string? status = null)
@@ -642,18 +682,23 @@ namespace WebCafe.Backend.Services.Implementation
             // Today's orders
             var todayAllOrders = await _db.Orders
                 .Include(o => o.Table)
+                .Include(o => o.Payments)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.MenuItem)
                 .Where(o => o.StoreId == storeId && o.CreatedAt >= today)
                 .ToListAsync();
 
-            var todayPaidOrders = todayAllOrders.Where(o => o.Status == OrderStatus.Paid).ToList();
+            var todayPaidOrders = todayAllOrders
+                .Where(o => o.Status == OrderStatus.Paid || o.Payments.Any(p => p.Status == PaymentStatuses.Completed))
+                .ToList();
             var todayRevenue = todayPaidOrders.Sum(o => o.TotalAmount);
 
             // Yesterday revenue until the same time of day
             var yesterdayTimeLimit = yesterday.Add(now.TimeOfDay);
             var yesterdayPaidOrders = await _db.Orders
-                .Where(o => o.StoreId == storeId && o.CreatedAt >= yesterday && o.CreatedAt <= yesterdayTimeLimit && o.Status == OrderStatus.Paid)
+                .Include(o => o.Payments)
+                .Where(o => o.StoreId == storeId && o.CreatedAt >= yesterday && o.CreatedAt <= yesterdayTimeLimit && 
+                    (o.Status == OrderStatus.Paid || o.Payments.Any(p => p.Status == PaymentStatuses.Completed)))
                 .ToListAsync();
             var yesterdayRevenue = yesterdayPaidOrders.Sum(o => o.TotalAmount);
 
@@ -683,7 +728,7 @@ namespace WebCafe.Backend.Services.Implementation
             }
 
             // Queue stats
-            var pendingCount = todayAllOrders.Count(o => o.Status == OrderStatus.Pending);
+            var pendingCount = todayAllOrders.Count(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.Confirmed);
             var preparingCount = todayAllOrders.Count(o => o.Status == OrderStatus.Preparing);
             var readyCount = todayAllOrders.Count(o => o.Status == OrderStatus.Ready);
             var servedCount = todayAllOrders.Count(o => o.Status == OrderStatus.Served || o.Status == OrderStatus.Paid);

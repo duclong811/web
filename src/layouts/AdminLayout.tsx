@@ -42,6 +42,7 @@ export default function AdminLayout() {
     { path: '/admin/inventory', icon: 'inventory_2', label: 'Kho & Nguyên Liệu' },
     { path: '/admin/tables', icon: 'table_restaurant', label: 'Bàn' },
     { path: '/admin/staff', icon: 'groups', label: 'Nhân Sự' },
+    { path: '/admin/settings', icon: 'payments', label: 'Cổng Thanh Toán' },
   ];
 
   const handleLogout = () => {

@@ -31,6 +31,7 @@ import MenuManagement from './pages/admin/MenuManagement';
 import InventoryManagement from './pages/admin/InventoryManagement';
 import TableManagement from './pages/admin/TableManagement';
 import StaffManagement from './pages/admin/StaffManagement';
+import PaymentSettings from './pages/admin/PaymentSettings';
 
 // Super Admin Pages (SaaS Platform Master)
 import SystemAdminDashboard from './pages/system-admin/SystemAdminDashboard';
@@ -79,6 +80,8 @@ function App() {
           <Route path="inventory" element={<InventoryManagement />} />
           <Route path="tables" element={<TableManagement />} />
           <Route path="staff" element={<StaffManagement />} />
+          <Route path="settings" element={<PaymentSettings />} />
+          <Route path="payments" element={<PaymentSettings />} />
         </Route>
 
         {/* Super Admin Platform Routes - Wrapped in SystemAdminLayout */}

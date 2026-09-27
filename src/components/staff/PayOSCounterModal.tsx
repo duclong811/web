@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { paymentApi } from '../../api/apis';
 import { signalRService } from '../../api/signalr';
 import { notificationService } from '../../services/notificationService';
-import type { Order } from '../../types';
+import type { Order } from '../../store/useStore';
 import type { PayOSPaymentDto } from '../../types/apiTypes';
 
 interface PayOSCounterModalProps {
@@ -385,7 +385,7 @@ export const PayOSCounterModal: React.FC<PayOSCounterModalProps> = ({
                     </span>
                     <button
                       onClick={() =>
-                        handleCopy(payosData?.description || order.orderCode, 'desc')
+                        handleCopy(payosData?.description || order.orderCode || '', 'desc')
                       }
                       className="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-primary font-bold text-[10px] hover:bg-gray-50 active:scale-95 transition-all"
                     >

@@ -10,7 +10,7 @@ import type {
 } from '../types/apiTypes';
 
 // --- UI Compatible Types ---
-export type OrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'done' | 'served' | 'paid' | 'cancelled';
+export type OrderStatus = 'awaiting_payment' | 'pending' | 'confirmed' | 'preparing' | 'ready' | 'done' | 'served' | 'paid' | 'completed' | 'cancelled';
 
 export interface MenuItem {
   id: string;

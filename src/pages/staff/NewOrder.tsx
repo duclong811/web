@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStore, type MenuItem } from '../../store/useStore';
+import { useStore, type MenuItem, type Order } from '../../store/useStore';
 import Pagination from '../../components/Pagination';
 import { PayOSCounterModal } from '../../components/staff/PayOSCounterModal';
-import type { Order } from '../../types';
 
 interface PosCartItem {
   cartId: string;

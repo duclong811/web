@@ -139,7 +139,7 @@ export interface OrderDto {
   guestId?: string | null;
   guestName?: string | null;
   guestPhone?: string | null;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'paid' | 'cancelled';
+  status: 'awaiting_payment' | 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'paid' | 'completed' | 'cancelled' | 'done';
   subTotal: number;
   discountAmount: number;
   pointsUsed: number;

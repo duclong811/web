@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../api/apiClient';
-import QRCode from 'qrcode'; // TODO: Run 'npm install qrcode @types/qrcode' first
+import QRCode from 'qrcode';
 import { useAuthStore } from '../../store/authStore';
+import TableQrPrintModal from '../../components/print/TableQrPrintModal';
+import type { TableQrPrintItem, StorePrintInfo } from '../../services/printService';
 
 type TableStatus = 'Available' | 'Occupied' | 'Reserved';
 
@@ -16,19 +18,23 @@ interface TableData {
 }
 
 export default function TableManagement() {
-  const storeId = useAuthStore(state => state.user?.storeId);
+  const user = useAuthStore(state => state.user);
+  const storeId = user?.storeId;
   const [tables, setTables] = useState<TableData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
-  const [selectedTable, setSelectedTable] = useState<TableData | null>(null);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [error, setError] = useState('');
+
+  // Print modal state
+  const [selectedPrintTable, setSelectedPrintTable] = useState<TableQrPrintItem | null>(null);
+  const [allPrintTables, setAllPrintTables] = useState<TableQrPrintItem[]>([]);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     tableNumber: '',
-        capacity: 2,
+    capacity: 2,
   });
 
   useEffect(() => {
@@ -106,38 +112,65 @@ export default function TableManagement() {
     }
   };
 
-  const generateQRCode = async (table: TableData) => {
+  const storePrintInfo: StorePrintInfo = {
+    storeName: user?.storeName || 'WebCafe Quán',
+    brandName: user?.brandName || 'AI-SMARTSERVE',
+  };
+
+  const buildSingleQrItem = async (table: TableData): Promise<TableQrPrintItem> => {
+    const menuUrl = table.qrToken
+      ? `${window.location.origin}/qr/${table.qrToken}`
+      : `${window.location.origin}/table/${table.storeId}/${table.tableId}`;
+    
+    const qrDataUrl = await QRCode.toDataURL(menuUrl, {
+      width: 512,
+      margin: 4,
+      errorCorrectionLevel: 'H',
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF',
+      },
+    });
+
+    return {
+      tableNumber: table.tableNumber,
+      capacity: table.capacity,
+      qrDataUrl,
+      menuUrl,
+    };
+  };
+
+  const buildAllQrItems = async (): Promise<TableQrPrintItem[]> => {
+    return Promise.all(tables.map(t => buildSingleQrItem(t)));
+  };
+
+  const handleOpenSinglePrint = async (table: TableData) => {
     try {
-      const menuUrl = table.qrToken
-        ? `${window.location.origin}/qr/${table.qrToken}`
-        : `${window.location.origin}/table/${table.storeId}/${table.tableId}`;
-      
-      const qrDataUrl = await QRCode.toDataURL(menuUrl, {
-        width: 512,
-        margin: 4,
-        errorCorrectionLevel: 'H',
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF',
-        },
-      });
-      
-      setQrCodeDataUrl(qrDataUrl);
-      setSelectedTable(table);
-      setShowQRModal(true);
+      setIsPreparingPrint(true);
+      const single = await buildSingleQrItem(table);
+      setSelectedPrintTable(single);
+      setShowPrintModal(true);
+      buildAllQrItems().then(items => setAllPrintTables(items)).catch(() => {});
     } catch (err) {
-      console.error('Generate QR failed:', err);
-      setError('Không thể tạo mã QR');
+      console.error('Lỗi tạo QR bàn:', err);
+    } finally {
+      setIsPreparingPrint(false);
     }
   };
 
-  const downloadQRCode = () => {
-    if (!selectedTable) return;
-    
-    const link = document.createElement('a');
-    link.href = qrCodeDataUrl;
-    link.download = `Table-${selectedTable.tableNumber}-QR.png`;
-    link.click();
+  const handleOpenBatchPrint = async () => {
+    if (tables.length === 0) return;
+    try {
+      setIsPreparingPrint(true);
+      const all = await buildAllQrItems();
+      setAllPrintTables(all);
+      setSelectedPrintTable(null);
+      setShowPrintModal(true);
+    } catch (err) {
+      console.error('Lỗi tạo danh sách QR:', err);
+    } finally {
+      setIsPreparingPrint(false);
+    }
   };
 
   const availableCount = tables.filter(t => t.status === 'Available').length;
@@ -162,16 +195,40 @@ export default function TableManagement() {
         <div>
           <h2 className="font-headline-lg text-headline-lg text-on-surface">Quản Lý Bàn</h2>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-            Quản lý {tables.length} bàn trong quán
+            Quản lý {tables.length} bàn trong quán · Hỗ trợ in tem QR dán bàn lẻ hoặc hàng loạt
           </p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-full font-label-md text-label-md shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-        >
-          <span className="material-symbols-outlined text-[20px]">add</span>
-          Thêm Bàn
-        </button>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Nút In Toàn Bộ Mã QR Bàn (Khổ A4) */}
+          <button 
+            type="button"
+            onClick={handleOpenBatchPrint}
+            disabled={tables.length === 0 || isPreparingPrint}
+            className="flex items-center gap-2 bg-white hover:bg-orange-50 border border-orange-300 text-orange-700 px-4 py-2.5 rounded-full font-label-md text-xs sm:text-sm shadow-xs active:scale-95 transition-all disabled:opacity-50"
+            title="In toàn bộ tem QR của tất cả các bàn ra khổ A4 để dán lên bàn"
+          >
+            {isPreparingPrint ? (
+              <div className="w-4 h-4 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <span className="material-symbols-outlined text-[18px]">print</span>
+            )}
+            <span>In Toàn Bộ Bàn (Khổ A4)</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[10px] font-black">
+              {tables.length}
+            </span>
+          </button>
+
+          {/* Nút Thêm Bàn Mới */}
+          <button 
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-full font-label-md text-xs sm:text-sm shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[20px]">add</span>
+            <span>Thêm Bàn</span>
+          </button>
+        </div>
       </section>
 
       {/* Error Message */}
@@ -240,11 +297,13 @@ export default function TableManagement() {
               {/* Actions */}
               <div className="flex gap-2">
                 <button
-                  onClick={() => generateQRCode(table)}
-                  className="flex-1 bg-surface-container-high hover:bg-surface-container text-on-surface px-3 py-2 rounded-lg font-label-sm transition-colors flex items-center justify-center gap-1"
+                  type="button"
+                  onClick={() => handleOpenSinglePrint(table)}
+                  className="flex-1 bg-surface-container-high hover:bg-orange-50 hover:text-orange-600 text-on-surface px-3 py-2 rounded-lg font-label-sm transition-colors flex items-center justify-center gap-1 font-bold text-xs"
+                  title="In tem QR dán bàn này"
                 >
-                  <span className="material-symbols-outlined text-sm">qr_code</span>
-                  QR
+                  <span className="material-symbols-outlined text-sm text-orange-600">qr_code_2</span>
+                  <span>In Tem QR</span>
                 </button>
                 <button
                   onClick={() => handleRegenerateQr(table.tableId)}
@@ -343,49 +402,14 @@ export default function TableManagement() {
         </div>
       )}
 
-      {/* QR Code Modal */}
-      {showQRModal && selectedTable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-primary">Table {selectedTable.tableNumber} QR</h3>
-              <button 
-                onClick={() => setShowQRModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <div className="text-center">
-              <div className="bg-gray-50 p-6 rounded-2xl mb-4">
-                <img src={qrCodeDataUrl} alt="QR Code" className="mx-auto w-64 h-64" />
-              </div>
-              
-              <p className="text-sm text-gray-600 mb-4">
-                Quét mã này để truy cập thực đơn Bàn {selectedTable.tableNumber}
-              </p>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={downloadQRCode}
-                  className="flex-1 px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-container transition-colors flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-sm">download</span>
-                  Tải Xuống
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="flex-1 px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-sm">print</span>
-                  In
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Table QR Standee / Sticker Print Modal */}
+      <TableQrPrintModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        singleTable={selectedPrintTable}
+        allTables={allPrintTables}
+        defaultStoreInfo={storePrintInfo}
+      />
     </div>
   );
 }

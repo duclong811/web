@@ -318,9 +318,15 @@ export const systemAdminApi = {
 
 // Customer API
 export const customerApi = {
-  getProfile: async (phone?: string) => {
+  getProfile: async (options?: string | { phone?: string; storeId?: number }) => {
+    let params: { phone?: string; storeId?: number } | undefined = undefined;
+    if (typeof options === 'string') {
+      params = { phone: options };
+    } else if (options) {
+      params = options;
+    }
     const res = await apiClient.get<ApiResponse<CustomerProfileDto>>('/customer/profile', {
-      params: phone ? { phone } : undefined
+      params
     });
     return res.data.data;
   },
@@ -328,7 +334,7 @@ export const customerApi = {
     const res = await apiClient.put<ApiResponse<CustomerProfileDto>>('/customer/profile', data);
     return res.data.data;
   },
-  getOrders: async (params?: { phone?: string; pageNumber?: number; pageSize?: number; status?: string }) => {
+  getOrders: async (params?: { phone?: string; pageNumber?: number; pageSize?: number; status?: string; storeId?: number; tenantId?: number }) => {
     const res = await apiClient.get<ApiResponse<PaginationRes<OrderDto>>>('/customer/orders', {
       params
     });

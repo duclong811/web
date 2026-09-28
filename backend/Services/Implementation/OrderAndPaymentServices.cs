@@ -151,28 +151,64 @@ namespace WebCafe.Backend.Services.Implementation
 
             // 1. Kiểm tra Bàn
             Table? table = null;
-            if (dto.TableId.HasValue)
+            bool isQrOrder = string.Equals(dto.Source, "qr_table", StringComparison.OrdinalIgnoreCase);
+
+            if (isQrOrder && (!dto.TableId.HasValue || dto.TableId.Value <= 0))
             {
-                table = await _db.Tables.FirstOrDefaultAsync(t => t.TableId == dto.TableId.Value && t.StoreId == dto.StoreId);
+                throw new ModelValidationException("TableId", "Đơn hàng gọi món tại bàn (QR) bắt buộc phải có thông tin bàn hợp lệ.");
+            }
+
+            if (dto.TableId.HasValue && dto.TableId.Value > 0)
+            {
+                table = await _db.Tables.FirstOrDefaultAsync(t => t.TableId == dto.TableId.Value && t.StoreId == dto.StoreId && t.IsActive);
                 if (table == null)
                 {
-                    throw new NotFoundException("Bàn không tồn tại hoặc không thuộc cửa hàng này.");
+                    throw new NotFoundException("Bàn không tồn tại, đã ngưng hoạt động hoặc không thuộc chi nhánh này.");
                 }
             }
 
-            // 2. Xử lý Khách hàng & Điểm thưởng
+            // 2. Xử lý Khách hàng & Điểm thưởng (Multi-Tenant SaaS Customer Support)
             Customer? customer = null;
+            string? lookupPhone = null;
+
             if (authenticatedCustomerId.HasValue)
             {
-                customer = await _db.Customers.FirstOrDefaultAsync(c =>
-                    c.CustomerId == authenticatedCustomerId.Value && c.TenantId == store.TenantId);
+                var authCustomer = await _db.Customers.FirstOrDefaultAsync(c => c.CustomerId == authenticatedCustomerId.Value);
+                lookupPhone = authCustomer?.Phone ?? dto.CustomerPhone;
+            }
+            else if (!string.IsNullOrWhiteSpace(dto.CustomerPhone))
+            {
+                lookupPhone = dto.CustomerPhone.Trim().Replace(" ", "");
+            }
+
+            if (!string.IsNullOrWhiteSpace(lookupPhone))
+            {
+                customer = await _db.Customers.FirstOrDefaultAsync(c => c.Phone == lookupPhone && c.TenantId == store.TenantId);
                 if (customer == null)
                 {
-                    throw new ForbiddenException("Tài khoản khách hàng không thuộc cửa hàng này.");
+                    // Tự động kích hoạt hồ sơ hội viên cho quán mới mà không cần tạo tài khoản riêng
+                    customer = new Customer
+                    {
+                        TenantId = store.TenantId,
+                        Phone = lookupPhone,
+                        Name = !string.IsNullOrWhiteSpace(dto.CustomerName) ? dto.CustomerName.Trim() : (dto.GuestName ?? "Khách hàng"),
+                        TotalPoints = 0,
+                        TotalSpent = 0,
+                        VisitCount = 1,
+                        CreatedAt = DateTime.UtcNow,
+                        LastVisitAt = DateTime.UtcNow
+                    };
+                    _db.Customers.Add(customer);
+                    await _db.SaveChangesAsync();
                 }
-                if (!string.IsNullOrWhiteSpace(dto.CustomerName))
+                else
                 {
-                    customer.Name = dto.CustomerName.Trim();
+                    if (!string.IsNullOrWhiteSpace(dto.CustomerName))
+                    {
+                        customer.Name = dto.CustomerName.Trim();
+                    }
+                    customer.VisitCount += 1;
+                    customer.LastVisitAt = DateTime.UtcNow;
                 }
             }
 
@@ -297,7 +333,7 @@ namespace WebCafe.Backend.Services.Implementation
                 TenantId = store.TenantId,
                 StoreId = store.StoreId,
                 OrderCode = orderCode,
-                TableId = dto.TableId,
+                TableId = table?.TableId,
                 CustomerId = customer?.CustomerId,
                 
                 // Guest Order Support
@@ -601,6 +637,7 @@ namespace WebCafe.Backend.Services.Implementation
             {
                 OrderId = o.OrderId,
                 TenantId = o.TenantId,
+                TenantName = o.Tenant?.Name ?? o.Store?.Tenant?.Name ?? string.Empty,
                 StoreId = o.StoreId,
                 StoreName = o.Store?.Name ?? string.Empty,
                 OrderCode = o.OrderCode,

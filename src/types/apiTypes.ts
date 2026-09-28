@@ -128,6 +128,7 @@ export interface OrderItemDto {
 export interface OrderDto {
   orderId: number;
   tenantId: number;
+  tenantName?: string;
   storeId: number;
   storeName: string;
   orderCode: string;
@@ -620,10 +621,19 @@ export interface UpdateTenantPlanDto {
   maxStores: number;
 }
 
+export interface TenantLoyaltyDto {
+  tenantId: number;
+  tenantName: string;
+  totalPoints: number;
+  totalSpent: number;
+  pointsToMoney: number;
+}
+
 // --- Customer Types ---
 export interface CustomerProfileDto {
   customerId: number;
   tenantId: number;
+  tenantName?: string;
   phone: string;
   name: string;
   totalPoints: number;
@@ -633,6 +643,7 @@ export interface CustomerProfileDto {
   pointsPerAmount: number;
   createdAt: string;
   lastVisitAt?: string | null;
+  tenantPoints?: TenantLoyaltyDto[];
 }
 
 export interface UpdateCustomerProfileDto {

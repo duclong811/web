@@ -11,25 +11,32 @@ export default function QRLanding() {
   const { initGuestSession, fetchMenu } = useStore();
   const [isProcessing, setIsProcessing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [connectedInfo, setConnectedInfo] = useState<{ storeName?: string; tableNumber?: string } | null>(null);
 
   useEffect(() => {
     const processQRCode = async () => {
       try {
         // New QR format: /qr/{qrToken}. Legacy routes remain supported temporarily.
         let storeId: number;
-        let tableId: string;
+        let tableId: number;
+        let tableNumber: string;
+        let storeName: string | undefined;
 
         if (params.qrToken) {
           const resolved = await tableApi.resolveQr(params.qrToken);
           if (!resolved) throw new Error('QR không hợp lệ');
           storeId = resolved.storeId;
-          tableId = resolved.tableId.toString();
+          tableId = resolved.tableId;
+          tableNumber = resolved.tableNumber;
+          storeName = resolved.storeName;
         } else if (params.storeId && params.tableId) {
           // Path params: /table/:storeId/:tableId
           const resolved = await tableApi.resolveLegacyQr(parseInt(params.storeId), parseInt(params.tableId));
           if (!resolved) throw new Error('QR không hợp lệ');
           storeId = resolved.storeId;
-          tableId = resolved.tableId.toString();
+          tableId = resolved.tableId;
+          tableNumber = resolved.tableNumber;
+          storeName = resolved.storeName;
         } else {
           // Query params: /qr?store=1&table=5
           const storeParam = searchParams.get('store');
@@ -46,11 +53,13 @@ export default function QRLanding() {
           const resolved = await tableApi.resolveLegacyByNumber(storeIdFromQr, tableParam);
           if (!resolved) throw new Error('QR không hợp lệ');
           storeId = resolved.storeId;
-          tableId = resolved.tableId.toString();
+          tableId = resolved.tableId;
+          tableNumber = resolved.tableNumber;
+          storeName = resolved.storeName;
         }
 
-        if (isNaN(storeId)) {
-          setError('Mã quán không hợp lệ.');
+        if (isNaN(storeId) || isNaN(tableId)) {
+          setError('Thông tin bàn hoặc quán không hợp lệ.');
           setIsProcessing(false);
           return;
         }
@@ -59,8 +68,9 @@ export default function QRLanding() {
           throw new Error('QR không hợp lệ');
         }
 
-        // Initialize guest session only after QR/store/table validation.
-        initGuestSession(storeId, tableId);
+        // Initialize guest session with both tableId (number) and tableNumber (display string)
+        initGuestSession(storeId, tableId, tableNumber, storeName);
+        setConnectedInfo({ storeName, tableNumber });
 
         // Fetch menu for this store
         await fetchMenu(storeId);
@@ -71,7 +81,7 @@ export default function QRLanding() {
         }, 1500);
       } catch (err) {
         console.error('QR processing error:', err);
-        setError('Có lỗi xảy ra. Vui lòng thử lại.');
+        setError('Có lỗi xảy ra khi nhận diện mã bàn. Vui lòng thử lại.');
         setIsProcessing(false);
       }
     };
@@ -123,7 +133,7 @@ export default function QRLanding() {
           color: 'var(--text-primary)',
           marginBottom: '0.75rem',
         }}>
-          {isProcessing ? 'Đang kết nối...' : error ? 'Oops!' : 'Thành công!'}
+          {isProcessing ? 'Đang kết nối...' : error ? 'Oops!' : `Bàn ${connectedInfo?.tableNumber || ''}`}
         </h1>
 
         <p style={{
@@ -137,7 +147,10 @@ export default function QRLanding() {
           ) : error ? (
             error
           ) : (
-            <>Bạn đã được kết nối!<br />Đang chuyển đến thực đơn...</>
+            <>
+              Bạn đã kết nối thành công tới <strong>Bàn {connectedInfo?.tableNumber}</strong>{connectedInfo?.storeName ? ` (${connectedInfo.storeName})` : ''}!<br />
+              Đang chuyển đến thực đơn...
+            </>
           )}
         </p>
 

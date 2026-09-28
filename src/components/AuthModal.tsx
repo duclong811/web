@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiClient } from '../api/apiClient';
 import { useAuthStore } from '../store/authStore';
+import { useStore } from '../store/useStore';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { setAuth } = useAuthStore();
+  const { currentStoreId, currentTable } = useStore();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -128,8 +130,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       if (resData?.phone) {
         const guestSession = {
           guestId: `cust_${resData.customerId || Date.now()}`,
-          storeId: 1,
-          tableId: 'T01',
+          storeId: currentStoreId,
+          tableId: currentTable || '',
           guestName: resData.fullName,
           guestPhone: resData.phone,
           timestamp: new Date().toISOString()
@@ -145,7 +147,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             username: resData.phone, 
             fullName: resData.fullName, 
             role: resData.role || 'Customer', 
-            tenantId: resData.tenantId || 1 
+            tenantId: resData.tenantId
           },
         });
       }

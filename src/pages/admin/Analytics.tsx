@@ -29,7 +29,7 @@ type DatePreset = 'today' | '7days' | '30days' | 'thisMonth' | 'custom';
 
 export default function Analytics() {
   const { user } = useAuthStore();
-  const activeStoreId = user?.storeId || 1;
+  const activeStoreId = user?.storeId ?? 0;
 
   // Date Filter State
   const [preset, setPreset] = useState<DatePreset>('30days');
@@ -47,6 +47,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
 
   // Hovered Chart Day State
   const [hoveredDay, setHoveredDay] = useState<DailyRevenueDto | null>(null);

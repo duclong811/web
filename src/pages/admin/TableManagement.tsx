@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../api/apiClient';
 import QRCode from 'qrcode'; // TODO: Run 'npm install qrcode @types/qrcode' first
+import { useAuthStore } from '../../store/authStore';
 
 type TableStatus = 'Available' | 'Occupied' | 'Reserved';
 
@@ -8,12 +9,14 @@ interface TableData {
   tableId: number;
   storeId: number;
   tableNumber: string;
-  seats: number;
+  capacity: number;
+  qrToken?: string;
   status: TableStatus;
   qrCodeUrl?: string;
 }
 
 export default function TableManagement() {
+  const storeId = useAuthStore(state => state.user?.storeId);
   const [tables, setTables] = useState<TableData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -25,17 +28,19 @@ export default function TableManagement() {
   // Form state
   const [formData, setFormData] = useState({
     tableNumber: '',
-    seats: 2,
+        capacity: 2,
   });
 
-  // Hardcoded storeId (in real app, get from auth context)
-  const storeId = 1;
-
   useEffect(() => {
-    loadTables();
-  }, []);
+    if (storeId) loadTables();
+  }, [storeId]);
 
   const loadTables = async () => {
+    if (!storeId) {
+      setError('Vui lòng chọn cửa hàng trước khi quản lý bàn.');
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError('');
@@ -51,17 +56,18 @@ export default function TableManagement() {
 
   const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!storeId) return;
     try {
       setError('');
       await apiClient.post('/tables', {
         storeId,
         tableNumber: formData.tableNumber,
-        seats: formData.seats,
+        capacity: formData.capacity,
         status: 'Available',
       });
       setShowAddModal(false);
       loadTables();
-      setFormData({ tableNumber: '', seats: 2 });
+      setFormData({ tableNumber: '', capacity: 2 });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Thêm bàn thất bại');
     }
@@ -82,23 +88,29 @@ export default function TableManagement() {
     
     try {
       setError('');
-      await apiClient.delete(`/table/${tableId}`);
+      await apiClient.delete(`/tables/${tableId}`);
       loadTables();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Xóa bàn thất bại');
     }
   };
 
+  const handleRegenerateQr = async (tableId: number) => {
+    if (!confirm('Mã QR cũ sẽ không còn sử dụng được. Bạn có muốn tạo mã mới không?')) return;
+    try {
+      setError('');
+      await apiClient.post(`/tables/${tableId}/qr/regenerate`);
+      await loadTables();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Tạo lại mã QR thất bại');
+    }
+  };
+
   const generateQRCode = async (table: TableData) => {
     try {
-      // Use network IP instead of localhost for QR code
-      // Replace localhost with actual network IP so mobile can access
-      const currentUrl = window.location.origin;
-      const baseUrl = currentUrl.includes('localhost') 
-        ? 'http://192.168.137.1:5173'  // Hotspot IP
-        : currentUrl;
-      
-      const menuUrl = `${baseUrl}/menu?storeId=${table.storeId}&table=${table.tableNumber}`;
+      const menuUrl = table.qrToken
+        ? `${window.location.origin}/qr/${table.qrToken}`
+        : `${window.location.origin}/table/${table.storeId}/${table.tableId}`;
       
       const qrDataUrl = await QRCode.toDataURL(menuUrl, {
         width: 512,
@@ -221,7 +233,7 @@ export default function TableManagement() {
                 <h3 className="font-headline-md text-headline-md text-on-surface">Bàn {table.tableNumber}</h3>
                 <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-2 mt-1">
                   <span className="material-symbols-outlined text-sm">person</span> 
-                  {table.seats} chỗ ngồi
+                  {table.capacity} chỗ ngồi
                 </p>
               </div>
 
@@ -233,6 +245,13 @@ export default function TableManagement() {
                 >
                   <span className="material-symbols-outlined text-sm">qr_code</span>
                   QR
+                </button>
+                <button
+                  onClick={() => handleRegenerateQr(table.tableId)}
+                  className="px-3 py-2 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container transition-colors"
+                  title="Tạo lại mã QR"
+                >
+                  <span className="material-symbols-outlined text-sm">refresh</span>
                 </button>
                 
                 <select
@@ -297,8 +316,8 @@ export default function TableManagement() {
                   required
                   min="1"
                   max="20"
-                  value={formData.seats}
-                  onChange={(e) => setFormData({ ...formData, seats: parseInt(e.target.value) })}
+                  value={formData.capacity}
+                  onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   placeholder="2"
                 />

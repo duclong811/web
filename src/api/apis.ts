@@ -57,12 +57,12 @@ export const menuApi = {
     const res = await apiClient.get<ApiResponse<StoreMenuResponse>>(`/Menu/store/${storeId}`);
     return res.data.data;
   },
-  getCategories: async (tenantId: number) => {
-    const res = await apiClient.get<ApiResponse<CategoryDto[]>>(`/Menu/categories/tenant/${tenantId}`);
+  getCategories: async () => {
+    const res = await apiClient.get<ApiResponse<CategoryDto[]>>('/Menu/categories');
     return res.data.data;
   },
-  getMenuItems: async (tenantId: number, categoryId?: number) => {
-    const res = await apiClient.get<ApiResponse<MenuItemDto[]>>(`/Menu/items/tenant/${tenantId}`, {
+  getMenuItems: async (categoryId?: number) => {
+    const res = await apiClient.get<ApiResponse<MenuItemDto[]>>('/Menu/items', {
       params: { categoryId }
     });
     return res.data.data;
@@ -124,7 +124,48 @@ export const tableApi = {
   updateStatus: async (tableId: number, status: string) => {
     const res = await apiClient.put<ApiResponse<TableDto>>(`/Tables/${tableId}/status`, { status });
     return res.data.data;
+  },
+  resolveQr: async (qrToken: string) => {
+    const res = await apiClient.get<ApiResponse<{
+      storeId: number;
+      tableId: number;
+      tableNumber: string;
+      storeName: string;
+      tenantName: string;
+    }>>(`/Tables/qr/${encodeURIComponent(qrToken)}`);
+    return res.data.data;
+  },
+  resolveLegacyQr: async (storeId: number, tableId: number) => {
+    const res = await apiClient.get<ApiResponse<{
+      storeId: number;
+      tableId: number;
+      tableNumber: string;
+      storeName: string;
+      tenantName: string;
+    }>>(`/Tables/resolve/${storeId}/${tableId}`);
+    return res.data.data;
+  },
+  resolveLegacyByNumber: async (storeId: number, tableNumber: string) => {
+    const res = await apiClient.get<ApiResponse<{
+      storeId: number;
+      tableId: number;
+      tableNumber: string;
+      storeName: string;
+      tenantName: string;
+    }>>(`/Tables/resolve-by-number/${storeId}/${encodeURIComponent(tableNumber)}`);
+    return res.data.data;
+  },
+  regenerateQr: async (tableId: number) => {
+    const res = await apiClient.post<ApiResponse<TableDto>>(`/Tables/${tableId}/qr/regenerate`);
+    return res.data.data;
   }
+};
+
+export const meApi = {
+  getStores: async () => {
+    const res = await apiClient.get<ApiResponse<Array<{ storeId: number; name: string; isActive: boolean }>>>('/me/stores');
+    return res.data.data;
+  },
 };
 
 // Voucher API

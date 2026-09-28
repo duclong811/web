@@ -16,8 +16,8 @@ export default function InventoryManagement() {
   const { currentStoreId } = useStore();
   const { user } = useAuthStore();
   // Đảm bảo lấy đúng mã cửa hàng và tenant của chủ quán đang đăng nhập
-  const storeId = user?.storeId || currentStoreId || 1;
-  const tenantId = user?.tenantId || 1;
+  const storeId = user?.storeId || currentStoreId;
+  const tenantId = user?.tenantId;
 
   // Active Tab: 'stock' | 'recipes' | 'audit'
   const [activeTab, setActiveTab] = useState<'stock' | 'recipes' | 'audit'>('stock');
@@ -267,6 +267,10 @@ export default function InventoryManagement() {
         });
         showToast('success', `Đã cập nhật nguyên liệu "${ingredientForm.name}".`);
       } else {
+        if (!tenantId || !storeId) {
+          showToast('error', 'Tài khoản chưa được gán tenant/cửa hàng.');
+          return;
+        }
         await inventoryApi.createIngredient({
           tenantId,
           storeId,

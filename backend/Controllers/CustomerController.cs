@@ -1,42 +1,35 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Models;
 using WebCafe.Backend.Infrastructure.Data;
 using WebCafe.Backend.Models.DTOs.Order;
+using WebCafe.Backend.Services.Abstraction;
 
 namespace WebCafe.Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Policy = AppPolicies.CustomerOnly)]
     public class CustomerController : ControllerBase
     {
         private readonly WebCafeDbContext _db;
+        private readonly ICurrentUserService _currentUser;
 
-        public CustomerController(WebCafeDbContext db)
+        public CustomerController(WebCafeDbContext db, ICurrentUserService currentUser)
         {
             _db = db;
+            _currentUser = currentUser;
         }
 
         // GET api/customer/profile?phone=0901234567
         [HttpGet("profile")]
-        public async Task<ActionResult<ApiResponse<CustomerProfileDto>>> GetProfile([FromQuery] string? phone)
+        public async Task<ActionResult<ApiResponse<CustomerProfileDto>>> GetProfile()
         {
-            var targetPhone = phone?.Trim();
-            if (string.IsNullOrEmpty(targetPhone))
-            {
-                targetPhone = User.FindFirstValue(ClaimTypes.Name);
-            }
-
-            if (string.IsNullOrEmpty(targetPhone))
-            {
-                return BadRequest(ApiResponse<CustomerProfileDto>.Fail("Vui lòng cung cấp số điện thoại hoặc đăng nhập."));
-            }
-
             var customer = await _db.Customers
                 .Include(c => c.Tenant)
-                .FirstOrDefaultAsync(c => c.Phone == targetPhone);
+                .FirstOrDefaultAsync(c => c.CustomerId == _currentUser.CustomerId && c.TenantId == _currentUser.TenantId);
 
             if (customer == null)
             {
@@ -68,20 +61,9 @@ namespace WebCafe.Backend.Controllers
         [HttpPut("profile")]
         public async Task<ActionResult<ApiResponse<CustomerProfileDto>>> UpdateProfile([FromBody] UpdateCustomerProfileDto dto)
         {
-            var targetPhone = dto.Phone?.Trim();
-            if (string.IsNullOrEmpty(targetPhone))
-            {
-                targetPhone = User.FindFirstValue(ClaimTypes.Name);
-            }
-
-            if (string.IsNullOrEmpty(targetPhone))
-            {
-                return BadRequest(ApiResponse<CustomerProfileDto>.Fail("Vui lòng cung cấp số điện thoại hợp lệ."));
-            }
-
             var customer = await _db.Customers
                 .Include(c => c.Tenant)
-                .FirstOrDefaultAsync(c => c.Phone == targetPhone);
+                .FirstOrDefaultAsync(c => c.CustomerId == _currentUser.CustomerId && c.TenantId == _currentUser.TenantId);
 
             if (customer == null)
             {
@@ -125,22 +107,10 @@ namespace WebCafe.Backend.Controllers
         // GET api/customer/orders?phone=0901234567&pageNumber=1&pageSize=10&status=all
         [HttpGet("orders")]
         public async Task<ActionResult<ApiResponse<PaginationRes<OrderDto>>>> GetOrders(
-            [FromQuery] string? phone,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] string? status = null)
         {
-            var targetPhone = phone?.Trim();
-            if (string.IsNullOrEmpty(targetPhone))
-            {
-                targetPhone = User.FindFirstValue(ClaimTypes.Name);
-            }
-
-            if (string.IsNullOrEmpty(targetPhone))
-            {
-                return BadRequest(ApiResponse<PaginationRes<OrderDto>>.Fail("Vui lòng cung cấp số điện thoại hoặc đăng nhập."));
-            }
-
             var query = _db.Orders
                 .Include(o => o.Store)
                 .Include(o => o.Table)
@@ -152,7 +122,7 @@ namespace WebCafe.Backend.Controllers
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.OrderItemToppings)
                         .ThenInclude(oit => oit.Topping)
-                .Where(o => (o.Customer != null && o.Customer.Phone == targetPhone) || o.GuestPhone == targetPhone)
+                .Where(o => o.CustomerId == _currentUser.CustomerId && o.TenantId == _currentUser.TenantId)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(status) && status.ToLower() != "all")
@@ -222,22 +192,11 @@ namespace WebCafe.Backend.Controllers
         // GET api/customer/loyalty-history
         [HttpGet("loyalty-history")]
         public async Task<ActionResult<ApiResponse<PaginationRes<CustomerLoyaltyHistoryDto>>>> GetLoyaltyHistory(
-            [FromQuery] string? phone,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10)
         {
-            var targetPhone = phone?.Trim();
-            if (string.IsNullOrEmpty(targetPhone))
-            {
-                targetPhone = User.FindFirstValue(ClaimTypes.Name);
-            }
-
-            if (string.IsNullOrEmpty(targetPhone))
-            {
-                return BadRequest(ApiResponse<PaginationRes<CustomerLoyaltyHistoryDto>>.Fail("Vui lòng cung cấp số điện thoại."));
-            }
-
-            var customer = await _db.Customers.FirstOrDefaultAsync(c => c.Phone == targetPhone);
+            var customer = await _db.Customers.FirstOrDefaultAsync(c =>
+                c.CustomerId == _currentUser.CustomerId && c.TenantId == _currentUser.TenantId);
             if (customer == null)
             {
                 return NotFound(ApiResponse<PaginationRes<CustomerLoyaltyHistoryDto>>.Fail("Không tìm thấy khách hàng."));

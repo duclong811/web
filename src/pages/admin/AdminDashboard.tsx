@@ -25,7 +25,8 @@ import {
 
 export default function AdminDashboard() {
   const { user } = useAuthStore();
-  const activeStoreId = user?.storeId || 1;
+  const activeStoreId = user?.storeId ?? 0;
+
 
   const [shiftData, setShiftData] = useState<ShiftOperationsDto | null>(null);
   const [loading, setLoading] = useState(true);

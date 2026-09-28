@@ -1,8 +1,9 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Exceptions;
+using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Models;
 using WebCafe.Backend.Infrastructure.Data;
 using WebCafe.Backend.Models.DTOs.Analytics;
@@ -24,6 +25,7 @@ namespace WebCafe.Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -121,22 +123,23 @@ namespace WebCafe.Backend.Controllers
     {
         private readonly IMenuItemService _menuService;
         private readonly ICategoryService _categoryService;
+        private readonly ICurrentUserService _currentUser;
 
-        public MenuController(IMenuItemService menuService, ICategoryService categoryService)
+        public MenuController(
+            IMenuItemService menuService,
+            ICategoryService categoryService,
+            ICurrentUserService currentUser)
         {
             _menuService = menuService;
             _categoryService = categoryService;
+            _currentUser = currentUser;
         }
 
         // Helper: Extract TenantId from JWT token
         private int GetTenantIdFromToken()
         {
-            var tenantIdClaim = User.FindFirst("TenantId")?.Value;
-            if (string.IsNullOrEmpty(tenantIdClaim) || !int.TryParse(tenantIdClaim, out int tenantId))
-            {
-                throw new AppException("Không tìm thấy thông tin Tenant. Vui lòng đăng nhập lại.");
-            }
-            return tenantId;
+            return _currentUser.TenantId
+                ?? throw new AppException("Không tìm thấy thông tin Tenant. Vui lòng đăng nhập lại.");
         }
 
         [HttpGet("store/{storeId}")]
@@ -234,15 +237,23 @@ namespace WebCafe.Backend.Controllers
     public class TablesController : ControllerBase
     {
         private readonly ITableService _tableService;
+        private readonly ITenantAccessService _tenantAccess;
+        private readonly ICurrentUserService _currentUser;
+        private readonly ISubscriptionService _subscriptionService;
 
-        public TablesController(ITableService tableService)
+        public TablesController(ITableService tableService, ITenantAccessService tenantAccess, ICurrentUserService currentUser, ISubscriptionService subscriptionService)
         {
             _tableService = tableService;
+            _tenantAccess = tenantAccess;
+            _currentUser = currentUser;
+            _subscriptionService = subscriptionService;
         }
 
         [HttpGet("store/{storeId}")]
+        [Authorize(Policy = AppPolicies.StaffAccess)]
         public async Task<ActionResult<ApiResponse<List<TableDto>>>> GetTablesByStore(int storeId)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var tables = await _tableService.GetTablesByStoreAsync(storeId);
             return Ok(ApiResponse<List<TableDto>>.Ok(tables));
         }
@@ -251,6 +262,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<TableDto>>> CreateTable([FromBody] CreateTableDto dto)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
+            if (_currentUser.TenantId.HasValue) await _subscriptionService.EnsureCanCreateTableAsync(_currentUser.TenantId.Value, dto.StoreId);
             var table = await _tableService.CreateTableAsync(dto);
             return Ok(ApiResponse<TableDto>.Ok(table, "Thêm bàn mới thành công."));
         }
@@ -259,14 +272,49 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<TableDto>>> UpdateStatus(int id, [FromBody] UpdateTableStatusDto dto)
         {
+            await _tenantAccess.EnsureTableAccessAsync(id);
             var table = await _tableService.UpdateStatusAsync(id, dto.Status);
             return Ok(ApiResponse<TableDto>.Ok(table, "Cập nhật trạng thái bàn thành công."));
         }
 
+        [HttpGet("qr/{qrToken}")]
+        public async Task<ActionResult<ApiResponse<TableQrResolutionDto>>> ResolveQr(string qrToken)
+        {
+            var table = await _tableService.ResolveQrAsync(qrToken);
+            if (table == null) return NotFound(ApiResponse<TableQrResolutionDto>.Fail("Mã QR không hợp lệ hoặc bàn đã ngừng hoạt động."));
+            return Ok(ApiResponse<TableQrResolutionDto>.Ok(table));
+        }
+
+        [HttpGet("resolve/{storeId}/{tableId}")]
+        public async Task<ActionResult<ApiResponse<TableQrResolutionDto>>> ResolveLegacyQr(int storeId, int tableId)
+        {
+            var table = await _tableService.ResolveQrAsyncByIds(storeId, tableId);
+            if (table == null) return NotFound(ApiResponse<TableQrResolutionDto>.Fail("Cửa hàng hoặc bàn không hợp lệ."));
+            return Ok(ApiResponse<TableQrResolutionDto>.Ok(table));
+        }
+
+        [HttpGet("resolve-by-number/{storeId}/{tableNumber}")]
+        public async Task<ActionResult<ApiResponse<TableQrResolutionDto>>> ResolveLegacyQrByNumber(int storeId, string tableNumber)
+        {
+            var table = await _tableService.ResolveQrAsyncByNumber(storeId, tableNumber);
+            if (table == null) return NotFound(ApiResponse<TableQrResolutionDto>.Fail("Cửa hàng hoặc bàn không hợp lệ."));
+            return Ok(ApiResponse<TableQrResolutionDto>.Ok(table));
+        }
+
+        [HttpPost("{id}/qr/regenerate")]
+        [Authorize(Policy = AppPolicies.TenantAdminAccess)]
+        public async Task<ActionResult<ApiResponse<TableDto>>> RegenerateQr(int id)
+        {
+            await _tenantAccess.EnsureTableAccessAsync(id);
+            var table = await _tableService.RegenerateQrAsync(id);
+            return Ok(ApiResponse<TableDto>.Ok(table, "Đã tạo lại mã QR cho bàn."));
+        }
+
         [HttpDelete("{id}")]
-        // [Authorize(Policy = "ManagerAccess")] // TODO: Enable auth after testing
+        [Authorize(Policy = AppPolicies.TenantAdminAccess)]
         public async Task<ActionResult<ApiResponse<object>>> DeleteTable(int id)
         {
+            await _tenantAccess.EnsureTableAccessAsync(id);
             await _tableService.DeleteTableAsync(id);
             return Ok(ApiResponse<object>.Ok(new { }, "Xóa bàn thành công."));
         }
@@ -277,24 +325,42 @@ namespace WebCafe.Backend.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
+        private readonly ICurrentUserService _currentUser;
+        private readonly ITenantAccessService _tenantAccess;
 
-        public OrdersController(IOrderService orderService)
+        public OrdersController(
+            IOrderService orderService,
+            ICurrentUserService currentUser,
+            ITenantAccessService tenantAccess)
         {
             _orderService = orderService;
+            _currentUser = currentUser;
+            _tenantAccess = tenantAccess;
         }
 
         [HttpPost]
         public async Task<ActionResult<ApiResponse<OrderDto>>> CreateOrder([FromBody] CreateOrderDto dto)
         {
-            var order = await _orderService.CreateOrderAsync(dto);
+            var order = await _orderService.CreateOrderAsync(dto, _currentUser.CustomerId);
             return Ok(ApiResponse<OrderDto>.Ok(order, "Đặt món thành công!"));
         }
 
         [HttpGet("{id}")]
+        [Authorize(Policy = AppPolicies.RequireAuthenticated)]
         public async Task<ActionResult<ApiResponse<OrderDto>>> GetOrderById(int id)
         {
             var order = await _orderService.GetByIdAsync(id);
             if (order == null) return NotFound(ApiResponse<OrderDto>.Fail("Không tìm thấy đơn hàng."));
+
+            var isCustomerOwner = _currentUser.CustomerId.HasValue && order.CustomerId == _currentUser.CustomerId;
+            var isStaff = string.Equals(_currentUser.Role, AppRoles.SystemAdmin, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_currentUser.Role, AppRoles.TenantOwner, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_currentUser.Role, AppRoles.Manager, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_currentUser.Role, AppRoles.Staff, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_currentUser.Role, AppRoles.Kitchen, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(_currentUser.Role, AppRoles.Cashier, StringComparison.OrdinalIgnoreCase);
+            if (!isCustomerOwner && !isStaff) return Forbid();
+            if (isStaff) await _tenantAccess.EnsureOrderAccessAsync(id);
             return Ok(ApiResponse<OrderDto>.Ok(order));
         }
 
@@ -307,8 +373,10 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("active/store/{storeId}")]
+        [Authorize(Policy = AppPolicies.StaffAccess)]
         public async Task<ActionResult<ApiResponse<List<OrderDto>>>> GetActiveOrders(int storeId)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var orders = await _orderService.GetActiveOrdersByStoreAsync(storeId);
             return Ok(ApiResponse<List<OrderDto>>.Ok(orders));
         }
@@ -317,18 +385,17 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<PaginationRes<OrderDto>>>> SearchOrders(int storeId, [FromQuery] PagedReq req, [FromQuery] string? status)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var orders = await _orderService.SearchOrdersAsync(storeId, req, status);
             return Ok(ApiResponse<PaginationRes<OrderDto>>.Ok(orders));
         }
 
         [HttpPut("{id}/status")]
+        [Authorize(Policy = AppPolicies.OrderStatusAccess)]
         public async Task<ActionResult<ApiResponse<OrderDto>>> UpdateStatus(int id, [FromBody] UpdateOrderStatusDto dto)
         {
-            int? staffId = null;
-            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (int.TryParse(userIdStr, out var sId)) staffId = sId;
-
-            var order = await _orderService.UpdateStatusAsync(id, dto.Status, staffId);
+            await _tenantAccess.EnsureOrderAccessAsync(id);
+            var order = await _orderService.UpdateStatusAsync(id, dto.Status, _currentUser.UserId);
             return Ok(ApiResponse<OrderDto>.Ok(order, "Cập nhật trạng thái đơn thành công."));
         }
     }
@@ -341,27 +408,31 @@ namespace WebCafe.Backend.Controllers
         private readonly IVietQRPaymentService _vietQRPaymentService;
         private readonly IPayOSService _payOSService;
         private readonly ILogger<PaymentsController> _logger;
+        private readonly ICurrentUserService _currentUser;
+        private readonly ITenantAccessService _tenantAccess;
 
         public PaymentsController(
             IPaymentService paymentService, 
             IVietQRPaymentService vietQRPaymentService,
             IPayOSService payOSService,
-            ILogger<PaymentsController> logger)
+            ILogger<PaymentsController> logger,
+            ICurrentUserService currentUser,
+            ITenantAccessService tenantAccess)
         {
             _paymentService = paymentService;
             _vietQRPaymentService = vietQRPaymentService;
             _payOSService = payOSService;
             _logger = logger;
+            _currentUser = currentUser;
+            _tenantAccess = tenantAccess;
         }
 
         [HttpPost]
+        [Authorize(Policy = AppPolicies.StaffAccess)]
         public async Task<ActionResult<ApiResponse<PaymentResultDto>>> ProcessPayment([FromBody] CreatePaymentDto dto)
         {
-            int? staffId = null;
-            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (int.TryParse(userIdStr, out var sId)) staffId = sId;
-
-            var result = await _paymentService.ProcessPaymentAsync(dto, staffId);
+            await _tenantAccess.EnsureOrderAccessAsync(dto.OrderId);
+            var result = await _paymentService.ProcessPaymentAsync(dto, _currentUser.UserId);
             return Ok(ApiResponse<PaymentResultDto>.Ok(result, "Thanh toán thành công."));
         }
 
@@ -381,6 +452,7 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpPost("payos/cancel/{orderCode}")]
+        [Authorize(Policy = AppPolicies.TenantAdminAccess)]
         public async Task<ActionResult<ApiResponse<object>>> CancelPayOSPayment(long orderCode, [FromQuery] string? reason)
         {
             var result = await _payOSService.CancelPaymentLinkAsync(orderCode, reason);
@@ -413,20 +485,25 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("store/{storeId}/config")]
+        [Authorize(Policy = AppPolicies.TenantAdminAccess)]
         public async Task<ActionResult<ApiResponse<StorePaymentConfigDto>>> GetStorePaymentConfig(int storeId)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var config = await _payOSService.GetStorePaymentConfigAsync(storeId);
             return Ok(ApiResponse<StorePaymentConfigDto>.Ok(config));
         }
 
         [HttpPut("store/{storeId}/config")]
+        [Authorize(Policy = AppPolicies.TenantAdminAccess)]
         public async Task<ActionResult<ApiResponse<StorePaymentConfigDto>>> UpdateStorePaymentConfig(int storeId, [FromBody] UpdateStorePaymentConfigDto dto)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var updated = await _payOSService.UpdateStorePaymentConfigAsync(storeId, dto);
             return Ok(ApiResponse<StorePaymentConfigDto>.Ok(updated, "Đã cập nhật cấu hình thanh toán cửa hàng thành công."));
         }
 
         [HttpPost("store/test-connection")]
+        [Authorize(Policy = AppPolicies.TenantAdminAccess)]
         public async Task<ActionResult<ApiResponse<TestPaymentConfigResultDto>>> TestStorePaymentConfig([FromBody] TestStorePaymentConfigRequest request)
         {
             var result = await _payOSService.TestStorePaymentConfigAsync(request);
@@ -461,15 +538,10 @@ namespace WebCafe.Backend.Controllers
             {
                 _logger.LogInformation($"VietQR Webhook received: {webhook.TransactionId}");
 
-                // Verify signature nếu có
-                if (!string.IsNullOrEmpty(signature))
+                if (string.IsNullOrWhiteSpace(signature) || !await _vietQRPaymentService.VerifyWebhookSignatureAsync(webhook, signature))
                 {
-                    var isValid = await _vietQRPaymentService.VerifyWebhookSignatureAsync(webhook, signature);
-                    if (!isValid)
-                    {
-                        _logger.LogWarning("Invalid webhook signature");
-                        return Unauthorized(new { message = "Invalid signature" });
-                    }
+                    _logger.LogWarning("Invalid or missing VietQR webhook signature");
+                    return Unauthorized(new { message = "Invalid signature" });
                 }
 
                 var result = await _vietQRPaymentService.ProcessWebhookAsync(webhook);
@@ -530,16 +602,19 @@ namespace WebCafe.Backend.Controllers
     public class AnalyticsController : ControllerBase
     {
         private readonly IAnalyticsService _analyticsService;
+        private readonly ITenantAccessService _tenantAccess;
 
-        public AnalyticsController(IAnalyticsService analyticsService)
+        public AnalyticsController(IAnalyticsService analyticsService, ITenantAccessService tenantAccess)
         {
             _analyticsService = analyticsService;
+            _tenantAccess = tenantAccess;
         }
 
         [HttpGet("dashboard/store/{storeId}")]
         [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<DashboardStatsDto>>> GetDashboard(int storeId)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var stats = await _analyticsService.GetDashboardStatsAsync(storeId);
             return Ok(ApiResponse<DashboardStatsDto>.Ok(stats));
         }
@@ -548,6 +623,7 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<ShiftOperationsDto>>> GetShiftOperations(int storeId)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var operations = await _analyticsService.GetShiftOperationsAsync(storeId);
             return Ok(ApiResponse<ShiftOperationsDto>.Ok(operations));
         }
@@ -559,6 +635,7 @@ namespace WebCafe.Backend.Controllers
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-6);
             var to = toDate ?? DateTime.UtcNow;
             var report = await _analyticsService.GetBusinessAnalyticsReportAsync(storeId, from, to);
@@ -572,6 +649,7 @@ namespace WebCafe.Backend.Controllers
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-29);
             var to = toDate ?? DateTime.UtcNow;
             var summary = await _analyticsService.GetMenuEngineeringMatrixAsync(storeId, from, to);
@@ -585,28 +663,31 @@ namespace WebCafe.Backend.Controllers
             [FromQuery] DateTime fromDate,
             [FromQuery] DateTime toDate)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var report = await _analyticsService.GetRevenueReportAsync(storeId, fromDate, toDate);
             return Ok(ApiResponse<RevenueReportDto>.Ok(report));
         }
 
         [HttpGet("customers/tenant/{tenantId}")]
-        [Authorize(Policy = "StaffAccess")]
+        [Authorize(Policy = AppPolicies.TenantAdminAccess)]
         public async Task<ActionResult<ApiResponse<CustomerAnalyticsDto>>> GetCustomerAnalytics(
             int tenantId,
             [FromQuery] DateTime fromDate,
             [FromQuery] DateTime toDate)
         {
+            _tenantAccess.EnsureTenantAccess(tenantId);
             var analytics = await _analyticsService.GetCustomerAnalyticsAsync(tenantId, fromDate, toDate);
             return Ok(ApiResponse<CustomerAnalyticsDto>.Ok(analytics));
         }
 
         [HttpGet("categories/tenant/{tenantId}")]
-        [Authorize(Policy = "StaffAccess")]
+        [Authorize(Policy = AppPolicies.TenantAdminAccess)]
         public async Task<ActionResult<ApiResponse<List<CategoryPerformanceDto>>>> GetCategoryPerformance(
             int tenantId,
             [FromQuery] DateTime fromDate,
             [FromQuery] DateTime toDate)
         {
+            _tenantAccess.EnsureTenantAccess(tenantId);
             var performance = await _analyticsService.GetCategoryPerformanceAsync(tenantId, fromDate, toDate);
             return Ok(ApiResponse<List<CategoryPerformanceDto>>.Ok(performance));
         }
@@ -617,10 +698,14 @@ namespace WebCafe.Backend.Controllers
     public class RecommendationsController : ControllerBase
     {
         private readonly IRecommendationService _recommendationService;
+        private readonly ICurrentUserService _currentUser;
+        private readonly ITenantAccessService _tenantAccess;
 
-        public RecommendationsController(IRecommendationService recommendationService)
+        public RecommendationsController(IRecommendationService recommendationService, ICurrentUserService currentUser, ITenantAccessService tenantAccess)
         {
             _recommendationService = recommendationService;
+            _currentUser = currentUser;
+            _tenantAccess = tenantAccess;
         }
 
         [HttpGet("combos/tenant/{tenantId}")]
@@ -642,11 +727,14 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("personalized/customer/{customerId}/store/{storeId}")]
+        [Authorize(Policy = AppPolicies.CustomerOnly)]
         public async Task<ActionResult<ApiResponse<List<MenuItemRecommendationDto>>>> GetPersonalizedRecommendations(
             int customerId,
             int storeId,
             [FromQuery] int top = 5)
         {
+            if (_currentUser.CustomerId != customerId) return Forbid();
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var recommendations = await _recommendationService.GetPersonalizedRecommendationsAsync(customerId, storeId, top);
             return Ok(ApiResponse<List<MenuItemRecommendationDto>>.Ok(recommendations, "Gợi ý dành riêng cho bạn."));
         }
@@ -667,16 +755,24 @@ namespace WebCafe.Backend.Controllers
     public class InventoryController : ControllerBase
     {
         private readonly IInventoryService _inventoryService;
+        private readonly ICurrentUserService _currentUser;
+        private readonly ITenantAccessService _tenantAccess;
 
-        public InventoryController(IInventoryService inventoryService)
+        public InventoryController(
+            IInventoryService inventoryService,
+            ICurrentUserService currentUser,
+            ITenantAccessService tenantAccess)
         {
             _inventoryService = inventoryService;
+            _currentUser = currentUser;
+            _tenantAccess = tenantAccess;
         }
 
         [HttpGet("store/{storeId}")]
         [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<List<InventoryStockDto>>>> GetInventory(int storeId)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var stocks = await _inventoryService.GetInventoryByStoreAsync(storeId);
             return Ok(ApiResponse<List<InventoryStockDto>>.Ok(stocks));
         }
@@ -685,10 +781,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<object>>> ImportInventory([FromBody] ImportInventoryDto dto)
         {
-            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            int? staffId = int.TryParse(userIdStr, out var sId) ? sId : null;
-
-            await _inventoryService.ImportInventoryAsync(dto.StoreId, dto.IngredientId, dto.Quantity, staffId, dto.Note);
+            await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
+            await _inventoryService.ImportInventoryAsync(dto.StoreId, dto.IngredientId, dto.Quantity, _currentUser.UserId, dto.Note);
             return Ok(ApiResponse<object>.Ok(new { }, "Nhập kho thành công."));
         }
 
@@ -696,10 +790,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<object>>> AdjustInventory([FromBody] AdjustInventoryDto dto)
         {
-            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            int? staffId = int.TryParse(userIdStr, out var sId) ? sId : null;
-
-            await _inventoryService.AdjustInventoryAsync(dto.StoreId, dto.IngredientId, dto.NewQuantity, staffId, dto.Note);
+            await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
+            await _inventoryService.AdjustInventoryAsync(dto.StoreId, dto.IngredientId, dto.NewQuantity, _currentUser.UserId, dto.Note);
             return Ok(ApiResponse<object>.Ok(new { }, "Điều chỉnh kho thành công."));
         }
 
@@ -711,6 +803,7 @@ namespace WebCafe.Backend.Controllers
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             var transactions = await _inventoryService.GetTransactionHistoryAsync(storeId, ingredientId, fromDate, toDate);
             return Ok(ApiResponse<List<InventoryTransactionDto>>.Ok(transactions));
         }
@@ -718,9 +811,10 @@ namespace WebCafe.Backend.Controllers
         [HttpGet("ingredients")]
         [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<List<IngredientDto>>>> GetIngredients(
-            [FromQuery] int tenantId = 1, 
             [FromQuery] int? storeId = null)
         {
+            if (storeId.HasValue) await _tenantAccess.EnsureStoreAccessAsync(storeId.Value);
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
             var list = await _inventoryService.GetIngredientsAsync(tenantId, storeId);
             return Ok(ApiResponse<List<IngredientDto>>.Ok(list));
         }
@@ -729,6 +823,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<IngredientDto>>> CreateIngredient([FromBody] CreateIngredientDto dto)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
+            dto.TenantId = _currentUser.TenantId ?? throw new ForbiddenException();
             var result = await _inventoryService.CreateIngredientAsync(dto);
             return Ok(ApiResponse<IngredientDto>.Ok(result, "Tạo nguyên liệu thành công."));
         }

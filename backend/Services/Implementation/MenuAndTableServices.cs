@@ -298,10 +298,12 @@ namespace WebCafe.Backend.Services.Implementation
     public class TableService : ITableService
     {
         private readonly WebCafeDbContext _db;
+        private readonly IConfiguration _configuration;
 
-        public TableService(WebCafeDbContext db)
+        public TableService(WebCafeDbContext db, IConfiguration configuration)
         {
             _db = db;
+            _configuration = configuration;
         }
 
         public async Task<List<TableDto>> GetTablesByStoreAsync(int storeId)
@@ -325,6 +327,7 @@ namespace WebCafe.Backend.Services.Implementation
                     Capacity = t.Capacity,
                     Location = t.Location,
                     QRCodeUrl = t.QRCodeUrl,
+                    QrToken = t.QrToken,
                     Status = activeOrder != null ? "Occupied" : t.Status,
                     IsActive = t.IsActive,
                     ActiveOrderId = activeOrder?.OrderId,
@@ -336,19 +339,18 @@ namespace WebCafe.Backend.Services.Implementation
         public async Task<TableDto> CreateTableAsync(CreateTableDto dto)
         {
             var tableNum = dto.TableNumber.Trim();
-            var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=http://localhost:5173/menu?storeId={dto.StoreId}%26table={tableNum}";
-
             var table = new Table
             {
                 StoreId = dto.StoreId,
                 TableNumber = tableNum,
                 Capacity = dto.Capacity,
                 Location = dto.Location,
-                QRCodeUrl = qrUrl,
                 Status = "Available",
                 IsActive = true
             };
             _db.Tables.Add(table);
+            await _db.SaveChangesAsync();
+            table.QRCodeUrl = BuildQrUrl(table);
             await _db.SaveChangesAsync();
 
             return new TableDto
@@ -359,6 +361,7 @@ namespace WebCafe.Backend.Services.Implementation
                 Capacity = table.Capacity,
                 Location = table.Location,
                 QRCodeUrl = table.QRCodeUrl,
+                QrToken = table.QrToken,
                 Status = table.Status,
                 IsActive = table.IsActive
             };
@@ -380,6 +383,7 @@ namespace WebCafe.Backend.Services.Implementation
                 Capacity = table.Capacity,
                 Location = table.Location,
                 QRCodeUrl = table.QRCodeUrl,
+                QrToken = table.QrToken,
                 Status = table.Status,
                 IsActive = table.IsActive
             };
@@ -392,6 +396,68 @@ namespace WebCafe.Backend.Services.Implementation
 
             table.IsActive = false;
             await _db.SaveChangesAsync();
+        }
+
+        public async Task<TableDto> RegenerateQrAsync(int tableId)
+        {
+            var table = await _db.Tables.FirstOrDefaultAsync(t => t.TableId == tableId);
+            if (table == null) throw new NotFoundException("Không tìm thấy bàn.");
+            table.QrToken = Guid.NewGuid().ToString("N");
+            table.QRCodeUrl = BuildQrUrl(table);
+            await _db.SaveChangesAsync();
+            return (await GetTablesByStoreAsync(table.StoreId)).First(t => t.TableId == tableId);
+        }
+
+        public async Task<TableQrResolutionDto?> ResolveQrAsync(string qrToken)
+        {
+            return await _db.Tables
+                .Where(t => t.QrToken == qrToken && t.IsActive && t.Store != null && t.Store.IsActive && t.Store.Tenant != null && t.Store.Tenant.IsActive)
+                .Select(t => new TableQrResolutionDto
+                {
+                    StoreId = t.StoreId,
+                    TableId = t.TableId,
+                    TableNumber = t.TableNumber,
+                    StoreName = t.Store!.Name,
+                    TenantName = t.Store.Tenant!.Name
+                })
+                .SingleOrDefaultAsync();
+        }
+
+        public async Task<TableQrResolutionDto?> ResolveQrAsyncByIds(int storeId, int tableId)
+        {
+            return await _db.Tables
+                .Where(t => t.StoreId == storeId && t.TableId == tableId && t.IsActive && t.Store != null && t.Store.IsActive && t.Store.Tenant != null && t.Store.Tenant.IsActive)
+                .Select(t => new TableQrResolutionDto
+                {
+                    StoreId = t.StoreId,
+                    TableId = t.TableId,
+                    TableNumber = t.TableNumber,
+                    StoreName = t.Store!.Name,
+                    TenantName = t.Store.Tenant!.Name
+                })
+                .SingleOrDefaultAsync();
+        }
+
+        public async Task<TableQrResolutionDto?> ResolveQrAsyncByNumber(int storeId, string tableNumber)
+        {
+            if (string.IsNullOrWhiteSpace(tableNumber)) return null;
+            return await _db.Tables
+                .Where(t => t.StoreId == storeId && t.TableNumber == tableNumber && t.IsActive && t.Store != null && t.Store.IsActive && t.Store.Tenant != null && t.Store.Tenant.IsActive)
+                .Select(t => new TableQrResolutionDto
+                {
+                    StoreId = t.StoreId,
+                    TableId = t.TableId,
+                    TableNumber = t.TableNumber,
+                    StoreName = t.Store!.Name,
+                    TenantName = t.Store.Tenant!.Name
+                })
+                .SingleOrDefaultAsync();
+        }
+
+        private string BuildQrUrl(Table table)
+        {
+            var publicUrl = (_configuration["Frontend:PublicUrl"] ?? "http://localhost:5173").TrimEnd('/');
+            return $"{publicUrl}/qr/{table.QrToken}";
         }
     }
 }

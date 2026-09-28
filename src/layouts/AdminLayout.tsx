@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useStore } from '../store/useStore';
+import { meApi } from '../api/apis';
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -9,6 +10,8 @@ export default function AdminLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuthStore();
   const { setStoreId } = useStore();
+  const [stores, setStores] = useState<Array<{ storeId: number; name: string }>>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<number>(user?.storeId ?? 0);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -34,6 +37,23 @@ export default function AdminLayout() {
       setStoreId(user.storeId);
     }
   }, [location.pathname, navigate, user, setStoreId]);
+
+  useEffect(() => {
+    if (!user || user.role === 'SystemAdmin') return;
+    meApi.getStores().then((items) => {
+      setStores(items ?? []);
+      const initial = selectedStoreId || user.storeId || items?.[0]?.storeId || 0;
+      if (initial) {
+        setSelectedStoreId(initial);
+        setStoreId(initial);
+      }
+    }).catch(() => setStores([]));
+  }, [user, setStoreId]);
+
+  const handleStoreChange = (storeId: number) => {
+    setSelectedStoreId(storeId);
+    setStoreId(storeId);
+  };
 
   const navItems = [
     { path: '/admin/analytics', icon: 'analytics', label: 'Phân Tích' },
@@ -108,6 +128,11 @@ export default function AdminLayout() {
         {/* Top Navigation Bar */}
         <header className="fixed top-0 right-0 w-full md:w-[calc(100%-16rem)] z-10 bg-surface/90 backdrop-blur-md h-16 flex justify-between items-center px-gutter shadow-sm border-b border-surface-container">
           <div className="flex items-center gap-4">
+            {stores.length > 1 && (
+              <select value={selectedStoreId} onChange={(e) => handleStoreChange(Number(e.target.value))} className="bg-surface-container-low border border-outline-variant/30 rounded-full px-3 py-2 text-sm">
+                {stores.map((store) => <option key={store.storeId} value={store.storeId}>{store.name}</option>)}
+              </select>
+            )}
             <button className="md:hidden p-2 -ml-2 text-primary hover:bg-surface-variant rounded-full transition-colors" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
               <span className="material-symbols-outlined text-2xl">{isMobileMenuOpen ? 'close' : 'menu'}</span>
             </button>

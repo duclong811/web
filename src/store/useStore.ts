@@ -57,11 +57,33 @@ export interface Order {
 export interface GuestSession {
   guestId: string; // UUID for tracking
   storeId: number;
-  tableId: string;
+  tableId: string | number;
+  tableNumber: string;
+  storeName?: string;
   guestName?: string;
   guestPhone?: string;
   timestamp: string;
 }
+
+const loadInitialGuestSession = (): GuestSession | null => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const saved = localStorage.getItem('guestSession');
+    if (!saved) return null;
+    const parsed = JSON.parse(saved);
+    if (parsed && parsed.storeId && (parsed.tableId !== undefined || parsed.tableNumber)) {
+      return {
+        ...parsed,
+        tableNumber: parsed.tableNumber || (typeof parsed.tableId === 'string' ? parsed.tableId : `Bàn ${parsed.tableId}`),
+      };
+    }
+  } catch (e) {
+    console.error('Failed to parse guestSession from localStorage', e);
+  }
+  return null;
+};
+
+const initialGuestSession = loadInitialGuestSession();
 
 interface StoreState {
   // Data
@@ -75,6 +97,8 @@ interface StoreState {
   // Customer State
   currentStoreId: number;
   currentTable: string | null;
+  currentTableId: number | null;
+  currentTableNumber: string | null;
   cart: CartItem[];
   appliedVoucherCode: string | null;
   voucherDiscount: number;
@@ -90,7 +114,7 @@ interface StoreState {
   fetchOrders: (storeId?: number) => Promise<void>;
   
   // Guest Session Actions
-  initGuestSession: (storeId: number, tableId: string) => void;
+  initGuestSession: (storeId: number, tableId: string | number, tableNumber?: string, storeName?: string) => void;
   updateGuestInfo: (name?: string, phone?: string) => void;
   clearGuestSession: () => void;
   
@@ -113,7 +137,7 @@ interface StoreState {
   
   placeOrder: () => void;
   createOrder: (
-    tableId: string, 
+    tableId?: string | number, 
     customerPhone?: string, 
     customerName?: string, 
     note?: string, 
@@ -146,24 +170,31 @@ export const useStore = create<StoreState>((set, get) => ({
   storeInfo: null,
   user: null,
 
-  currentStoreId: 0,
-  currentTable: null,
+  currentStoreId: initialGuestSession?.storeId || 0,
+  currentTable: initialGuestSession?.tableNumber || (initialGuestSession?.tableId ? String(initialGuestSession.tableId) : null),
+  currentTableId: typeof initialGuestSession?.tableId === 'number' ? initialGuestSession.tableId : (Number(initialGuestSession?.tableId) || null),
+  currentTableNumber: initialGuestSession?.tableNumber || null,
   cart: [],
   appliedVoucherCode: null,
   voucherDiscount: 0,
   isLoading: false,
-  guestSession: null,
+  guestSession: initialGuestSession,
 
   setStoreId: (storeId) => set({ currentStoreId: storeId }),
-  setTable: (table) => set({ currentTable: table }),
+  setTable: (table) => set({ currentTable: table, currentTableNumber: table }),
 
   // Guest Session Management
-  initGuestSession: (storeId, tableId) => {
+  initGuestSession: (storeId, tableId, tableNumber, storeName) => {
     const guestId = `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const displayTableNumber = tableNumber || (typeof tableId === 'string' ? tableId : `Bàn ${tableId}`);
+    const numericTableId = typeof tableId === 'number' ? tableId : (parseInt(tableId) || 0);
+
     const session: GuestSession = {
       guestId,
       storeId,
       tableId,
+      tableNumber: displayTableNumber,
+      storeName,
       timestamp: new Date().toISOString(),
     };
     
@@ -173,7 +204,9 @@ export const useStore = create<StoreState>((set, get) => ({
     set({ 
       guestSession: session,
       currentStoreId: storeId,
-      currentTable: tableId,
+      currentTable: typeof tableId === 'string' ? tableId : displayTableNumber,
+      currentTableId: numericTableId > 0 ? numericTableId : null,
+      currentTableNumber: displayTableNumber,
     });
   },
 
@@ -188,7 +221,12 @@ export const useStore = create<StoreState>((set, get) => ({
 
   clearGuestSession: () => {
     localStorage.removeItem('guestSession');
-    set({ guestSession: null });
+    set({ 
+      guestSession: null,
+      currentTable: null,
+      currentTableId: null,
+      currentTableNumber: null,
+    });
   },
 
   fetchMenu: async (storeId) => {
@@ -350,14 +388,14 @@ export const useStore = create<StoreState>((set, get) => ({
   setVoucher: (code, discount) => set({ appliedVoucherCode: code, voucherDiscount: discount }),
 
   placeOrder: () => {
-    const { cart, currentTable } = get();
+    const { cart, currentTable, currentTableNumber, guestSession } = get();
     if (cart.length === 0) return;
     
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const newOrder: Order = {
       id: `o${Math.random().toString(36).substr(2, 9)}`,
       orderCode: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-      tableNumber: currentTable || 'T01',
+      tableNumber: guestSession?.tableNumber || currentTableNumber || currentTable || 'Mang về',
       items: [...cart],
       total,
       status: 'pending',
@@ -378,18 +416,50 @@ export const useStore = create<StoreState>((set, get) => ({
       source = sourceOrPoints;
       pointsToUse = pointsToUseParam || 0;
     }
-    const { cart, currentStoreId, currentTable, appliedVoucherCode, guestSession } = get();
+    const { cart, currentStoreId, currentTableId, currentTableNumber, currentTable, appliedVoucherCode, guestSession } = get();
     if (cart.length === 0) throw new Error('Giỏ hàng trống');
 
-    const tableStr = tableId || currentTable || 'T01';
-    let tableNumId: number | undefined = undefined;
-    const match = tableStr.match(/\d+/);
-    if (match) tableNumId = parseInt(match[0]);
+    // Xác định chính xác tableId (khóa chính số nguyên) và tableNumber (chuỗi hiển thị)
+    let finalTableNumId: number | undefined = undefined;
+    let finalDisplayTable: string = 'Mang về';
+
+    if (typeof tableId === 'number' && tableId > 0) {
+      finalTableNumId = tableId;
+      finalDisplayTable = guestSession?.tableNumber || currentTableNumber || `Bàn ${tableId}`;
+    } else if (guestSession?.tableId) {
+      if (typeof guestSession.tableId === 'number' && guestSession.tableId > 0) {
+        finalTableNumId = guestSession.tableId;
+      } else {
+        const parsed = parseInt(String(guestSession.tableId));
+        if (!isNaN(parsed) && parsed > 0) finalTableNumId = parsed;
+      }
+      finalDisplayTable = guestSession.tableNumber || `Bàn ${guestSession.tableId}`;
+    } else if (currentTableId && currentTableId > 0) {
+      finalTableNumId = currentTableId;
+      finalDisplayTable = currentTableNumber || `Bàn ${currentTableId}`;
+    } else if (typeof tableId === 'string' && tableId.trim()) {
+      const parsed = parseInt(tableId);
+      if (!isNaN(parsed) && parsed > 0) {
+        finalTableNumId = parsed;
+      }
+      finalDisplayTable = tableId;
+    } else if (currentTable) {
+      finalDisplayTable = currentTable;
+    }
+
+    if (source === 'qr_table' && (!finalTableNumId || finalTableNumId <= 0)) {
+      throw new Error('Vui lòng quét mã QR tại bàn để xác định vị trí phục vụ trước khi gọi món.');
+    }
+
+    const effectiveStoreId = currentStoreId || guestSession?.storeId || 0;
+    if (effectiveStoreId <= 0) {
+      throw new Error('Không xác định được chi nhánh quán. Vui lòng quét lại mã QR tại bàn.');
+    }
 
     try {
       const payload = {
-        storeId: currentStoreId,
-        tableId: tableNumId,
+        storeId: effectiveStoreId,
+        tableId: finalTableNumId,
         customerPhone: customerPhone || undefined,
         customerName: customerName || undefined,
         
@@ -422,7 +492,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const newOrder: Order = {
         id: res.orderId.toString(),
         orderCode: res.orderCode,
-        tableNumber: res.tableNumber || tableStr,
+        tableNumber: res.tableNumber || finalDisplayTable,
         total: res.totalAmount,
         status: (res.status as OrderStatus) || (source === 'pos_staff' ? (paymentMethod === 'cash' ? 'paid' : 'awaiting_payment') : 'awaiting_payment'),
         createdAt: res.createdAt,

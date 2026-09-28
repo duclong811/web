@@ -151,12 +151,19 @@ namespace WebCafe.Backend.Services.Implementation
 
             // 1. Kiểm tra Bàn
             Table? table = null;
-            if (dto.TableId.HasValue)
+            bool isQrOrder = string.Equals(dto.Source, "qr_table", StringComparison.OrdinalIgnoreCase);
+
+            if (isQrOrder && (!dto.TableId.HasValue || dto.TableId.Value <= 0))
             {
-                table = await _db.Tables.FirstOrDefaultAsync(t => t.TableId == dto.TableId.Value && t.StoreId == dto.StoreId);
+                throw new ModelValidationException("TableId", "Đơn hàng gọi món tại bàn (QR) bắt buộc phải có thông tin bàn hợp lệ.");
+            }
+
+            if (dto.TableId.HasValue && dto.TableId.Value > 0)
+            {
+                table = await _db.Tables.FirstOrDefaultAsync(t => t.TableId == dto.TableId.Value && t.StoreId == dto.StoreId && t.IsActive);
                 if (table == null)
                 {
-                    throw new NotFoundException("Bàn không tồn tại hoặc không thuộc cửa hàng này.");
+                    throw new NotFoundException("Bàn không tồn tại, đã ngưng hoạt động hoặc không thuộc chi nhánh này.");
                 }
             }
 
@@ -291,7 +298,7 @@ namespace WebCafe.Backend.Services.Implementation
                 TenantId = store.TenantId,
                 StoreId = store.StoreId,
                 OrderCode = orderCode,
-                TableId = dto.TableId,
+                TableId = table?.TableId,
                 CustomerId = customer?.CustomerId,
                 
                 // Guest Order Support

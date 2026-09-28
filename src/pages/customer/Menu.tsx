@@ -46,7 +46,7 @@ export default function Menu() {
     if (savedSession) {
       const session = JSON.parse(savedSession);
       setStoreId(session.storeId);
-      setTable(session.tableId);
+      setTable(session.tableNumber || session.tableId);
       fetchMenu(session.storeId);
     } else {
       if (storeIdParam) setStoreId(storeIdParam);

@@ -53,10 +53,14 @@ export default function CustomerLayout() {
             </Link>
 
             {/* Table Badge */}
-            {guestSession?.tableId && (
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-secondary-container text-on-secondary-container rounded-full">
-                <span className="material-symbols-outlined text-sm">table_restaurant</span>
-                <span className="text-xs font-bold">Bàn {guestSession.tableId}</span>
+            {(guestSession?.tableNumber || guestSession?.tableId) && (
+              <div className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 bg-amber-500/10 text-amber-900 border border-amber-500/30 rounded-full shadow-xs">
+                <span className="material-symbols-outlined text-xs sm:text-sm text-amber-700">table_restaurant</span>
+                <span className="text-[11px] sm:text-xs font-bold text-amber-900 whitespace-nowrap">
+                  {guestSession.tableNumber?.toLowerCase().includes('bàn')
+                    ? guestSession.tableNumber
+                    : `Bàn ${guestSession.tableNumber || guestSession.tableId}`}
+                </span>
               </div>
             )}
 

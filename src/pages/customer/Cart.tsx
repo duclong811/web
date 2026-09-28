@@ -15,6 +15,8 @@ export default function Cart() {
     removeFromCart, 
     createOrder, 
     currentTable,
+    currentTableId,
+    currentTableNumber,
     appliedVoucherCode,
     voucherDiscount,
     setVoucher,
@@ -123,7 +125,12 @@ export default function Cart() {
         updateGuestInfo(customerName, customerPhone);
       }
       
-      const tableToUse = guestSession?.tableId || currentTable || 'T01';
+      const tableToUse = guestSession?.tableId || currentTableId || currentTable;
+      if (!tableToUse) {
+        setPointsError('Chưa xác định được số bàn của bạn. Vui lòng quét mã QR tại bàn trước khi đặt món.');
+        setIsSubmitting(false);
+        return;
+      }
       const order = await createOrder(tableToUse, customerPhone, customerName, orderNote, 'qr_table', undefined, pointsToUse);
       navigate(`/order-success?code=${order.orderCode}&orderId=${order.id}`);
     } catch (err: any) {
@@ -147,6 +154,36 @@ export default function Cart() {
               </button>
               <h1 className="font-headline-lg text-headline-lg text-primary font-bold">Thanh Toán & Đặt Món</h1>
             </div>
+
+            {/* Table Identification Card */}
+            {(guestSession?.tableNumber || currentTableNumber || currentTable) ? (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-800 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-xl">table_restaurant</span>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-amber-800 uppercase tracking-wider">Vị trí phục vụ</div>
+                    <div className="text-base font-bold text-amber-950">
+                      {(guestSession?.tableNumber || currentTableNumber || currentTable)?.toLowerCase().includes('bàn')
+                        ? (guestSession?.tableNumber || currentTableNumber || currentTable)
+                        : `Bàn ${guestSession?.tableNumber || currentTableNumber || currentTable}`}
+                      {guestSession?.storeName && <span className="text-xs font-normal text-amber-800 ml-2">({guestSession.storeName})</span>}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-900 font-bold">
+                  Phục vụ tại bàn
+                </span>
+              </div>
+            ) : (
+              <div className="bg-error/10 border border-error/30 rounded-2xl p-4 flex items-center gap-3 shadow-xs text-error">
+                <span className="material-symbols-outlined text-2xl">error</span>
+                <div className="text-xs font-medium">
+                  <strong>Chưa xác định được số bàn:</strong> Vui lòng quét mã QR đặt tại bàn của bạn để nhân viên mang món ra chính xác vị trí bạn ngồi.
+                </div>
+              </div>
+            )}
 
             {/* Cart Items List */}
             <section className="space-y-stack-md">

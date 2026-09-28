@@ -11,7 +11,7 @@ export default function CustomerLayout() {
   const guestSession = useStore(state => state.guestSession);
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -65,20 +65,35 @@ export default function CustomerLayout() {
             )}
 
             {/* Login/User Button Container */}
-            <div className="relative">
+            {!isAuthenticated ? (
               <button
-                onClick={handleUserIconClick}
-                className="p-2 sm:p-2.5 rounded-full hover:bg-surface-container-high transition-all text-primary flex items-center justify-center"
-                aria-label={isAuthenticated ? 'Menu người dùng' : 'Đăng nhập'}
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-1 sm:gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-full shadow-xs transition-all"
+                aria-label="Đăng nhập tài khoản"
               >
-                <User className="w-5 h-5 sm:w-6 sm:h-6" />
+                <span className="material-symbols-outlined text-sm sm:text-base">login</span>
+                <span>Đăng Nhập</span>
               </button>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={handleUserIconClick}
+                  className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full hover:bg-surface-container-high transition-all text-primary border border-outline-variant/30"
+                  aria-label="Menu người dùng"
+                >
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-orange-500 to-amber-500 text-white font-black text-xs sm:text-sm flex items-center justify-center shadow-xs">
+                    {user?.fullName ? user.fullName.charAt(0).toUpperCase() : (user?.username?.charAt(0).toUpperCase() || 'U')}
+                  </div>
+                  <span className="hidden md:inline-block text-xs font-bold text-gray-800 max-w-[120px] truncate">
+                    {user?.fullName || user?.username}
+                  </span>
+                  <span className="material-symbols-outlined text-sm text-gray-500 hidden sm:inline-block">expand_more</span>
+                </button>
 
-              {/* User Menu Dropdown */}
-              {isAuthenticated && (
+                {/* User Menu Dropdown */}
                 <UserMenu isOpen={isUserMenuOpen} onClose={() => setIsUserMenuOpen(false)} />
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Cart Button */}
             <Link 

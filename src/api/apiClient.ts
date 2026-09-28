@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/authStore';
 
 // Dynamic Base URL: Tự động nhận diện hostname (localhost hoặc IP mạng LAN/Hotspot)
 const getApiHost = () => {
@@ -47,20 +48,25 @@ apiClient.interceptors.response.use(
 
     // Xử lý lỗi 401 Unauthorized
     if (error.response?.status === 401) {
-      console.warn('Token hết hạn hoặc không hợp lệ. Chuyển về trang đăng nhập.');
+      console.warn('Phiên đăng nhập đã hết hạn hoặc không hợp lệ.');
 
-      // Chỉ xóa token và redirect nếu KHÔNG PHẢI là guest request
-      const isGuestRequest = !localStorage.getItem('token');
-      if (!isGuestRequest) {
+      // Đồng bộ dọn sạch toàn bộ trạng thái auth
+      try {
+        useAuthStore.getState().logout();
+      } catch {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('auth-storage');
+      }
 
-        // Auto redirect về login (chỉ cho staff/authenticated users)
-        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
+      // Chỉ chuyển hướng về trang /login nếu đang ở các trang quản trị/nhân viên
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const isAdminOrStaffPath = path.startsWith('/admin') || path.startsWith('/staff') || path.startsWith('/system-admin');
+        if (isAdminOrStaffPath && !path.includes('/login')) {
+          window.location.href = `/login?redirect=${encodeURIComponent(path)}`;
         }
       }
-      // Guest requests nhận 401 → Không làm gì, để component xử lý
     }
 
     // Xử lý lỗi 403 Forbidden

@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore, type MenuItem, type Order } from '../../store/useStore';
+import { useAuthStore } from '../../store/authStore';
 import Pagination from '../../components/Pagination';
 import { PayOSCounterModal } from '../../components/staff/PayOSCounterModal';
+import ReceiptPrintModal from '../../components/print/ReceiptPrintModal';
+import type { ReceiptData } from '../../services/printService';
 
 interface PosCartItem {
   cartId: string;
@@ -17,11 +20,12 @@ interface PosCartItem {
 
 export default function NewOrder() {
   const navigate = useNavigate();
+  const user = useAuthStore(state => state.user);
   const { 
     menuItems, 
     categories, 
     fetchMenu, 
-    currentStoreId,
+    currentStoreId, 
     createOrder 
   } = useStore();
 
@@ -37,6 +41,10 @@ export default function NewOrder() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittingAction, setSubmittingAction] = useState<'cash' | 'payos' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Print Receipt Modal State
+  const [printReceiptData, setPrintReceiptData] = useState<ReceiptData | null>(null);
+  const [showPrintModal, setShowPrintModal] = useState(false);
 
   // PayOS Counter Modal State
   const [payOSModalOpen, setPayOSModalOpen] = useState(false);
@@ -174,7 +182,10 @@ export default function NewOrder() {
       });
 
       const tableIdentifier = orderType === 'Dine-in' ? selectedTable : 'Mang Về';
-      await createOrder(
+      const itemsSnapshot = [...posCart];
+      const subTotalSnapshot = subTotal;
+
+      const createdOrder = await createOrder(
         tableIdentifier, 
         undefined, 
         'Khách tại quầy', 
@@ -183,19 +194,43 @@ export default function NewOrder() {
         'cash'
       );
       
-      showToast('Đã thu tiền mặt & kích hoạt đơn sang Bếp!');
+      showToast('Đã thu tiền mặt! Mở phiếu in...');
       setPosCart([]);
       setIsMobileCartOpen(false);
-      
-      setTimeout(() => {
-        navigate('/staff/orders');
-      }, 700);
+
+      const receiptData: ReceiptData = {
+        orderCode: createdOrder?.orderCode || `ORD-${Date.now()}`,
+        tableNumber: tableIdentifier,
+        customerName: 'Khách tại quầy',
+        staffName: user?.fullName || 'Thu ngân',
+        createdAt: new Date().toISOString(),
+        items: itemsSnapshot.map(ci => ({
+          name: ci.item.name,
+          quantity: ci.quantity,
+          price: (ci.item.price || 0) + ci.sizeExtra,
+          totalPrice: ((ci.item.price || 0) + ci.sizeExtra) * ci.quantity,
+          sizeName: ci.sizeName,
+          sugarLevel: ci.sugarLevel,
+          iceLevel: ci.iceLevel,
+          note: ci.note,
+        })),
+        subTotal: subTotalSnapshot,
+        totalAmount: subTotalSnapshot,
+        paymentMethod: 'cash',
+        paymentStatus: 'paid',
+        storeInfo: {
+          storeName: user?.storeName || 'WebCafe Quán',
+          brandName: user?.brandName || 'AI-SMARTSERVE',
+        },
+      };
+
+      setPrintReceiptData(receiptData);
+      setShowPrintModal(true);
     } catch (err: any) {
       console.error('POS Cash order failed:', err);
       showToast('Đã ghi nhận đơn hàng tại quầy!');
       setPosCart([]);
       setIsMobileCartOpen(false);
-      navigate('/staff/orders');
     } finally {
       setIsSubmitting(false);
       setSubmittingAction(null);
@@ -247,13 +282,39 @@ export default function NewOrder() {
     }
   };
 
-  const handlePayOSSuccess = (_paidOrder: Order) => {
-    showToast('Thanh toán PayOS thành công! Đã gửi đơn sang Bếp.');
+  const handlePayOSSuccess = (paidOrder: Order) => {
+    showToast('Thanh toán PayOS thành công! Mở phiếu in...');
     setPayOSModalOpen(false);
+
+    const receiptData: ReceiptData = {
+      orderCode: paidOrder.orderCode || paidOrder.id,
+      tableNumber: paidOrder.tableNumber,
+      customerName: 'Khách tại quầy',
+      staffName: user?.fullName || 'Thu ngân',
+      createdAt: paidOrder.createdAt || new Date().toISOString(),
+      items: (paidOrder.items || []).map(i => ({
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        totalPrice: i.price * i.quantity,
+        sizeName: i.sizeName,
+        sugarLevel: i.sugarLevel,
+        iceLevel: i.iceLevel,
+        note: i.note,
+      })),
+      subTotal: paidOrder.total,
+      totalAmount: paidOrder.total,
+      paymentMethod: 'payos',
+      paymentStatus: 'paid',
+      storeInfo: {
+        storeName: user?.storeName || 'WebCafe Quán',
+        brandName: user?.brandName || 'AI-SMARTSERVE',
+      },
+    };
+
+    setPrintReceiptData(receiptData);
+    setShowPrintModal(true);
     setCurrentPayOSOrder(null);
-    setTimeout(() => {
-      navigate('/staff/orders');
-    }, 600);
   };
 
   // Keyboard Shortcuts (F2: Cash, F4: PayOS)
@@ -927,6 +988,18 @@ export default function NewOrder() {
         }}
         onPaidSuccess={handlePayOSSuccess}
       />
+
+      {/* POS Print Bill / Kitchen Ticket Modal */}
+      {printReceiptData && (
+        <ReceiptPrintModal
+          isOpen={showPrintModal}
+          onClose={() => {
+            setShowPrintModal(false);
+            setPrintReceiptData(null);
+          }}
+          data={printReceiptData}
+        />
+      )}
     </div>
   );
 }

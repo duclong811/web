@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { apiClient } from '../../api/apiClient';
+import { useAuthStore } from '../../store/authStore';
+import ReceiptPrintModal from '../print/ReceiptPrintModal';
+import type { ReceiptData } from '../../services/printService';
 
 interface OrderCardProps {
   order: {
@@ -91,6 +94,36 @@ const STATUS_CONFIG: Record<string, {
 export default function OrderCard({ order, onStatusUpdate }: OrderCardProps) {
   const [loading, setLoading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const user = useAuthStore(state => state.user);
+
+  const receiptData: ReceiptData = {
+    orderCode: order.orderCode,
+    tableNumber: order.tableNumber || 'Mang về',
+    customerName: order.customerName,
+    staffName: user?.fullName || 'Thu ngân',
+    createdAt: order.createdAt,
+    items: order.items.map(i => ({
+      name: i.menuItemName,
+      quantity: i.quantity,
+      price: i.unitPrice,
+      totalPrice: i.unitPrice * i.quantity,
+      sizeName: i.sizeName,
+      sugarLevel: i.sugarLevel,
+      iceLevel: i.iceLevel,
+      toppings: i.toppings,
+      note: i.note,
+    })),
+    subTotal: order.subTotal,
+    totalAmount: order.totalAmount,
+    paymentMethod: order.status === 'paid' ? 'cash' : 'transfer',
+    paymentStatus: order.status === 'paid' || order.status === 'completed' ? 'paid' : 'pending',
+    note: order.note,
+    storeInfo: {
+      storeName: user?.storeName || 'WebCafe Quán',
+      brandName: user?.brandName || 'AI-SMARTSERVE',
+    },
+  };
 
   const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
 
@@ -163,12 +196,22 @@ export default function OrderCard({ order, onStatusUpdate }: OrderCardProps) {
         </div>
       </div>
 
-      {/* Status Badge */}
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+      {/* Status Badge + Print Button */}
+      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${statusConfig.color} text-sm font-semibold`}>
           <span className="material-symbols-outlined text-base">{statusConfig.icon}</span>
           <span>{statusConfig.label}</span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowPrintModal(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-orange-200 bg-white hover:bg-orange-50 text-orange-600 font-bold text-xs shadow-2xs transition-all active:scale-95"
+          title="In hóa đơn thanh toán hoặc phiếu pha chế bếp"
+        >
+          <span className="material-symbols-outlined text-base">print</span>
+          <span>In Phiếu</span>
+        </button>
       </div>
 
       {/* Order Items */}
@@ -267,6 +310,13 @@ export default function OrderCard({ order, onStatusUpdate }: OrderCardProps) {
           )}
         </div>
       </div>
+
+      {/* Modal In Hóa Đơn & Phiếu Bếp */}
+      <ReceiptPrintModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        data={receiptData}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebCafe.Backend.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using WebCafe.Backend.Infrastructure.Data;
 namespace WebCafe.Backend.Migrations
 {
     [DbContext(typeof(WebCafeDbContext))]
-    partial class WebCafeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928142714_AddCustomerPasswordHash")]
+    partial class AddCustomerPasswordHash
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -609,20 +612,8 @@ namespace WebCafe.Backend.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(15,0)");
 
-                    b.Property<string>("CheckoutUrl")
-                        .HasMaxLength(2048)
-                        .HasColumnType("nvarchar(2048)");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("ExternalBankBin")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("ExternalPaymentLinkId")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Method")
                         .IsRequired()
@@ -638,10 +629,6 @@ namespace WebCafe.Backend.Migrations
                     b.Property<int?>("ProcessedByStaffId")
                         .HasColumnType("int");
 
-                    b.Property<string>("QrCode")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -653,19 +640,9 @@ namespace WebCafe.Backend.Migrations
 
                     b.HasKey("PaymentId");
 
-                    b.HasIndex("OrderId")
-                        .IsUnique()
-                        .HasFilter("[Status] = N'completed'");
+                    b.HasIndex("OrderId");
 
                     b.HasIndex("ProcessedByStaffId");
-
-                    b.HasIndex("TransactionRef")
-                        .IsUnique()
-                        .HasFilter("[TransactionRef] IS NOT NULL");
-
-                    b.HasIndex(new[] { "OrderId" }, "IX_Payments_OrderId_Pending")
-                        .IsUnique()
-                        .HasFilter("[Status] = N'pending'");
 
                     b.ToTable("Payments");
                 });

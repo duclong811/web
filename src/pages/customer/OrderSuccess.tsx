@@ -12,14 +12,14 @@ export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
   const orderCodeParam = searchParams.get('code') || searchParams.get('orderCode');
   const orderIdParam = searchParams.get('orderId');
-  const statusParam = searchParams.get('status');
 
   const { activeOrder, guestSession, orders, initRealtime, currentStoreId } = useStore();
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [payosData, setPayosData] = useState<PayOSPaymentDto | null>(null);
   const [isLoadingPayOS, setIsLoadingPayOS] = useState<boolean>(true);
-  const [isPaid, setIsPaid] = useState<boolean>(statusParam === 'PAID');
+  // The return URL is user-controlled. Only backend payment/order state is authoritative.
+  const [isPaid, setIsPaid] = useState<boolean>(false);
   const [, setPollCount] = useState<number>(0);
   const [isManualChecking, setIsManualChecking] = useState<boolean>(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -44,7 +44,7 @@ export default function OrderSuccess() {
         .then(res => {
           if (res) {
             setFetchedOrder(res);
-            if (res.status === 'paid' || res.status === 'completed') {
+            if (res.status === 'paid' || res.status === 'completed' || res.status === 'confirmed') {
               setIsPaid(true);
             }
           }
@@ -71,7 +71,10 @@ export default function OrderSuccess() {
     : (activeOrder ? parseInt(activeOrder.id, 10) : (fetchedOrder ? fetchedOrder.orderId : null));
 
   const effectiveOrderCode = orderCodeParam || activeOrder?.orderCode || fetchedOrder?.orderCode || '';
-  const paymentAccessToken = activeOrder?.rawDto?.paymentAccessToken || fetchedOrder?.paymentAccessToken || undefined;
+  const paymentAccessToken = activeOrder?.rawDto?.paymentAccessToken
+    || fetchedOrder?.paymentAccessToken
+    || (effectiveOrderCode ? sessionStorage.getItem(`webcafe_payment_access_code_${effectiveOrderCode}`) || undefined : undefined)
+    || (effectiveOrderId ? sessionStorage.getItem(`webcafe_payment_access_order_${effectiveOrderId}`) || undefined : undefined);
 
   // Initialize Realtime SignalR
   useEffect(() => {
@@ -82,7 +85,8 @@ export default function OrderSuccess() {
   useEffect(() => {
     if (orderCodeParam) {
       const match = orders.find(o => o.orderCode === orderCodeParam || o.id === orderCodeParam);
-      if (match && (match.status === 'paid' || match.rawDto?.status === 'paid')) {
+      if (match && (['confirmed', 'paid', 'completed'].includes(match.status)
+        || ['confirmed', 'paid', 'completed'].includes(match.rawDto?.status || ''))) {
         setIsPaid(true);
       }
     }
@@ -101,7 +105,7 @@ export default function OrderSuccess() {
     try {
       setIsLoadingPayOS(true);
       const codeForUrl = targetOrderCode || (targetOrderId ? `order-${targetOrderId}` : 'WC-ORDER');
-      const returnUrl = `${window.location.origin}/order-success?orderId=${targetOrderId || ''}&code=${codeForUrl}&status=PAID`;
+      const returnUrl = `${window.location.origin}/order-success?orderId=${targetOrderId || ''}&code=${codeForUrl}`;
       const cancelUrl = `${window.location.origin}/cart?orderId=${targetOrderId || ''}&status=CANCELLED`;
 
       const res = await paymentApi.createPayOSPayment({

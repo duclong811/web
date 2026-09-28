@@ -123,6 +123,9 @@ namespace WebCafe.Backend.Models.Entities
         [Required, MaxLength(15)]
         public string Phone { get; set; } = string.Empty;
 
+        [MaxLength(256)]
+        public string? PasswordHash { get; set; }
+
         [MaxLength(100)]
         public string? Name { get; set; }
 
@@ -347,6 +350,18 @@ namespace WebCafe.Backend.Models.Entities
 
         [MaxLength(100)]
         public string? TransactionRef { get; set; }
+
+        [MaxLength(2048)]
+        public string? CheckoutUrl { get; set; }
+
+        [MaxLength(4000)]
+        public string? QrCode { get; set; }
+
+        [MaxLength(100)]
+        public string? ExternalPaymentLinkId { get; set; }
+
+        [MaxLength(20)]
+        public string? ExternalBankBin { get; set; }
 
         [Required, MaxLength(20)]
         public string Status { get; set; } = "pending"; // pending, completed, failed

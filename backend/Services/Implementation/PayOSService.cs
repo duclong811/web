@@ -17,7 +17,7 @@ namespace WebCafe.Backend.Services.Implementation
 {
     public class PayOSService : IPayOSService
     {
-        private static readonly ConcurrentDictionary<int, PayOSPaymentDto> _paymentLinkCache = new();
+        private static readonly ConcurrentDictionary<int, SemaphoreSlim> _paymentLinkLocks = new();
         private readonly WebCafeDbContext _db;
         private readonly PayOSClient _defaultPayOS;
         private readonly IOrderNotificationService _notificationService;
@@ -46,6 +46,24 @@ namespace WebCafe.Backend.Services.Implementation
 
         public async Task<PayOSPaymentDto> CreatePaymentLinkAsync(int orderId, string? orderCode = null, string? returnUrl = null, string? cancelUrl = null)
         {
+            if (orderId <= 0 && !string.IsNullOrWhiteSpace(orderCode))
+                orderId = await _db.Orders.Where(o => o.OrderCode == orderCode).Select(o => o.OrderId).FirstOrDefaultAsync();
+            if (orderId <= 0) throw new NotFoundException("Không tìm thấy đơn hàng.");
+
+            var gate = _paymentLinkLocks.GetOrAdd(orderId, static _ => new SemaphoreSlim(1, 1));
+            await gate.WaitAsync();
+            try
+            {
+                return await CreatePaymentLinkCoreAsync(orderId, orderCode, returnUrl, cancelUrl);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }
+
+        private async Task<PayOSPaymentDto> CreatePaymentLinkCoreAsync(int orderId, string? orderCode, string? returnUrl, string? cancelUrl)
+        {
             var order = await _db.Orders
                 .Include(o => o.Store)
                 .Include(o => o.OrderItems)
@@ -59,21 +77,21 @@ namespace WebCafe.Backend.Services.Implementation
 
             orderId = order.OrderId;
 
-            if (order.Status == OrderStatus.Paid || order.Status == OrderStatus.Confirmed || order.Status == OrderStatus.Completed)
+            var completedPayment = await _db.Payments
+                .FirstOrDefaultAsync(p => p.OrderId == orderId && p.Status == PaymentStatuses.Completed);
+            if (completedPayment != null)
             {
-                _logger.LogInformation("Order {OrderId} is already paid ({Status}), returning PAID status DTO.", orderId, order.Status);
-                if (_paymentLinkCache.TryGetValue(orderId, out var cachedPaidDto))
+                if (completedPayment.Method == PaymentMethods.PayOS
+                    && long.TryParse(completedPayment.TransactionRef, out var completedOrderCode))
                 {
-                    cachedPaidDto.Status = "PAID";
-                    return cachedPaidDto;
+                    return MapStoredPayment(completedPayment, order, completedOrderCode, "PAID");
                 }
-
                 return new PayOSPaymentDto
                 {
-                    PaymentId = 0,
+                    PaymentId = completedPayment.PaymentId,
                     OrderId = order.OrderId,
                     OrderCode = order.OrderCode,
-                    PayOSOrderCode = GeneratePayOSOrderCode(order.OrderId),
+                    PayOSOrderCode = 0,
                     Amount = order.TotalAmount,
                     Status = "PAID",
                     AccountNumber = order.Store?.BankAccount,
@@ -82,17 +100,61 @@ namespace WebCafe.Backend.Services.Implementation
                     CreatedAt = order.CreatedAt
                 };
             }
+            if (order.Status == OrderStatus.Paid || order.Status == OrderStatus.Completed)
+                throw new AppException("Trạng thái đơn đã thanh toán nhưng không tìm thấy payment hoàn tất. Cần đối soát trước khi tạo link mới.");
 
-            // 0. Nếu đã tạo payment link và còn trong cache, tái sử dụng ngay để tránh gọi PayOS trùng lặp
-            if (_paymentLinkCache.TryGetValue(orderId, out var cachedDto))
+            var payOsClient = GetPayOSClientForStore(order.Store);
+            var pendingPayment = await _db.Payments
+                .Where(p => p.OrderId == orderId && p.Method == PaymentMethods.PayOS && p.Status == PaymentStatuses.Pending)
+                .OrderByDescending(p => p.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            // A process restart must not silently replace a still-live provider link.
+            if (pendingPayment != null)
             {
-                _logger.LogInformation("Returning cached PayOS payment link for OrderId {OrderId}, PayOSOrderCode {PayOSCode}", 
-                    orderId, cachedDto.PayOSOrderCode);
-                return cachedDto;
-            }
+                if (!long.TryParse(pendingPayment.TransactionRef, out var oldOrderCode))
+                    throw new AppException("Payment đang chờ có mã PayOS không hợp lệ; hệ thống từ chối tạo link khác để tránh thu tiền trùng.");
+                PaymentLink oldLink;
+                try
+                {
+                    oldLink = await payOsClient.PaymentRequests.GetAsync(oldOrderCode);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unable to verify existing PayOS link {PayOSCode} for order {OrderId}; refusing to create a second link", oldOrderCode, orderId);
+                    throw new AppException("Không thể xác minh link thanh toán hiện tại. Vui lòng thử lại sau; hệ thống chưa tạo link mới.");
+                }
 
-            // Chọn client PayOS: Ưu tiên tài khoản riêng của Quán, fallback về mặc định hệ thống
-            PayOSClient payOsClient = GetPayOSClientForStore(order.Store);
+                var oldStatus = oldLink.Status.ToString();
+                if (string.Equals(oldStatus, "PAID", StringComparison.OrdinalIgnoreCase))
+                {
+                    var paidStatus = await GetPaymentStatusAsync(oldOrderCode);
+                    if (!paidStatus.IsSuccess)
+                        throw new AppException("PayOS đã báo link được thanh toán nhưng hệ thống chưa đồng bộ được trạng thái. Vui lòng liên hệ cửa hàng.");
+                    return MapStoredPayment(pendingPayment, order, oldOrderCode, PaymentStatuses.Completed);
+                }
+
+                if (string.Equals(oldStatus, "PENDING", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(pendingPayment.CheckoutUrl))
+                        return MapStoredPayment(pendingPayment, order, oldOrderCode, PaymentStatuses.Pending);
+
+                    // Legacy row created before link details were persisted. Cancel it before
+                    // issuing a replacement, otherwise the old URL could still collect money.
+                    await payOsClient.PaymentRequests.CancelAsync(oldOrderCode, "Rotate legacy link without a stored checkout URL");
+                }
+                else if (!new[] { "CANCELLED", "CANCELED", "EXPIRED", "FAILED" }
+                    .Contains(oldStatus, StringComparer.OrdinalIgnoreCase))
+                {
+                    throw new AppException($"Link thanh toán cũ đang ở trạng thái '{oldStatus}'. Hệ thống chưa tạo link khác để tránh thu tiền trùng; cần đối soát trước.");
+                }
+
+                if (pendingPayment.Status == PaymentStatuses.Pending)
+                {
+                    pendingPayment.Status = PaymentStatuses.Failed;
+                    await _db.SaveChangesAsync();
+                }
+            }
 
             // Tạo orderCode dạng số duy nhất cho PayOS
             long payOsOrderCode = GeneratePayOSOrderCode(order.OrderId);
@@ -159,30 +221,20 @@ namespace WebCafe.Backend.Services.Implementation
             }
 
             // Lưu hoặc cập nhật Payment record trong cơ sở dữ liệu
-            var existingPayment = await _db.Payments
-                .FirstOrDefaultAsync(p => p.OrderId == orderId && p.Method == PaymentMethods.PayOS);
-
-            if (existingPayment != null)
+            var existingPayment = new Payment
             {
-                existingPayment.TransactionRef = payOsOrderCode.ToString();
-                existingPayment.Amount = order.TotalAmount;
-                existingPayment.Status = PaymentStatuses.Pending;
-                existingPayment.CreatedAt = DateTime.UtcNow;
-            }
-            else
-            {
-                existingPayment = new Payment
-                {
-                    OrderId = order.OrderId,
-                    Method = PaymentMethods.PayOS,
-                    Amount = order.TotalAmount,
-                    TransactionRef = payOsOrderCode.ToString(),
-                    Status = PaymentStatuses.Pending,
-                    CreatedAt = DateTime.UtcNow
-                };
-                _db.Payments.Add(existingPayment);
-            }
-
+                OrderId = order.OrderId,
+                Method = PaymentMethods.PayOS,
+                Amount = order.TotalAmount,
+                TransactionRef = payOsOrderCode.ToString(),
+                CheckoutUrl = result.CheckoutUrl,
+                QrCode = result.QrCode,
+                ExternalPaymentLinkId = result.PaymentLinkId,
+                ExternalBankBin = result.Bin,
+                Status = PaymentStatuses.Pending,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Payments.Add(existingPayment);
             await _db.SaveChangesAsync();
 
             var dto = new PayOSPaymentDto
@@ -205,11 +257,28 @@ namespace WebCafe.Backend.Services.Implementation
                 CreatedAt = existingPayment.CreatedAt
             };
 
-            // Lưu vào memory cache để các lần gọi sau từ cùng đơn hàng được trả về ngay lập tức
-            _paymentLinkCache[order.OrderId] = dto;
-
             return dto;
         }
+
+        private static PayOSPaymentDto MapStoredPayment(Payment payment, Order order, long orderCode, string status) => new()
+        {
+            PaymentId = payment.PaymentId,
+            OrderId = order.OrderId,
+            OrderCode = order.OrderCode,
+            PayOSOrderCode = orderCode,
+            Amount = payment.Amount,
+            Status = status,
+            CheckoutUrl = payment.CheckoutUrl,
+            QrCode = payment.QrCode,
+            PaymentLinkId = payment.ExternalPaymentLinkId,
+            AccountNumber = order.Store?.BankAccount,
+            AccountName = order.Store?.BankAccountName ?? "WebCafe",
+            Bin = payment.ExternalBankBin,
+            Description = $"WC {order.OrderCode.Replace("-", string.Empty)}",
+            StoreBankAccount = order.Store?.BankAccount,
+            StoreBankName = order.Store?.BankName,
+            CreatedAt = payment.CreatedAt
+        };
 
         public async Task<PayOSStatusCheckDto> GetPaymentStatusAsync(long orderCode)
         {
@@ -226,6 +295,12 @@ namespace WebCafe.Backend.Services.Implementation
                 PaymentLink info = await payOsClient.PaymentRequests.GetAsync(orderCode);
 
                 bool isPaid = info.Status == PaymentLinkStatus.Paid || info.Status.ToString().Equals("PAID", StringComparison.OrdinalIgnoreCase);
+                bool isCancelled = info.Status.ToString().Equals("CANCELLED", StringComparison.OrdinalIgnoreCase)
+                    || info.Status.ToString().Equals("CANCELED", StringComparison.OrdinalIgnoreCase);
+
+                if (isPaid && (payment == null || info.Amount != (long)payment.Amount
+                    || info.AmountPaid != (long)payment.Amount || info.AmountRemaining != 0))
+                    throw new AppException("PayOS báo thanh toán nhưng số tiền thực nhận không khớp payment đã lưu.");
 
                 if (isPaid && payment != null && payment.Status != PaymentStatuses.Completed)
                 {
@@ -242,6 +317,11 @@ namespace WebCafe.Backend.Services.Implementation
 
                     await _db.SaveChangesAsync();
                     _logger.LogInformation("Synced PAID status -> CONFIRMED order status for PayOS OrderCode {OrderCode} via Polling", orderCode);
+                }
+                else if (isCancelled && payment?.Status == PaymentStatuses.Pending)
+                {
+                    payment.Status = PaymentStatuses.Failed;
+                    await _db.SaveChangesAsync();
                 }
 
                 return new PayOSStatusCheckDto
@@ -304,6 +384,12 @@ namespace WebCafe.Backend.Services.Implementation
                 throw new AppException("Dữ liệu Webhook không hợp lệ hoặc chữ ký sai.");
             }
 
+            if (!webhook.Success || !string.Equals(webhook.Code, "00", StringComparison.Ordinal)
+                || !string.Equals(data.Code, "00", StringComparison.Ordinal))
+                throw new AppException("Webhook PayOS chưa xác nhận giao dịch thành công.");
+            if (!string.Equals(data.Currency, "VND", StringComparison.OrdinalIgnoreCase))
+                throw new AppException("Đơn vị tiền tệ webhook không hợp lệ.");
+
             _logger.LogInformation("Valid PayOS Webhook received for OrderCode {OrderCode}, Amount {Amount}, Ref {Ref}",
                 data.OrderCode, data.Amount, data.Reference);
 
@@ -327,6 +413,9 @@ namespace WebCafe.Backend.Services.Implementation
                     data.OrderCode, data.Amount, payment.Amount);
                 throw new AppException("Số tiền thanh toán không khớp với đơn hàng.");
             }
+            if (!string.IsNullOrWhiteSpace(payment.ExternalPaymentLinkId)
+                && !string.Equals(payment.ExternalPaymentLinkId, data.PaymentLinkId, StringComparison.Ordinal))
+                throw new AppException("PaymentLinkId webhook không khớp giao dịch đã lưu.");
 
             if (payment.Status == PaymentStatuses.Completed)
             {
@@ -341,6 +430,11 @@ namespace WebCafe.Backend.Services.Implementation
                     Message = "Giao dịch đã được xử lý trước đó."
                 };
             }
+
+            var otherCompletedPayment = await _db.Payments.AnyAsync(p => p.OrderId == payment.OrderId
+                && p.PaymentId != payment.PaymentId && p.Status == PaymentStatuses.Completed);
+            if (otherCompletedPayment)
+                throw new AppException("Đơn hàng đã có giao dịch thanh toán thành công khác; cần đối soát giao dịch PayOS này.");
 
             // Cập nhật trạng thái Payment và kích hoạt đơn hàng chính thức sang Bếp
             payment.Status = PaymentStatuses.Completed;
@@ -381,7 +475,6 @@ namespace WebCafe.Backend.Services.Implementation
             {
                 payment.Status = PaymentStatuses.Failed;
                 await _db.SaveChangesAsync();
-                _paymentLinkCache.TryRemove(payment.OrderId, out _);
             }
 
             return result;
@@ -582,7 +675,6 @@ namespace WebCafe.Backend.Services.Implementation
             order.UpdatedAt = DateTime.UtcNow;
 
             // Xóa cache payment link khi đã thanh toán thành công
-            _paymentLinkCache.TryRemove(order.OrderId, out _);
 
             // 1. Tự động trừ kho nguyên liệu
             try

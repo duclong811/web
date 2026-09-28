@@ -8,7 +8,12 @@ const getApiHost = () => {
   return 'localhost';
 };
 
-const defaultBackendOrigin = `http://${getApiHost()}:5277`;
+const isLocalDevelopment = ['localhost', '127.0.0.1'].includes(getApiHost());
+// In production, default to same-origin HTTPS behind the reverse proxy. Local
+// development continues to use the ASP.NET Core development port.
+const defaultBackendOrigin = isLocalDevelopment
+  ? `http://${getApiHost()}:5277`
+  : window.location.origin;
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${defaultBackendOrigin}/api`;
 export const HUB_URL = import.meta.env.VITE_HUB_URL || `${defaultBackendOrigin}/hubs/orders`;
 

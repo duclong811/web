@@ -9,6 +9,8 @@ namespace WebCafe.Backend.Models.DTOs.Auth
 
         [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
         public string Password { get; set; } = string.Empty;
+
+        public int? StoreId { get; set; }
     }
 
     public class LoginResponse
@@ -32,6 +34,9 @@ namespace WebCafe.Backend.Models.DTOs.Auth
         [Phone(ErrorMessage = "Số điện thoại không đúng định dạng.")]
         [RegularExpression(@"^(0|\+84)[0-9]{9,10}$", ErrorMessage = "Số điện thoại phải bắt đầu bằng 0 hoặc +84 và có 10-11 số (vd: 0912345678).")]
         public string Phone { get; set; } = string.Empty;
+
+        [Range(1, int.MaxValue, ErrorMessage = "Cửa hàng đăng ký không hợp lệ.")]
+        public int StoreId { get; set; }
 
         [Required(ErrorMessage = "Mật khẩu là bắt buộc.")]
         [MinLength(8, ErrorMessage = "Mật khẩu phải có ít nhất 8 ký tự.")]

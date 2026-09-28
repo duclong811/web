@@ -178,11 +178,29 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapGet("/health", async (WebCafeDbContext db) =>
+{
+    try
+    {
+        var ready = await db.Database.CanConnectAsync();
+        return ready ? Results.Ok(new { status = "Healthy" }) : Results.Json(new { status = "Unhealthy" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch
+    {
+        return Results.Json(new { status = "Unhealthy" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+});
 app.MapGet("/health/ready", async (WebCafeDbContext db) =>
 {
-    var ready = await db.Database.CanConnectAsync();
-    return ready ? Results.Ok(new { status = "ready" }) : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+    try
+    {
+        var ready = await db.Database.CanConnectAsync();
+        return ready ? Results.Ok(new { status = "ready" }) : Results.Json(new { status = "not_ready" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+    catch
+    {
+        return Results.Json(new { status = "not_ready" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
 });
 app.MapHub<OrderHub>("/hubs/orders");
 

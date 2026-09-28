@@ -170,6 +170,7 @@ export interface TableDto {
 export interface LoginRequest {
   username: string;
   password: string;
+  storeId?: number;
 }
 
 export interface LoginResponse {

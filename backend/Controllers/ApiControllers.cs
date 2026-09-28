@@ -46,9 +46,10 @@ namespace WebCafe.Backend.Controllers
             }
             catch (Exception)
             {
-                // Nếu không phải nhân viên, thử đăng nhập dưới dạng khách hàng
+                // Customer login cũng phải xác thực mật khẩu và cửa hàng đã chọn.
                 try
                 {
+                    if (!request.StoreId.HasValue) throw new AppException("Vui lòng chọn cửa hàng để đăng nhập.");
                     var customerRes = await _authService.LoginCustomerAsync(request);
                     return Ok(ApiResponse<LoginResponse>.Ok(customerRes, "Đăng nhập khách hàng thành công."));
                 }
@@ -326,20 +327,40 @@ namespace WebCafe.Backend.Controllers
         private readonly IOrderService _orderService;
         private readonly ICurrentUserService _currentUser;
         private readonly ITenantAccessService _tenantAccess;
+        private readonly WebCafeDbContext _db;
 
         public OrdersController(
             IOrderService orderService,
             ICurrentUserService currentUser,
-            ITenantAccessService tenantAccess)
+            ITenantAccessService tenantAccess,
+            WebCafeDbContext db)
         {
             _orderService = orderService;
             _currentUser = currentUser;
             _tenantAccess = tenantAccess;
+            _db = db;
         }
 
         [HttpPost]
         public async Task<ActionResult<ApiResponse<OrderDto>>> CreateOrder([FromBody] CreateOrderDto dto)
         {
+            var source = string.IsNullOrWhiteSpace(dto.Source) ? "qr_table" : dto.Source;
+            if (source.Equals("pos_staff", StringComparison.OrdinalIgnoreCase))
+            {
+                var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Manager, AppRoles.Staff, AppRoles.Cashier };
+                if (!_currentUser.IsAuthenticated || !staffRoles.Contains(_currentUser.Role, StringComparer.OrdinalIgnoreCase)) return Unauthorized();
+                await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
+            }
+            else if (!source.Equals("qr_table", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(ApiResponse<OrderDto>.Fail("Nguồn tạo đơn không hợp lệ."));
+            }
+            if (dto.PointsToUse > 0 && !_currentUser.CustomerId.HasValue)
+                return Unauthorized(ApiResponse<OrderDto>.Fail("Đăng nhập khách hàng để sử dụng điểm."));
+            if (source.Equals("qr_table", StringComparison.OrdinalIgnoreCase))
+            {
+                dto.PaymentMethod = null;
+            }
             var order = await _orderService.CreateOrderAsync(dto, _currentUser.CustomerId);
             return Ok(ApiResponse<OrderDto>.Ok(order, "Đặt món thành công!"));
         }
@@ -364,10 +385,23 @@ namespace WebCafe.Backend.Controllers
         }
 
         [HttpGet("code/{code}")]
-        public async Task<ActionResult<ApiResponse<OrderDto>>> GetOrderByCode(string code)
+        public async Task<ActionResult<ApiResponse<OrderDto>>> GetOrderByCode(string code, [FromQuery] string? paymentAccessToken)
         {
             var order = await _orderService.GetByCodeAsync(code);
             if (order == null) return NotFound(ApiResponse<OrderDto>.Fail("Không tìm thấy đơn hàng."));
+            var entity = await _db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.OrderCode == code);
+            if (entity == null) return NotFound(ApiResponse<OrderDto>.Fail("Không tìm thấy đơn hàng."));
+            var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Manager, AppRoles.Staff, AppRoles.Cashier, AppRoles.Kitchen };
+            var isCustomerOwner = _currentUser.CustomerId.HasValue && entity.CustomerId == _currentUser.CustomerId;
+            if (!isCustomerOwner && _currentUser.IsAuthenticated && staffRoles.Contains(_currentUser.Role, StringComparer.OrdinalIgnoreCase))
+            {
+                await _tenantAccess.EnsureOrderAccessAsync(entity.OrderId);
+            }
+            else if (!isCustomerOwner && !IsValidPaymentAccessToken(entity.PaymentAccessToken, paymentAccessToken))
+            {
+                return Unauthorized();
+            }
+            order.PaymentAccessToken = null;
             return Ok(ApiResponse<OrderDto>.Ok(order));
         }
 
@@ -397,11 +431,18 @@ namespace WebCafe.Backend.Controllers
             var order = await _orderService.UpdateStatusAsync(id, dto.Status, _currentUser.UserId);
             return Ok(ApiResponse<OrderDto>.Ok(order, "Cập nhật trạng thái đơn thành công."));
         }
+
+        private static bool IsValidPaymentAccessToken(string expectedToken, string? providedToken)
+        {
+            if (string.IsNullOrWhiteSpace(providedToken)) return false;
+            return CryptographicOperations.FixedTimeEquals(
+                System.Text.Encoding.UTF8.GetBytes(expectedToken),
+                System.Text.Encoding.UTF8.GetBytes(providedToken));
+        }
     }
 
     [ApiController]
     [Route("api/[controller]")]
-    [EnableRateLimiting("webhook")]
     public class PaymentsController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
@@ -437,24 +478,36 @@ namespace WebCafe.Backend.Controllers
 
             if (_currentUser.IsAuthenticated)
             {
-                if (_currentUser.CustomerId.HasValue && order.CustomerId == _currentUser.CustomerId) return;
-                if (_currentUser.TenantId.HasValue)
+                if (_currentUser.CustomerId.HasValue && order.CustomerId == _currentUser.CustomerId)
+                {
+                    return;
+                }
+                var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Manager, AppRoles.Staff, AppRoles.Cashier, AppRoles.Kitchen };
+                if (staffRoles.Contains(_currentUser.Role, StringComparer.OrdinalIgnoreCase) && _currentUser.TenantId.HasValue)
                 {
                     await _tenantAccess.EnsureOrderAccessAsync(orderId);
                     return;
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(accessToken) || !CryptographicOperations.FixedTimeEquals(
-                    System.Text.Encoding.UTF8.GetBytes(order.PaymentAccessToken),
-                    System.Text.Encoding.UTF8.GetBytes(accessToken)))
+            if (!IsValidPaymentAccessToken(order.PaymentAccessToken, accessToken))
                 throw new ForbiddenException("Payment access token không hợp lệ.");
+        }
+
+        private static bool IsValidPaymentAccessToken(string expectedToken, string? providedToken)
+        {
+            if (string.IsNullOrWhiteSpace(providedToken)) return false;
+            return CryptographicOperations.FixedTimeEquals(
+                System.Text.Encoding.UTF8.GetBytes(expectedToken),
+                System.Text.Encoding.UTF8.GetBytes(providedToken));
         }
 
         [HttpPost]
         [Authorize(Policy = AppPolicies.StaffAccess)]
         public async Task<ActionResult<ApiResponse<PaymentResultDto>>> ProcessPayment([FromBody] CreatePaymentDto dto)
         {
+            var paymentRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Manager, AppRoles.Staff, AppRoles.Cashier };
+            if (!paymentRoles.Contains(_currentUser.Role, StringComparer.OrdinalIgnoreCase)) return Forbid();
             await _tenantAccess.EnsureOrderAccessAsync(dto.OrderId);
             var result = await _paymentService.ProcessPaymentAsync(dto, _currentUser.UserId);
             return Ok(ApiResponse<PaymentResultDto>.Ok(result, "Thanh toán thành công."));
@@ -483,12 +536,16 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = AppPolicies.TenantAdminAccess)]
         public async Task<ActionResult<ApiResponse<object>>> CancelPayOSPayment(long orderCode, [FromQuery] string? reason)
         {
+            var payment = await _db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.TransactionRef == orderCode.ToString());
+            if (payment == null) return NotFound();
+            await _tenantAccess.EnsureOrderAccessAsync(payment.OrderId);
             var result = await _payOSService.CancelPaymentLinkAsync(orderCode, reason);
             return Ok(ApiResponse<object>.Ok(result, "Đã hủy link thanh toán PayOS."));
         }
 
         [HttpPost("payos/webhook")]
         [AllowAnonymous] // Webhook IPN từ PayOS Server
+        [EnableRateLimiting("webhook")]
         public async Task<IActionResult> PayOSWebhook([FromBody] object webhookPayload)
         {
             try
@@ -562,6 +619,7 @@ namespace WebCafe.Backend.Controllers
 
         [HttpPost("vietqr/webhook")]
         [AllowAnonymous] // Webhook từ ngân hàng không có authentication
+        [EnableRateLimiting("webhook")]
         public async Task<IActionResult> VietQRWebhook([FromBody] VietQRWebhookDto webhook, [FromHeader(Name = "X-Signature")] string? signature)
         {
             try

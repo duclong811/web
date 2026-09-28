@@ -84,7 +84,13 @@ export const orderApi = {
     return res.data.data;
   },
   getOrderByCode: async (code: string) => {
-    const res = await apiClient.get<ApiResponse<OrderDto>>(`/orders/code/${code}`);
+    const encodedCode = encodeURIComponent(code);
+    const paymentAccessToken = typeof window !== 'undefined'
+      ? sessionStorage.getItem(`webcafe_payment_access_code_${code}`) || undefined
+      : undefined;
+    const res = await apiClient.get<ApiResponse<OrderDto>>(`/orders/code/${encodedCode}`, {
+      params: { paymentAccessToken }
+    });
     return res.data.data;
   },
   getActiveOrders: async (storeId: number) => {

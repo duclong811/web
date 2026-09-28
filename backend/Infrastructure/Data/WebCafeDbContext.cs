@@ -66,6 +66,16 @@ namespace WebCafe.Backend.Infrastructure.Data
             modelBuilder.Entity<Customer>().HasIndex(c => new { c.TenantId, c.Phone }).IsUnique();
             modelBuilder.Entity<Voucher>().HasIndex(v => new { v.TenantId, v.Code }).IsUnique();
             modelBuilder.Entity<Order>().HasIndex(o => new { o.TenantId, o.OrderCode }).IsUnique();
+            // Database constraints are the final guard against concurrent/replayed payment webhooks.
+            modelBuilder.Entity<Payment>().HasIndex(p => p.TransactionRef)
+                .IsUnique()
+                .HasFilter("[TransactionRef] IS NOT NULL");
+            modelBuilder.Entity<Payment>().HasIndex(p => p.OrderId, "IX_Payments_OrderId_Pending")
+                .IsUnique()
+                .HasFilter("[Status] = N'pending'");
+            modelBuilder.Entity<Payment>().HasIndex(p => p.OrderId)
+                .IsUnique()
+                .HasFilter("[Status] = N'completed'");
 
             // Inventory constraints
             modelBuilder.Entity<Ingredient>().HasIndex(i => new { i.TenantId, i.Name }).IsUnique();

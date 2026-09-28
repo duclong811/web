@@ -176,6 +176,9 @@ namespace WebCafe.Backend.Services.Implementation
                 }
             }
 
+            if (dto.PointsToUse > 0 && customer == null)
+                throw new ForbiddenException("Đăng nhập tài khoản khách hàng để sử dụng điểm.");
+
             // 3. Tính toán tiền các Items
             decimal subTotal = 0;
             var orderItems = new List<OrderItem>();
@@ -279,6 +282,9 @@ namespace WebCafe.Backend.Services.Implementation
             var orderCode = $"OD-{DateTime.UtcNow:yyMMdd}-{Random.Shared.Next(1000, 9999)}";
 
             bool isPosStaffOrder = dto.Source == "pos_staff";
+            if (isPosStaffOrder && dto.PaymentMethod != "cash" && dto.PaymentMethod != PaymentMethods.Cash &&
+                dto.PaymentMethod != "payos" && dto.PaymentMethod != PaymentMethods.PayOS)
+                throw new AppException("Phương thức thanh toán tại quầy không hợp lệ.");
             bool isCashPos = isPosStaffOrder && (dto.PaymentMethod == "cash" || dto.PaymentMethod == PaymentMethods.Cash);
             bool isPayOSPos = isPosStaffOrder && (dto.PaymentMethod == "payos" || dto.PaymentMethod == PaymentMethods.PayOS);
 
@@ -355,6 +361,9 @@ namespace WebCafe.Backend.Services.Implementation
                     await _notificationService.NotifyTableStatusChangedAsync(store.StoreId, table.TableId, TableStatuses.Occupied);
                 }
             }
+
+            // This capability is returned only by the create-order endpoint.
+            resultDto.PaymentAccessToken = order.PaymentAccessToken;
 
             return resultDto;
         }
@@ -526,7 +535,8 @@ namespace WebCafe.Backend.Services.Implementation
                 throw new AppException($"Không thể chuyển trạng thái đơn từ '{order.Status}' sang '{newStatus}'.");
             }
 
-            if (newStatus == OrderStatus.Paid && !string.Equals(order.Status, OrderStatus.Paid, StringComparison.OrdinalIgnoreCase))
+            if ((newStatus == OrderStatus.Paid || newStatus == OrderStatus.Confirmed)
+                && !string.Equals(order.Status, newStatus, StringComparison.OrdinalIgnoreCase))
             {
                 var hasCompletedPayment = await _db.Payments.AnyAsync(p => p.OrderId == orderId && p.Status == PaymentStatuses.Completed);
                 if (!hasCompletedPayment)
@@ -574,7 +584,7 @@ namespace WebCafe.Backend.Services.Implementation
             if (string.Equals(current, next, StringComparison.OrdinalIgnoreCase)) return true;
             return current switch
             {
-                OrderStatus.AwaitingPayment => next == OrderStatus.Cancelled,
+                OrderStatus.AwaitingPayment => next is OrderStatus.Confirmed or OrderStatus.Paid or OrderStatus.Cancelled,
                 OrderStatus.Pending => next is OrderStatus.Confirmed or OrderStatus.Cancelled or OrderStatus.Paid,
                 OrderStatus.Confirmed => next is OrderStatus.Preparing or OrderStatus.Cancelled or OrderStatus.Paid,
                 OrderStatus.Preparing => next is OrderStatus.Ready or OrderStatus.Cancelled,
@@ -602,7 +612,7 @@ namespace WebCafe.Backend.Services.Implementation
                 
                 // Guest Order Fields
                 GuestId = o.GuestId,
-                PaymentAccessToken = o.PaymentAccessToken,
+                PaymentAccessToken = null,
                 GuestName = o.GuestName,
                 GuestPhone = o.GuestPhone,
                 
@@ -656,13 +666,16 @@ namespace WebCafe.Backend.Services.Implementation
 
         public async Task<PaymentResultDto> ProcessPaymentAsync(CreatePaymentDto dto, int? staffId = null)
         {
+            if (!string.Equals(dto.Method, PaymentMethods.Cash, StringComparison.OrdinalIgnoreCase))
+                throw new AppException("Thanh toán thủ công chỉ hỗ trợ tiền mặt; PayOS/VietQR phải được xác nhận qua webhook.");
+
             var order = await _db.Orders
                 .Include(o => o.Store)
                 .FirstOrDefaultAsync(o => o.OrderId == dto.OrderId);
 
             if (order == null) throw new NotFoundException("Không tìm thấy đơn hàng.");
 
-            if (dto.Amount > 0 && dto.Amount != order.TotalAmount)
+            if (dto.Amount != order.TotalAmount)
                 throw new AppException("Số tiền thanh toán không khớp với đơn hàng.");
 
             var transactionRef = dto.TransactionRef ?? $"TXN-{DateTime.UtcNow:yyMMddHHmmss}-{Guid.NewGuid():N}";
@@ -671,6 +684,8 @@ namespace WebCafe.Backend.Services.Implementation
             {
                 if (existingPayment.OrderId != order.OrderId)
                     throw new AppException("Mã giao dịch đã được sử dụng cho đơn hàng khác.");
+                if (existingPayment.Status != PaymentStatuses.Completed || existingPayment.Method != PaymentMethods.Cash)
+                    throw new AppException("Mã giao dịch đã được sử dụng cho một giao dịch khác.");
                 return new PaymentResultDto
                 {
                     PaymentId = existingPayment.PaymentId,
@@ -681,6 +696,11 @@ namespace WebCafe.Backend.Services.Implementation
                     QrCodeUrl = null
                 };
             }
+
+            if (await _db.Payments.AnyAsync(p => p.OrderId == order.OrderId && p.Status == PaymentStatuses.Completed))
+                throw new AppException("Đơn hàng đã có giao dịch thanh toán thành công.");
+            if (order.Status is not (OrderStatus.AwaitingPayment or OrderStatus.Pending or OrderStatus.Confirmed or OrderStatus.Served))
+                throw new AppException($"Không thể thu tiền mặt cho đơn ở trạng thái '{order.Status}'.");
 
             var payment = new Payment
             {

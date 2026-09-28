@@ -418,6 +418,13 @@ export const useStore = create<StoreState>((set, get) => ({
       };
 
       const res = await orderApi.createOrder(payload);
+
+      // Keep the guest capability out of the URL; it is needed after refresh and
+      // when the payment provider redirects back to this browser tab.
+      if (res.paymentAccessToken) {
+        sessionStorage.setItem(`webcafe_payment_access_code_${res.orderCode}`, res.paymentAccessToken);
+        sessionStorage.setItem(`webcafe_payment_access_order_${res.orderId}`, res.paymentAccessToken);
+      }
       
       const newOrder: Order = {
         id: res.orderId.toString(),

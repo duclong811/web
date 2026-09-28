@@ -39,6 +39,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const payload = {
       username: loginData.username.trim().replace(/\s/g, ''),
       password: loginData.password,
+      storeId: currentStoreId || undefined,
     };
 
     console.log('🚀 Starting login with username:', payload.username);
@@ -121,6 +122,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         fullName: registerData.fullName.trim(),
         phone: cleanPhone,
         password: registerData.password,
+        storeId: currentStoreId,
       };
 
       const response = await apiClient.post('/auth/register', payload);

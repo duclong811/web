@@ -148,13 +148,24 @@ namespace WebCafe.Backend.Services.Implementation
         public async Task<LoginResponse> LoginCustomerAsync(LoginRequest request)
         {
             var phone = request.Username.Trim().Replace(" ", "");
+            if (!request.StoreId.HasValue || request.StoreId.Value <= 0)
+                throw new AppException("Vui lòng chọn cửa hàng để đăng nhập.");
+
+            var store = await _db.Stores.AsNoTracking().FirstOrDefaultAsync(s => s.StoreId == request.StoreId && s.IsActive);
+            if (store == null) throw new AppException("Cửa hàng không tồn tại hoặc đã ngừng hoạt động.");
             var customer = await _db.Customers
                 .Include(c => c.Tenant)
-                .FirstOrDefaultAsync(c => c.Phone == phone);
+                .FirstOrDefaultAsync(c => c.Phone == phone && c.TenantId == store.TenantId);
 
-            if (customer == null)
+            var validPassword = false;
+            if (!string.IsNullOrWhiteSpace(customer?.PasswordHash))
             {
-                throw new AppException("Số điện thoại chưa được đăng ký tài khoản. Vui lòng đăng ký tài khoản mới.");
+                try { validPassword = BCrypt.Net.BCrypt.Verify(request.Password, customer.PasswordHash); }
+                catch (BCrypt.Net.SaltParseException) { validPassword = false; }
+            }
+            if (customer == null || !validPassword)
+            {
+                throw new AppException("Số điện thoại hoặc mật khẩu không đúng.");
             }
 
             customer.VisitCount += 1;
@@ -194,20 +205,23 @@ namespace WebCafe.Backend.Services.Implementation
         {
             var phone = request.Phone.Trim().Replace(" ", "");
 
-            // Kiểm tra số điện thoại đã tồn tại chưa
+            var store = await _db.Stores.Include(s => s.Tenant)
+                .FirstOrDefaultAsync(s => s.StoreId == request.StoreId && s.IsActive && s.Tenant != null && s.Tenant.IsActive);
+            if (store == null) throw new AppException("Cửa hàng đăng ký không tồn tại hoặc đã ngừng hoạt động.");
+
             var existingByPhone = await _db.Customers
-                .FirstOrDefaultAsync(c => c.Phone == phone);
+                .FirstOrDefaultAsync(c => c.Phone == phone && c.TenantId == store.TenantId);
 
             if (existingByPhone != null)
             {
                 throw new AppException("Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập.");
             }
 
-            // Tạo customer mới với TenantId mặc định = 1 (The Coffee House)
             var customer = new Customer
             {
-                TenantId = 1,
+                TenantId = store.TenantId,
                 Phone = phone,
+                PasswordHash = Common.Helper.SecurityHelper.HashPassword(request.Password),
                 Name = request.FullName.Trim(),
                 TotalPoints = 0,
                 TotalSpent = 0,

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebCafe.Backend.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using WebCafe.Backend.Infrastructure.Data;
 namespace WebCafe.Backend.Migrations
 {
     [DbContext(typeof(WebCafeDbContext))]
-    partial class WebCafeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928144521_PersistPayOSPaymentLinks")]
+    partial class PersistPayOSPaymentLinks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -653,19 +656,9 @@ namespace WebCafe.Backend.Migrations
 
                     b.HasKey("PaymentId");
 
-                    b.HasIndex("OrderId")
-                        .IsUnique()
-                        .HasFilter("[Status] = N'completed'");
+                    b.HasIndex("OrderId");
 
                     b.HasIndex("ProcessedByStaffId");
-
-                    b.HasIndex("TransactionRef")
-                        .IsUnique()
-                        .HasFilter("[TransactionRef] IS NOT NULL");
-
-                    b.HasIndex(new[] { "OrderId" }, "IX_Payments_OrderId_Pending")
-                        .IsUnique()
-                        .HasFilter("[Status] = N'pending'");
 
                     b.ToTable("Payments");
                 });

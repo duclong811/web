@@ -24,7 +24,6 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
 
             services.AddDbContext<WebCafeDbContext>(options =>
                 options.UseSqlServer(connectionString));
-            services.AddHealthChecks().AddCheck("database", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

@@ -139,6 +139,7 @@ export interface OrderDto {
   guestId?: string | null;
   guestName?: string | null;
   guestPhone?: string | null;
+  paymentAccessToken?: string | null;
   status: 'awaiting_payment' | 'pending' | 'confirmed' | 'preparing' | 'ready' | 'served' | 'paid' | 'completed' | 'cancelled' | 'done';
   subTotal: number;
   discountAmount: number;
@@ -652,6 +653,7 @@ export interface CustomerLoyaltyHistoryDto {
 // --- PayOS Payment Gateway Types ---
 export interface CreatePayOSPaymentRequest {
   orderId?: number;
+  paymentAccessToken?: string;
   orderCode?: string;
   returnUrl?: string;
   cancelUrl?: string;

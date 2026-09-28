@@ -31,11 +31,17 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
                 options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
                     context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+                options.AddPolicy("webhook", context => RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
             });
 
             // 2. CORS - Chỉ cho phép các frontend origin đã cấu hình.
-            var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                ?? new[] { "http://localhost:5173", "https://localhost:5173" };
+            var configuredOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+            if (string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Production", StringComparison.OrdinalIgnoreCase) &&
+                (configuredOrigins == null || configuredOrigins.Length == 0))
+                throw new InvalidOperationException("Cors:AllowedOrigins phải được cấu hình ở Production.");
+            var allowedOrigins = configuredOrigins ?? new[] { "http://localhost:5173", "https://localhost:5173" };
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", policy =>
@@ -50,6 +56,9 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
             // 3. JWT Authentication
             var jwtKey = configuration["Jwt:SecretKey"]
                 ?? throw new InvalidOperationException("Jwt:SecretKey chưa được cấu hình.");
+            if (string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Production", StringComparison.OrdinalIgnoreCase) &&
+                (jwtKey.Contains("SuperSecret", StringComparison.OrdinalIgnoreCase) || jwtKey.Length < 64))
+                throw new InvalidOperationException("Jwt:SecretKey Production phải là secret riêng dài tối thiểu 64 ký tự.");
             if (jwtKey.Length < 32)
             {
                 throw new InvalidOperationException("Jwt:SecretKey phải có ít nhất 32 ký tự.");

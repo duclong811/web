@@ -141,6 +141,14 @@ namespace WebCafe.Backend.Services.Implementation
                 throw new AppException($"Số tiền chuyển khoản ({webhook.Amount:N0}đ) không đủ. Cần thanh toán: {order.TotalAmount:N0}đ");
             }
 
+            var replay = await _db.Payments
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.TransactionRef == webhook.TransactionId && p.OrderId != order.OrderId);
+            if (replay != null)
+            {
+                throw new AppException("Mã giao dịch đã được sử dụng cho đơn hàng khác.");
+            }
+
             // Tìm và cập nhật payment record
             var payment = await _db.Payments
                 .FirstOrDefaultAsync(p => p.OrderId == order.OrderId && p.Status == PaymentStatuses.Pending);

@@ -215,6 +215,10 @@ namespace WebCafe.Backend.Models.Entities
         [MaxLength(100)]
         public string? GuestId { get; set; }
 
+        // Opaque capability used by unauthenticated guests to pay their own order.
+        [Required, MaxLength(64)]
+        public string PaymentAccessToken { get; set; } = Guid.NewGuid().ToString("N");
+
         [MaxLength(100)]
         public string? GuestName { get; set; }
 

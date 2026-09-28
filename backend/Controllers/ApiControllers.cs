@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Models;
@@ -29,12 +30,10 @@ namespace WebCafe.Backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly WebCafeDbContext _db;
 
-        public AuthController(IAuthService authService, WebCafeDbContext db)
+        public AuthController(IAuthService authService)
         {
             _authService = authService;
-            _db = db;
         }
 
         [HttpPost("login")]
@@ -402,6 +401,7 @@ namespace WebCafe.Backend.Controllers
 
     [ApiController]
     [Route("api/[controller]")]
+    [EnableRateLimiting("webhook")]
     public class PaymentsController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
@@ -410,6 +410,7 @@ namespace WebCafe.Backend.Controllers
         private readonly ILogger<PaymentsController> _logger;
         private readonly ICurrentUserService _currentUser;
         private readonly ITenantAccessService _tenantAccess;
+        private readonly WebCafeDbContext _db;
 
         public PaymentsController(
             IPaymentService paymentService, 
@@ -417,7 +418,8 @@ namespace WebCafe.Backend.Controllers
             IPayOSService payOSService,
             ILogger<PaymentsController> logger,
             ICurrentUserService currentUser,
-            ITenantAccessService tenantAccess)
+            ITenantAccessService tenantAccess,
+            WebCafeDbContext db)
         {
             _paymentService = paymentService;
             _vietQRPaymentService = vietQRPaymentService;
@@ -425,6 +427,28 @@ namespace WebCafe.Backend.Controllers
             _logger = logger;
             _currentUser = currentUser;
             _tenantAccess = tenantAccess;
+            _db = db;
+        }
+
+        private async Task EnsurePaymentAccessAsync(int orderId, string? accessToken)
+        {
+            var order = await _db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null) throw new NotFoundException("Không tìm thấy đơn hàng.");
+
+            if (_currentUser.IsAuthenticated)
+            {
+                if (_currentUser.CustomerId.HasValue && order.CustomerId == _currentUser.CustomerId) return;
+                if (_currentUser.TenantId.HasValue)
+                {
+                    await _tenantAccess.EnsureOrderAccessAsync(orderId);
+                    return;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(accessToken) || !CryptographicOperations.FixedTimeEquals(
+                    System.Text.Encoding.UTF8.GetBytes(order.PaymentAccessToken),
+                    System.Text.Encoding.UTF8.GetBytes(accessToken)))
+                throw new ForbiddenException("Payment access token không hợp lệ.");
         }
 
         [HttpPost]
@@ -440,13 +464,17 @@ namespace WebCafe.Backend.Controllers
         [HttpPost("payos/create-link")]
         public async Task<ActionResult<ApiResponse<PayOSPaymentDto>>> CreatePayOSPayment([FromBody] CreatePayOSPaymentRequest request)
         {
+            await EnsurePaymentAccessAsync(request.OrderId, request.PaymentAccessToken);
             var payment = await _payOSService.CreatePaymentLinkAsync(request.OrderId, request.OrderCode, request.ReturnUrl, request.CancelUrl);
             return Ok(ApiResponse<PayOSPaymentDto>.Ok(payment, "Đã tạo link thanh toán PayOS."));
         }
 
         [HttpGet("payos/status/{orderCode}")]
-        public async Task<ActionResult<ApiResponse<PayOSStatusCheckDto>>> GetPayOSPaymentStatus(long orderCode)
+        public async Task<ActionResult<ApiResponse<PayOSStatusCheckDto>>> GetPayOSPaymentStatus(long orderCode, [FromQuery] string? paymentAccessToken)
         {
+            var payment = await _db.Payments.Include(p => p.Order).AsNoTracking().FirstOrDefaultAsync(p => p.TransactionRef == orderCode.ToString());
+            if (payment?.Order == null) return NotFound();
+            await EnsurePaymentAccessAsync(payment.OrderId, paymentAccessToken);
             var status = await _payOSService.GetPaymentStatusAsync(orderCode);
             return Ok(ApiResponse<PayOSStatusCheckDto>.Ok(status));
         }
@@ -515,13 +543,15 @@ namespace WebCafe.Backend.Controllers
         [HttpPost("vietqr/create")]
         public async Task<ActionResult<ApiResponse<VietQRPaymentDto>>> CreateVietQRPayment([FromBody] CreateVietQRPaymentRequest request)
         {
+            await EnsurePaymentAccessAsync(request.OrderId, request.PaymentAccessToken);
             var payment = await _vietQRPaymentService.CreateVietQRPaymentAsync(request.OrderId);
             return Ok(ApiResponse<VietQRPaymentDto>.Ok(payment, "Đã tạo mã QR thanh toán."));
         }
 
         [HttpGet("vietqr/status/{orderId}")]
-        public async Task<ActionResult<ApiResponse<VietQRPaymentDto>>> GetVietQRPaymentStatus(int orderId)
+        public async Task<ActionResult<ApiResponse<VietQRPaymentDto>>> GetVietQRPaymentStatus(int orderId, [FromQuery] string? paymentAccessToken)
         {
+            await EnsurePaymentAccessAsync(orderId, paymentAccessToken);
             var payment = await _vietQRPaymentService.GetPendingPaymentByOrderIdAsync(orderId);
             if (payment == null)
             {
@@ -565,6 +595,7 @@ namespace WebCafe.Backend.Controllers
     public class CreateVietQRPaymentRequest
     {
         public int OrderId { get; set; }
+        public string? PaymentAccessToken { get; set; }
     }
 
     [ApiController]

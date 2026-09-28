@@ -114,6 +114,7 @@ namespace WebCafe.Backend.Models.DTOs.Order
         public string? GuestId { get; set; }
         public string? GuestName { get; set; }
         public string? GuestPhone { get; set; }
+        public string? PaymentAccessToken { get; set; }
         
         public string Status { get; set; } = "pending";
         public decimal SubTotal { get; set; }

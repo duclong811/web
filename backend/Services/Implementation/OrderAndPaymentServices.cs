@@ -1,4 +1,5 @@
 using System.Data;
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Exceptions;
@@ -295,6 +296,7 @@ namespace WebCafe.Backend.Services.Implementation
                 
                 // Guest Order Support
                 GuestId = dto.GuestId,
+                PaymentAccessToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant(),
                 GuestName = dto.GuestName ?? dto.CustomerName,
                 GuestPhone = dto.GuestPhone ?? dto.CustomerPhone,
                 
@@ -524,6 +526,13 @@ namespace WebCafe.Backend.Services.Implementation
                 throw new AppException($"Không thể chuyển trạng thái đơn từ '{order.Status}' sang '{newStatus}'.");
             }
 
+            if (newStatus == OrderStatus.Paid && !string.Equals(order.Status, OrderStatus.Paid, StringComparison.OrdinalIgnoreCase))
+            {
+                var hasCompletedPayment = await _db.Payments.AnyAsync(p => p.OrderId == orderId && p.Status == PaymentStatuses.Completed);
+                if (!hasCompletedPayment)
+                    throw new AppException("Không thể đánh dấu đơn đã thanh toán khi chưa có giao dịch thành công.");
+            }
+
             order.Status = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
             if (staffId.HasValue) order.StaffId = staffId.Value;
@@ -593,6 +602,7 @@ namespace WebCafe.Backend.Services.Implementation
                 
                 // Guest Order Fields
                 GuestId = o.GuestId,
+                PaymentAccessToken = o.PaymentAccessToken,
                 GuestName = o.GuestName,
                 GuestPhone = o.GuestPhone,
                 
@@ -652,12 +662,32 @@ namespace WebCafe.Backend.Services.Implementation
 
             if (order == null) throw new NotFoundException("Không tìm thấy đơn hàng.");
 
+            if (dto.Amount > 0 && dto.Amount != order.TotalAmount)
+                throw new AppException("Số tiền thanh toán không khớp với đơn hàng.");
+
+            var transactionRef = dto.TransactionRef ?? $"TXN-{DateTime.UtcNow:yyMMddHHmmss}-{Guid.NewGuid():N}";
+            var existingPayment = await _db.Payments.FirstOrDefaultAsync(p => p.TransactionRef == transactionRef);
+            if (existingPayment != null)
+            {
+                if (existingPayment.OrderId != order.OrderId)
+                    throw new AppException("Mã giao dịch đã được sử dụng cho đơn hàng khác.");
+                return new PaymentResultDto
+                {
+                    PaymentId = existingPayment.PaymentId,
+                    OrderId = existingPayment.OrderId,
+                    Method = existingPayment.Method,
+                    Amount = existingPayment.Amount,
+                    Status = existingPayment.Status,
+                    QrCodeUrl = null
+                };
+            }
+
             var payment = new Payment
             {
                 OrderId = order.OrderId,
                 Method = dto.Method,
-                Amount = dto.Amount > 0 ? dto.Amount : order.TotalAmount,
-                TransactionRef = dto.TransactionRef ?? $"TXN-{DateTime.UtcNow:yyMMddHHmmss}",
+                Amount = order.TotalAmount,
+                TransactionRef = transactionRef,
                 Status = PaymentStatuses.Completed,
                 PaidAt = DateTime.UtcNow,
                 ProcessedByStaffId = staffId,

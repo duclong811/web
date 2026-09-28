@@ -71,6 +71,7 @@ export default function OrderSuccess() {
     : (activeOrder ? parseInt(activeOrder.id, 10) : (fetchedOrder ? fetchedOrder.orderId : null));
 
   const effectiveOrderCode = orderCodeParam || activeOrder?.orderCode || fetchedOrder?.orderCode || '';
+  const paymentAccessToken = activeOrder?.rawDto?.paymentAccessToken || fetchedOrder?.paymentAccessToken || undefined;
 
   // Initialize Realtime SignalR
   useEffect(() => {
@@ -105,6 +106,7 @@ export default function OrderSuccess() {
 
       const res = await paymentApi.createPayOSPayment({
         orderId: targetOrderId,
+        paymentAccessToken,
         orderCode: targetOrderCode,
         returnUrl,
         cancelUrl
@@ -123,7 +125,7 @@ export default function OrderSuccess() {
         setIsLoadingPayOS(false);
       }
     }
-  }, [effectiveOrderId, effectiveOrderCode]);
+  }, [effectiveOrderId, effectiveOrderCode, paymentAccessToken]);
 
   // Trigger PayOS Create Link on mount or when order id/code is resolved
   useEffect(() => {
@@ -174,7 +176,7 @@ export default function OrderSuccess() {
     const interval = setInterval(async () => {
       try {
         setPollCount(prev => prev + 1);
-        const statusRes = await paymentApi.getPayOSStatus(payosData.payOSOrderCode);
+        const statusRes = await paymentApi.getPayOSStatus(payosData.payOSOrderCode, paymentAccessToken);
         if (statusRes?.isSuccess || statusRes?.status === 'PAID' || statusRes?.status === 'completed') {
           setIsPaid(true);
           clearInterval(interval);
@@ -189,14 +191,14 @@ export default function OrderSuccess() {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [isPaid, payosData?.payOSOrderCode]);
+  }, [isPaid, payosData?.payOSOrderCode, paymentAccessToken]);
 
   // Manual Check Button Handler
   const handleManualCheck = async () => {
     if (!payosData?.payOSOrderCode || isManualChecking) return;
     setIsManualChecking(true);
     try {
-      const res = await paymentApi.getPayOSStatus(payosData.payOSOrderCode);
+      const res = await paymentApi.getPayOSStatus(payosData.payOSOrderCode, paymentAccessToken);
       if (res?.isSuccess || res?.status === 'PAID' || res?.status === 'completed') {
         setIsPaid(true);
       }

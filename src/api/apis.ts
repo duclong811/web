@@ -346,8 +346,8 @@ export const paymentApi = {
     const res = await apiClient.post<ApiResponse<PayOSPaymentDto>>('/payments/payos/create-link', payload);
     return res.data.data;
   },
-  getPayOSStatus: async (orderCode: number) => {
-    const res = await apiClient.get<ApiResponse<PayOSStatusCheckDto>>(`/payments/payos/status/${orderCode}`);
+  getPayOSStatus: async (orderCode: number, paymentAccessToken?: string) => {
+    const res = await apiClient.get<ApiResponse<PayOSStatusCheckDto>>(`/payments/payos/status/${orderCode}`, { params: { paymentAccessToken } });
     return res.data.data;
   },
   cancelPayOSPayment: async (orderCode: number, reason?: string) => {
@@ -356,12 +356,12 @@ export const paymentApi = {
     });
     return res.data;
   },
-  createVietQRPayment: async (orderId: number) => {
-    const res = await apiClient.post<ApiResponse<any>>('/payments/vietqr/create', { orderId });
+  createVietQRPayment: async (orderId: number, paymentAccessToken?: string) => {
+    const res = await apiClient.post<ApiResponse<any>>('/payments/vietqr/create', { orderId, paymentAccessToken });
     return res.data.data;
   },
-  getVietQRStatus: async (orderId: number) => {
-    const res = await apiClient.get<ApiResponse<any>>(`/payments/vietqr/status/${orderId}`);
+  getVietQRStatus: async (orderId: number, paymentAccessToken?: string) => {
+    const res = await apiClient.get<ApiResponse<any>>(`/payments/vietqr/status/${orderId}`, { params: { paymentAccessToken } });
     return res.data.data;
   },
   getStorePaymentConfig: async (storeId: number) => {

@@ -125,6 +125,9 @@ namespace WebCafe.Backend.Services.Implementation
                 ? cancelUrl 
                 : $"{GetFrontendPublicUrl()}/cart?orderId={order.OrderId}&status=CANCELLED";
 
+            EnsureSafeCallbackUrl(effectiveReturnUrl);
+            EnsureSafeCallbackUrl(effectiveCancelUrl);
+
             var paymentData = new CreatePaymentLinkRequest
             {
                 OrderCode = payOsOrderCode,
@@ -316,6 +319,13 @@ namespace WebCafe.Backend.Services.Implementation
                     Status = PaymentStatuses.Pending,
                     Message = "Không tìm thấy Payment tương ứng nhưng Webhook đã xác thực."
                 };
+            }
+
+            if (data.Amount != (long)payment.Amount)
+            {
+                _logger.LogWarning("PayOS amount mismatch for OrderCode {OrderCode}: received {Received}, expected {Expected}",
+                    data.OrderCode, data.Amount, payment.Amount);
+                throw new AppException("Số tiền thanh toán không khớp với đơn hàng.");
             }
 
             if (payment.Status == PaymentStatuses.Completed)
@@ -525,6 +535,21 @@ namespace WebCafe.Backend.Services.Implementation
                 throw new InvalidOperationException("Frontend:PublicUrl chưa được cấu hình.");
             }
             return url;
+        }
+
+        private void EnsureSafeCallbackUrl(string callbackUrl)
+        {
+            if (!Uri.TryCreate(callbackUrl, UriKind.Absolute, out var callback) ||
+                callback.Scheme != Uri.UriSchemeHttps && callback.Scheme != Uri.UriSchemeHttp)
+                throw new AppException("Callback URL thanh toán không hợp lệ.");
+
+            var configuredBase = new Uri(GetFrontendPublicUrl());
+            var allowed = string.Equals(callback.Host, configuredBase.Host, StringComparison.OrdinalIgnoreCase);
+            var isDevelopment = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+            if (!isDevelopment && callback.Scheme != Uri.UriSchemeHttps)
+                throw new AppException("Production callback phải sử dụng HTTPS.");
+            if (!allowed && !isDevelopment)
+                throw new AppException("Callback URL phải thuộc frontend đã cấu hình.");
         }
 
         private static string? MaskSecretKey(string? secret)

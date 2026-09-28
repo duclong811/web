@@ -5,6 +5,7 @@ namespace WebCafe.Backend.Models.DTOs.Payment
     public class CreatePayOSPaymentRequest
     {
         public int OrderId { get; set; }
+        public string? PaymentAccessToken { get; set; }
         public string? OrderCode { get; set; }
         public string? ReturnUrl { get; set; }
         public string? CancelUrl { get; set; }

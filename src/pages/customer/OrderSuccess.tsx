@@ -7,8 +7,6 @@ import { trackPurchase } from '../../utils/analytics';
 import { paymentApi, orderApi } from '../../api/apis';
 import type { PayOSPaymentDto, OrderDto } from '../../types/apiTypes';
 import QRCode from 'qrcode';
-import ReceiptPrintModal from '../../components/print/ReceiptPrintModal';
-import type { ReceiptData } from '../../services/printService';
 
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
@@ -25,7 +23,6 @@ export default function OrderSuccess() {
   const [, setPollCount] = useState<number>(0);
   const [isManualChecking, setIsManualChecking] = useState<boolean>(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [showCustomerPrint, setShowCustomerPrint] = useState<boolean>(false);
   const [fetchedOrder, setFetchedOrder] = useState<OrderDto | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef<boolean>(true);
@@ -607,20 +604,11 @@ export default function OrderSuccess() {
             </p>
           </div>
           
-          {/* Navigation & Print Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 relative z-10">
-            <button 
-              type="button"
-              onClick={() => setShowCustomerPrint(true)}
-              className="w-full bg-white hover:bg-orange-50 border-2 border-orange-300 text-orange-700 font-bold text-sm py-3.5 rounded-full transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xs"
-            >
-              <span className="material-symbols-outlined text-lg">receipt_long</span>
-              <span>In / Lưu Hóa Đơn</span>
-            </button>
-
+          {/* Navigation Action Buttons */}
+          <div className="pt-2 relative z-10">
             <Link 
               to="/" 
-              className="w-full bg-primary hover:bg-primary/95 text-white font-bold text-sm py-3.5 rounded-full transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-md shadow-primary/20"
+              className="w-full bg-primary hover:bg-primary/95 active:scale-[0.98] text-white font-bold text-sm py-3.5 rounded-full transition-all flex items-center justify-center gap-2 shadow-md shadow-primary/20"
             >
               <span className="material-symbols-outlined text-base">home</span>
               <span>Quay Về Trang Chủ</span>
@@ -628,46 +616,6 @@ export default function OrderSuccess() {
           </div>
         </div>
       </main>
-
-      {/* Customer Receipt Print Modal */}
-      <ReceiptPrintModal
-        isOpen={showCustomerPrint}
-        onClose={() => setShowCustomerPrint(false)}
-        data={{
-          orderCode: effectiveOrderCode || displayOrder.orderCode || 'ORD-DEFAULT',
-          tableNumber: guestSession?.tableNumber || (guestSession?.tableId ? `Bàn ${guestSession.tableId}` : 'Tại Quán'),
-          customerName: fetchedOrder?.customerName || guestSession?.guestName || 'Quý khách',
-          createdAt: fetchedOrder?.createdAt || new Date().toISOString(),
-          items: (fetchedOrder?.items && fetchedOrder.items.length > 0)
-            ? fetchedOrder.items.map(i => ({
-                name: i.menuItemName,
-                quantity: i.quantity,
-                price: i.unitPrice,
-                totalPrice: i.unitPrice * i.quantity,
-                sizeName: i.sizeName,
-                sugarLevel: i.sugarLevel,
-                iceLevel: i.iceLevel,
-                toppings: i.toppings?.map(t => t.toppingName),
-                note: i.note,
-              }))
-            : displayOrder.items.map(i => ({
-                name: i.name,
-                quantity: i.quantity,
-                price: i.price,
-                totalPrice: i.price * i.quantity,
-              })),
-          subTotal: fetchedOrder?.subTotal || displayOrder.total,
-          totalAmount: fetchedOrder?.totalAmount || displayOrder.total,
-          discountAmount: fetchedOrder?.discountAmount,
-          voucherCode: (fetchedOrder as any)?.voucherCode || undefined,
-          paymentMethod: isPaid ? 'payos' : 'cash',
-          paymentStatus: isPaid ? 'paid' : 'pending',
-          storeInfo: {
-            storeName: guestSession?.storeName || 'WebCafe Quán',
-            brandName: fetchedOrder?.tenantName || 'AI-SMARTSERVE',
-          },
-        }}
-      />
 
       <MobileBottomNav />
     </div>

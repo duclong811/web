@@ -146,7 +146,7 @@ export const useStore = create<StoreState>((set, get) => ({
   storeInfo: null,
   user: null,
 
-  currentStoreId: 1,
+  currentStoreId: 0,
   currentTable: null,
   cart: [],
   appliedVoucherCode: null,
@@ -441,20 +441,8 @@ export const useStore = create<StoreState>((set, get) => ({
 
       return newOrder;
     } catch (err) {
-      console.warn('API createOrder failed, fallback local order:', err);
-      const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      const fallbackOrder: Order = {
-        id: `o${Math.random().toString(36).substr(2, 9)}`,
-        orderCode: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-        tableNumber: tableStr,
-        items: [...cart],
-        total,
-        status: source === 'pos_staff' && paymentMethod === 'cash' ? 'paid' : 'awaiting_payment',
-        createdAt: new Date().toISOString()
-      };
-      const existingOrders = get().orders.filter(o => o.id !== fallbackOrder.id);
-      set({ orders: [fallbackOrder, ...existingOrders], activeOrder: fallbackOrder, cart: [] });
-      return fallbackOrder;
+      console.warn('API createOrder failed:', err);
+      throw err;
     }
   },
 
@@ -533,7 +521,8 @@ export const useStore = create<StoreState>((set, get) => ({
     const res = await authApi.loginStaff({ username, password });
     localStorage.setItem('token', res.token);
     localStorage.setItem('user', JSON.stringify(res));
-    set({ user: res, currentStoreId: res.storeId || 1 });
+    if (!res.storeId) throw new Error('Tài khoản chưa được gán cửa hàng.');
+    set({ user: res, currentStoreId: res.storeId });
   },
 
   logout: () => {

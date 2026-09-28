@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useStore } from '../../store/useStore';
+import { tableApi } from '../../api/apis';
 import { Coffee, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function QRLanding() {
@@ -14,14 +15,21 @@ export default function QRLanding() {
   useEffect(() => {
     const processQRCode = async () => {
       try {
-        // Extract from URL: /qr?store=1&table=5 or /table/1/5
+        // New QR format: /qr/{qrToken}. Legacy routes remain supported temporarily.
         let storeId: number;
         let tableId: string;
 
-        if (params.storeId && params.tableId) {
+        if (params.qrToken) {
+          const resolved = await tableApi.resolveQr(params.qrToken);
+          if (!resolved) throw new Error('QR không hợp lệ');
+          storeId = resolved.storeId;
+          tableId = resolved.tableId.toString();
+        } else if (params.storeId && params.tableId) {
           // Path params: /table/:storeId/:tableId
-          storeId = parseInt(params.storeId);
-          tableId = params.tableId;
+          const resolved = await tableApi.resolveLegacyQr(parseInt(params.storeId), parseInt(params.tableId));
+          if (!resolved) throw new Error('QR không hợp lệ');
+          storeId = resolved.storeId;
+          tableId = resolved.tableId.toString();
         } else {
           // Query params: /qr?store=1&table=5
           const storeParam = searchParams.get('store');
@@ -33,8 +41,12 @@ export default function QRLanding() {
             return;
           }
 
-          storeId = parseInt(storeParam);
-          tableId = tableParam;
+          const storeIdFromQr = Number.parseInt(storeParam, 10);
+          if (!Number.isInteger(storeIdFromQr) || storeIdFromQr <= 0) throw new Error('QR không hợp lệ');
+          const resolved = await tableApi.resolveLegacyByNumber(storeIdFromQr, tableParam);
+          if (!resolved) throw new Error('QR không hợp lệ');
+          storeId = resolved.storeId;
+          tableId = resolved.tableId.toString();
         }
 
         if (isNaN(storeId)) {
@@ -43,7 +55,11 @@ export default function QRLanding() {
           return;
         }
 
-        // Initialize guest session
+        if (!Number.isInteger(storeId) || storeId <= 0 || !tableId) {
+          throw new Error('QR không hợp lệ');
+        }
+
+        // Initialize guest session only after QR/store/table validation.
         initGuestSession(storeId, tableId);
 
         // Fetch menu for this store

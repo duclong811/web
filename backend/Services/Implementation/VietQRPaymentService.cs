@@ -1,4 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Infrastructure.Data;
@@ -22,17 +26,20 @@ namespace WebCafe.Backend.Services.Implementation
         private readonly IOrderService _orderService;
         private readonly IInventoryService _inventoryService;
         private readonly ILogger<VietQRPaymentService> _logger;
+        private readonly IConfiguration _configuration;
 
         public VietQRPaymentService(
             WebCafeDbContext db, 
             IOrderService orderService,
             IInventoryService inventoryService,
-            ILogger<VietQRPaymentService> logger)
+            ILogger<VietQRPaymentService> logger,
+            IConfiguration configuration)
         {
             _db = db;
             _orderService = orderService;
             _inventoryService = inventoryService;
             _logger = logger;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -205,19 +212,25 @@ namespace WebCafe.Backend.Services.Implementation
         }
 
         /// <summary>
-        /// Verify webhook signature (nếu ngân hàng cung cấp)
+        /// Verify webhook signature using the configured shared HMAC secret.
         /// </summary>
         public Task<bool> VerifyWebhookSignatureAsync(VietQRWebhookDto webhook, string signature)
         {
-            // Implement signature verification based on bank's documentation
-            // For now, return true (trong production cần implement đúng)
-            // Example: HMAC SHA256 với secret key
-            
-            // var secretKey = _configuration["VietQR:WebhookSecret"];
-            // var computedSignature = ComputeHMACSHA256(webhook, secretKey);
-            // return computedSignature == signature;
+            var secret = _configuration["VietQR:WebhookSecret"];
+            if (string.IsNullOrWhiteSpace(secret) || string.IsNullOrWhiteSpace(signature))
+                return Task.FromResult(false);
 
-            return Task.FromResult(true);
+            var canonical = string.Join("|", webhook.TransactionId.Trim(),
+                webhook.Amount.ToString("0.##", CultureInfo.InvariantCulture),
+                webhook.Description.Trim(), webhook.TransactionTime.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+                webhook.BankAccount.Trim(), (webhook.ReferenceNumber ?? string.Empty).Trim());
+            using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+            var expected = hmac.ComputeHash(Encoding.UTF8.GetBytes(canonical));
+            var normalized = signature.Trim();
+            byte[] provided;
+            try { provided = Convert.FromHexString(normalized); }
+            catch { try { provided = Convert.FromBase64String(normalized); } catch { return Task.FromResult(false); } }
+            return Task.FromResult(provided.Length == expected.Length && CryptographicOperations.FixedTimeEquals(provided, expected));
         }
 
         private static VietQRPaymentDto MapToVietQRDto(Payment payment, Order order)

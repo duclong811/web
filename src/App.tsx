@@ -38,6 +38,7 @@ import SystemAdminDashboard from './pages/system-admin/SystemAdminDashboard';
 import TenantManagement from './pages/system-admin/TenantManagement';
 import SaaSPlansSettings from './pages/system-admin/SaaSPlansSettings';
 import AnalyticsTracker from './components/AnalyticsTracker';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
 
         {/* QR Code Landing - Outside CustomerLayout for custom styling */}
         <Route path="/qr" element={<QRLanding />} />
+        <Route path="/qr/:qrToken" element={<QRLanding />} />
         <Route path="/table/:storeId/:tableId" element={<QRLanding />} />
 
         {/* Customer Routes - Wrapped in CustomerLayout */}
@@ -60,12 +62,24 @@ function App() {
           <Route path="/cart" element={<Cart />} />
           <Route path="/order-success" element={<OrderSuccess />} />
           <Route path="/tracking" element={<OrderTracking />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/history" element={<OrderHistory />} />
+          <Route path="/profile" element={(
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <Profile />
+            </ProtectedRoute>
+          )} />
+          <Route path="/history" element={(
+            <ProtectedRoute allowedRoles={['Customer']}>
+              <OrderHistory />
+            </ProtectedRoute>
+          )} />
         </Route>
 
         {/* Staff Routes - Wrapped in StaffLayout */}
-        <Route path="/staff" element={<StaffLayout />}>
+        <Route path="/staff" element={(
+          <ProtectedRoute allowedRoles={['Staff', 'Kitchen', 'Cashier', 'Barista', 'Manager', 'Owner']}>
+            <StaffLayout />
+          </ProtectedRoute>
+        )}>
           <Route index element={<Navigate to="orders" replace />} />
           <Route path="orders" element={<StaffOrderDashboard />} />
           <Route path="dashboard" element={<StaffDashboard />} />
@@ -73,7 +87,11 @@ function App() {
         </Route>
 
         {/* Store Owner / Store Admin Routes - Wrapped in AdminLayout */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route path="/admin" element={(
+          <ProtectedRoute allowedRoles={['Owner', 'TenantOwner', 'Manager']}>
+            <AdminLayout />
+          </ProtectedRoute>
+        )}>
           <Route index element={<AdminDashboard />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="menu" element={<MenuManagement />} />
@@ -85,7 +103,11 @@ function App() {
         </Route>
 
         {/* Super Admin Platform Routes - Wrapped in SystemAdminLayout */}
-        <Route path="/system-admin" element={<SystemAdminLayout />}>
+        <Route path="/system-admin" element={(
+          <ProtectedRoute allowedRoles={['SystemAdmin']}>
+            <SystemAdminLayout />
+          </ProtectedRoute>
+        )}>
           <Route index element={<SystemAdminDashboard />} />
           <Route path="tenants" element={<TenantManagement />} />
           <Route path="plans" element={<SaaSPlansSettings />} />

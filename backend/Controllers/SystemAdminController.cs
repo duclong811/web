@@ -101,6 +101,33 @@ namespace WebCafe.Backend.Controllers
             return Ok(ApiResponse<PlatformStatsDto>.Ok(stats, "Lấy thống kê nền tảng thành công."));
         }
 
+        [HttpGet("subscriptions/report")]
+        public async Task<ActionResult<ApiResponse<SubscriptionReportDto>>> GetSubscriptionReport()
+        {
+            var now = DateTime.UtcNow;
+            var active = await _db.TenantSubscriptions.CountAsync(s => s.Status == "active");
+            var trialing = await _db.TenantSubscriptions.CountAsync(s => s.Status == "trialing" && s.TrialEndsAt > now);
+            var grace = await _db.TenantSubscriptions.CountAsync(s => s.Status == "grace" && s.GraceEndsAt > now);
+            var revenue = await _db.SubscriptionBillingRecords
+                .Where(b => b.Status == "paid")
+                .SumAsync(b => (decimal?)b.Amount) ?? 0m;
+            var plans = await _db.SubscriptionPlans
+                .Select(p => new SubscriptionPlanReportDto
+                {
+                    PlanCode = p.Code,
+                    TenantCount = _db.TenantSubscriptions.Count(s => s.PlanId == p.PlanId && (s.Status == "active" || s.Status == "trialing")),
+                    MonthlyRevenue = p.MonthlyPrice * _db.TenantSubscriptions.Count(s => s.PlanId == p.PlanId && s.Status == "active")
+                }).ToListAsync();
+            return Ok(ApiResponse<SubscriptionReportDto>.Ok(new SubscriptionReportDto
+            {
+                ActiveSubscriptions = active,
+                TrialingSubscriptions = trialing,
+                GracePeriodSubscriptions = grace,
+                PaidRevenue = revenue,
+                Plans = plans
+            }));
+        }
+
         /// <summary>
         /// Lấy danh sách tất cả các quán cafe đối tác trên hệ thống
         /// </summary>

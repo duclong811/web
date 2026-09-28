@@ -158,6 +158,7 @@ export interface TableDto {
   capacity: number;
   location?: string | null;
   qrCodeUrl?: string | null;
+  qrToken?: string | null;
   status: 'Available' | 'Occupied' | 'Reserved';
   isActive: boolean;
   activeOrderId?: number | null;

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using PayOS;
 using PayOS.Models.V2.PaymentRequests;
@@ -21,20 +22,26 @@ namespace WebCafe.Backend.Services.Implementation
         private readonly PayOSClient _defaultPayOS;
         private readonly IOrderNotificationService _notificationService;
         private readonly IInventoryService _inventoryService;
+        private readonly IOrderService _orderService;
         private readonly ILogger<PayOSService> _logger;
+        private readonly IConfiguration _configuration;
 
         public PayOSService(
             WebCafeDbContext db,
             PayOSClient defaultPayOS,
             IOrderNotificationService notificationService,
             IInventoryService inventoryService,
-            ILogger<PayOSService> logger)
+            IOrderService orderService,
+            ILogger<PayOSService> logger,
+            IConfiguration configuration)
         {
             _db = db;
             _defaultPayOS = defaultPayOS;
             _notificationService = notificationService;
             _inventoryService = inventoryService;
+            _orderService = orderService;
             _logger = logger;
+            _configuration = configuration;
         }
 
         public async Task<PayOSPaymentDto> CreatePaymentLinkAsync(int orderId, string? orderCode = null, string? returnUrl = null, string? cancelUrl = null)
@@ -113,10 +120,10 @@ namespace WebCafe.Backend.Services.Implementation
             // Default URLs
             string effectiveReturnUrl = !string.IsNullOrWhiteSpace(returnUrl) 
                 ? returnUrl 
-                : $"http://localhost:5173/order-success?orderId={order.OrderId}&orderCode={order.OrderCode}&status=PAID";
+                : $"{GetFrontendPublicUrl()}/order-success?orderId={order.OrderId}&orderCode={order.OrderCode}&status=PAID";
             string effectiveCancelUrl = !string.IsNullOrWhiteSpace(cancelUrl) 
                 ? cancelUrl 
-                : $"http://localhost:5173/cart?orderId={order.OrderId}&status=CANCELLED";
+                : $"{GetFrontendPublicUrl()}/cart?orderId={order.OrderId}&status=CANCELLED";
 
             var paymentData = new CreatePaymentLinkRequest
             {
@@ -227,6 +234,7 @@ namespace WebCafe.Backend.Services.Implementation
                     {
                         // Kích hoạt đơn hàng, trừ kho, báo chuông cho Bếp và chuyển bàn sang bận
                         await ActivateOrderAfterPaymentAsync(payment.Order);
+                        await _orderService.ApplyPostPaymentBenefitsAsync(payment.Order.OrderId);
                     }
 
                     await _db.SaveChangesAsync();
@@ -331,6 +339,7 @@ namespace WebCafe.Backend.Services.Implementation
             if (payment.Order != null)
             {
                 await ActivateOrderAfterPaymentAsync(payment.Order);
+                await _orderService.ApplyPostPaymentBenefitsAsync(payment.Order.OrderId);
             }
 
             await _db.SaveChangesAsync();
@@ -458,8 +467,8 @@ namespace WebCafe.Backend.Services.Implementation
                     {
                         new PaymentLinkItem { Name = "Test Connection", Quantity = 1, Price = 2000 }
                     },
-                    CancelUrl = "http://localhost:5173/cancel",
-                    ReturnUrl = "http://localhost:5173/success"
+                    CancelUrl = $"{GetFrontendPublicUrl()}/cancel",
+                    ReturnUrl = $"{GetFrontendPublicUrl()}/success"
                 };
 
                 CreatePaymentLinkResponse res = await testClient.PaymentRequests.CreateAsync(testData);
@@ -506,6 +515,16 @@ namespace WebCafe.Backend.Services.Implementation
 
             _logger.LogInformation("Using default system PayOS credentials");
             return _defaultPayOS;
+        }
+
+        private string GetFrontendPublicUrl()
+        {
+            var url = _configuration["Frontend:PublicUrl"]?.TrimEnd('/');
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                throw new InvalidOperationException("Frontend:PublicUrl chưa được cấu hình.");
+            }
+            return url;
         }
 
         private static string? MaskSecretKey(string? secret)

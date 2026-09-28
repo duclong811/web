@@ -15,7 +15,7 @@ const DEFAULT_CATEGORIES = [
 
 export default function Menu() {
   const [searchParams] = useSearchParams();
-  const storeIdParam = searchParams.get('storeId') ? parseInt(searchParams.get('storeId')!) : 1;
+  const storeIdParam = searchParams.get('storeId') ? parseInt(searchParams.get('storeId')!) : null;
   const tableParam = searchParams.get('table') || null;
 
   const { 
@@ -49,13 +49,13 @@ export default function Menu() {
       setTable(session.tableId);
       fetchMenu(session.storeId);
     } else {
-      setStoreId(storeIdParam);
+      if (storeIdParam) setStoreId(storeIdParam);
       if (tableParam) setTable(tableParam);
-      fetchMenu(storeIdParam);
+      if (storeIdParam) fetchMenu(storeIdParam);
     }
 
     const loadStock = () => {
-      const saved = localStorage.getItem(`webcafe_stock_store_${storeIdParam}`);
+      const saved = storeIdParam ? localStorage.getItem(`webcafe_stock_store_${storeIdParam}`) : null;
       setStockStatus(saved ? JSON.parse(saved) : {});
     };
 

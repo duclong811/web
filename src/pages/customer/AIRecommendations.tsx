@@ -15,8 +15,8 @@ export default function AIRecommendations() {
   const [addedToast, setAddedToast] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'chat' | 'suggestions'>('chat');
 
-  const tenantId = storeInfo?.tenantId || 1;
-  const storeId = currentStoreId || storeInfo?.storeId || 1;
+  const tenantId = storeInfo?.tenantId || 0;
+  const storeId = currentStoreId || storeInfo?.storeId || 0;
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   // Lấy món gần nhất trong giỏ hàng làm điểm nhấn

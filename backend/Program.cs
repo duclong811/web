@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Middleware;
 using WebCafe.Backend.Common.Models;
@@ -40,9 +41,16 @@ builder.Services.RegisterApplicationServices(builder.Configuration);
 
 var app = builder.Build();
 
-// Ensure Database Created & Seed Initial Data (Code First Auto-Migration)
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+// Development convenience only. Production migrations must run as a deployment step.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<WebCafeDbContext>();
     try
     {
@@ -148,26 +156,36 @@ using (var scope = app.Services.CreateScope())
 // HTTP Pipeline Middleware
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
-// Cấu hình Swagger
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// Swagger is not exposed in production.
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "WebCafe API v1");
-    c.RoutePrefix = "swagger";
-});
-
-// Chuyển hướng trang chủ "/" sang "/swagger"
-app.MapGet("/", () => Results.Redirect("/swagger"));
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "WebCafe API v1");
+        c.RoutePrefix = "swagger";
+    });
+    app.MapGet("/", () => Results.Redirect("/swagger"));
+}
 
 app.UseStaticFiles();
 
 // CORS phải đặt trước Authentication & Authorization
 app.UseCors("AllowAll");
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
+app.MapGet("/health/ready", async (WebCafeDbContext db) =>
+{
+    var ready = await db.Database.CanConnectAsync();
+    return ready ? Results.Ok(new { status = "ready" }) : Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
+});
 app.MapHub<OrderHub>("/hubs/orders");
 
 app.Run();
+
+public partial class Program { }

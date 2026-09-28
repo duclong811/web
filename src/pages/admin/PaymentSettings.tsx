@@ -8,7 +8,7 @@ import { ShieldCheck, CheckCircle2, AlertCircle, RefreshCw, Key, Landmark, Exter
 export default function PaymentSettings() {
   const { user } = useAuthStore();
   const { currentStoreId } = useStore();
-  const effectiveStoreId = user?.storeId || currentStoreId || 1;
+  const effectiveStoreId = user?.storeId || currentStoreId;
 
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);

@@ -2,6 +2,21 @@ using System.ComponentModel.DataAnnotations;
 
 namespace WebCafe.Backend.Models.DTOs.SystemAdmin
 {
+    public class SubscriptionReportDto
+    {
+        public int ActiveSubscriptions { get; set; }
+        public int TrialingSubscriptions { get; set; }
+        public int GracePeriodSubscriptions { get; set; }
+        public decimal PaidRevenue { get; set; }
+        public List<SubscriptionPlanReportDto> Plans { get; set; } = new();
+    }
+
+    public class SubscriptionPlanReportDto
+    {
+        public string PlanCode { get; set; } = string.Empty;
+        public int TenantCount { get; set; }
+        public decimal MonthlyRevenue { get; set; }
+    }
     /// <summary>
     /// Thống kê doanh thu theo ngày
     /// </summary>

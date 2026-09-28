@@ -126,9 +126,9 @@ export default function Cart() {
       const tableToUse = guestSession?.tableId || currentTable || 'T01';
       const order = await createOrder(tableToUse, customerPhone, customerName, orderNote, 'qr_table', undefined, pointsToUse);
       navigate(`/order-success?code=${order.orderCode}&orderId=${order.id}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Order creation error:', err);
-      navigate('/order-success');
+      setPointsError(err?.response?.data?.message || err?.message || 'Không thể tạo đơn hàng. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }

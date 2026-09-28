@@ -21,6 +21,9 @@ namespace WebCafe.Backend.Models.Entities
         [MaxLength(500)]
         public string? QRCodeUrl { get; set; }
 
+        [Required, MaxLength(64)]
+        public string QrToken { get; set; } = Guid.NewGuid().ToString("N");
+
         [Required, MaxLength(20)]
         public string Status { get; set; } = "Available"; // Available, Occupied, Reserved
 
@@ -241,6 +244,10 @@ namespace WebCafe.Backend.Models.Entities
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+
+        // Set once when payment-side effects (loyalty, voucher, inventory) are finalized.
+        public DateTime? PaymentActivatedAt { get; set; }
+        public int? AppliedVoucherId { get; set; }
 
         [ForeignKey(nameof(TenantId))]
         public Tenant? Tenant { get; set; }

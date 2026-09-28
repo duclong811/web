@@ -8,8 +8,9 @@ const getApiHost = () => {
   return 'localhost';
 };
 
-export const API_BASE_URL = `http://${getApiHost()}:5277/api`;
-export const HUB_URL = `http://${getApiHost()}:5277/hubs/orders`;
+const defaultBackendOrigin = `http://${getApiHost()}:5277`;
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${defaultBackendOrigin}/api`;
+export const HUB_URL = import.meta.env.VITE_HUB_URL || `${defaultBackendOrigin}/hubs/orders`;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

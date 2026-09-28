@@ -73,8 +73,8 @@ export default function AiSommelierChat({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const storeId = currentStoreId || storeInfo?.storeId || 1;
-  const tenantId = storeInfo?.tenantId || 1;
+  const storeId = currentStoreId || storeInfo?.storeId || 0;
+  const tenantId = storeInfo?.tenantId || 0;
 
   const defaultWelcomeMessage: ChatMessage = {
     id: 'welcome',

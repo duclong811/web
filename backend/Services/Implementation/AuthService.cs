@@ -37,7 +37,7 @@ namespace WebCafe.Backend.Services.Implementation
             var tenantId = staff.Store?.TenantId ?? 0;
             var storeId = staff.StoreId;
 
-            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtKey = GetRequiredJwtSetting("SecretKey");
             var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
             var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
 
@@ -76,7 +76,7 @@ namespace WebCafe.Backend.Services.Implementation
                 throw new AppException("Tên đăng nhập hoặc mật khẩu chủ quán không chính xác.");
             }
 
-            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtKey = GetRequiredJwtSetting("SecretKey");
             var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
             var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
 
@@ -116,7 +116,7 @@ namespace WebCafe.Backend.Services.Implementation
                 throw new AppException("Tên đăng nhập hoặc mật khẩu quản trị viên không chính xác.");
             }
 
-            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtKey = GetRequiredJwtSetting("SecretKey");
             var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
             var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
 
@@ -124,7 +124,7 @@ namespace WebCafe.Backend.Services.Implementation
                 admin.AdminId.ToString(),
                 admin.Username,
                 AppRoles.SystemAdmin,
-                0, // SystemAdmin không thuộc tenant nào
+                null, // SystemAdmin không thuộc tenant nào
                 null,
                 jwtKey,
                 jwtIssuer,
@@ -161,7 +161,7 @@ namespace WebCafe.Backend.Services.Implementation
             customer.LastVisitAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtKey = GetRequiredJwtSetting("SecretKey");
             var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
             var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
 
@@ -173,7 +173,8 @@ namespace WebCafe.Backend.Services.Implementation
                 null,
                 jwtKey,
                 jwtIssuer,
-                jwtAudience
+                jwtAudience,
+                customerId: customer.CustomerId
             );
 
             return new LoginResponse
@@ -219,7 +220,7 @@ namespace WebCafe.Backend.Services.Implementation
             await _db.SaveChangesAsync();
 
             // Tự động tạo Token để đăng nhập ngay lập tức (Auto-login)
-            var jwtKey = _config["Jwt:SecretKey"] ?? "WebCafeSuperSecretKeyForJwtAuthentication2026!@#$%^";
+            var jwtKey = GetRequiredJwtSetting("SecretKey");
             var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
             var jwtAudience = _config["Jwt:Audience"] ?? "WebCafeClients";
 
@@ -231,7 +232,8 @@ namespace WebCafe.Backend.Services.Implementation
                 null,
                 jwtKey,
                 jwtIssuer,
-                jwtAudience
+                jwtAudience,
+                customerId: customer.CustomerId
             );
 
             return new RegisterResponse
@@ -245,6 +247,12 @@ namespace WebCafe.Backend.Services.Implementation
                 Role = AppRoles.Customer,
                 TenantId = customer.TenantId
             };
+        }
+
+        private string GetRequiredJwtSetting(string key)
+        {
+            return _config[$"Jwt:{key}"]
+                ?? throw new InvalidOperationException($"Jwt:{key} chưa được cấu hình.");
         }
     }
 }

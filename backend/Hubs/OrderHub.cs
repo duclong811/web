@@ -1,5 +1,8 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
+using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Models.DTOs.Order;
+using WebCafe.Backend.Services.Abstraction;
 
 namespace WebCafe.Backend.Hubs
 {
@@ -12,18 +15,31 @@ namespace WebCafe.Backend.Hubs
 
     public class OrderHub : Hub<IOrderHubClient>
     {
+        private readonly ITenantAccessService _tenantAccess;
+
+        public OrderHub(ITenantAccessService tenantAccess)
+        {
+            _tenantAccess = tenantAccess;
+        }
+
+        [Authorize(Policy = AppPolicies.StaffAccess)]
         public async Task JoinStoreGroup(int storeId)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             await Groups.AddToGroupAsync(Context.ConnectionId, $"store_{storeId}");
         }
 
+        [Authorize(Policy = AppPolicies.StaffAccess)]
         public async Task LeaveStoreGroup(int storeId)
         {
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"store_{storeId}");
         }
 
+        [Authorize(Policy = AppPolicies.StaffAccess)]
         public async Task JoinTableGroup(int tableId)
         {
+            await _tenantAccess.EnsureTableAccessAsync(tableId);
             await Groups.AddToGroupAsync(Context.ConnectionId, $"table_{tableId}");
         }
     }

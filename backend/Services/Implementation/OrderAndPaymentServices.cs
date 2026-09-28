@@ -1,3 +1,4 @@
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Exceptions;
@@ -131,7 +132,7 @@ namespace WebCafe.Backend.Services.Implementation
             _inventoryService = inventoryService;
         }
 
-        public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto)
+        public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, int? authenticatedCustomerId = null)
         {
             if (dto.Items == null || !dto.Items.Any())
             {
@@ -152,41 +153,25 @@ namespace WebCafe.Backend.Services.Implementation
             if (dto.TableId.HasValue)
             {
                 table = await _db.Tables.FirstOrDefaultAsync(t => t.TableId == dto.TableId.Value && t.StoreId == dto.StoreId);
-                if (table != null)
+                if (table == null)
                 {
-                    table.Status = TableStatuses.Occupied;
+                    throw new NotFoundException("Bàn không tồn tại hoặc không thuộc cửa hàng này.");
                 }
             }
 
             // 2. Xử lý Khách hàng & Điểm thưởng
             Customer? customer = null;
-            if (!string.IsNullOrWhiteSpace(dto.CustomerPhone))
+            if (authenticatedCustomerId.HasValue)
             {
-                var phone = dto.CustomerPhone.Trim();
-                customer = await _db.Customers.FirstOrDefaultAsync(c => c.TenantId == store.TenantId && c.Phone == phone);
+                customer = await _db.Customers.FirstOrDefaultAsync(c =>
+                    c.CustomerId == authenticatedCustomerId.Value && c.TenantId == store.TenantId);
                 if (customer == null)
                 {
-                    customer = new Customer
-                    {
-                        TenantId = store.TenantId,
-                        Phone = phone,
-                        Name = dto.CustomerName?.Trim() ?? "Khách hàng",
-                        TotalPoints = 0,
-                        VisitCount = 1,
-                        CreatedAt = DateTime.UtcNow,
-                        LastVisitAt = DateTime.UtcNow
-                    };
-                    _db.Customers.Add(customer);
-                    await _db.SaveChangesAsync();
+                    throw new ForbiddenException("Tài khoản khách hàng không thuộc cửa hàng này.");
                 }
-                else
+                if (!string.IsNullOrWhiteSpace(dto.CustomerName))
                 {
-                    customer.VisitCount += 1;
-                    customer.LastVisitAt = DateTime.UtcNow;
-                    if (!string.IsNullOrWhiteSpace(dto.CustomerName))
-                    {
-                        customer.Name = dto.CustomerName.Trim();
-                    }
+                    customer.Name = dto.CustomerName.Trim();
                 }
             }
 
@@ -267,10 +252,6 @@ namespace WebCafe.Backend.Services.Implementation
                 {
                     discountAmount = vResult.DiscountAmount;
                     appliedVoucher = await _db.Vouchers.FindAsync(vResult.VoucherId.Value);
-                    if (appliedVoucher != null)
-                    {
-                        appliedVoucher.UsedCount += 1;
-                    }
                 }
             }
 
@@ -281,15 +262,6 @@ namespace WebCafe.Backend.Services.Implementation
             {
                 pointsUsed = dto.PointsToUse;
                 pointsDiscount = pointsUsed * store.Tenant.PointsToMoney;
-                customer.TotalPoints -= pointsUsed;
-
-                _db.LoyaltyPoints.Add(new LoyaltyPoint
-                {
-                    CustomerId = customer.CustomerId,
-                    Points = -pointsUsed,
-                    Type = "redeem",
-                    Description = "Sử dụng điểm giảm giá đơn hàng"
-                });
             }
 
             decimal totalDiscount = discountAmount + pointsDiscount;
@@ -331,6 +303,7 @@ namespace WebCafe.Backend.Services.Implementation
                 DiscountAmount = totalDiscount,
                 PointsUsed = pointsUsed,
                 PointsEarned = pointsEarned,
+                AppliedVoucherId = appliedVoucher?.VoucherId,
                 TotalAmount = totalAmount,
                 Note = dto.Note,
                 CreatedAt = DateTime.UtcNow,
@@ -339,20 +312,6 @@ namespace WebCafe.Backend.Services.Implementation
 
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
-
-            // Ghi nhận VoucherUsage
-            if (appliedVoucher != null)
-            {
-                _db.VoucherUsages.Add(new VoucherUsage
-                {
-                    VoucherId = appliedVoucher.VoucherId,
-                    CustomerId = customer?.CustomerId,
-                    OrderId = order.OrderId,
-                    DiscountAmount = discountAmount,
-                    UsedAt = DateTime.UtcNow
-                });
-                await _db.SaveChangesAsync();
-            }
 
             // Nếu là đơn tiền mặt tại quầy (isCashPos): tạo Payment Cash + trừ kho
             if (isCashPos)
@@ -377,6 +336,7 @@ namespace WebCafe.Backend.Services.Implementation
                 {
                     Console.WriteLine($"Warning: Deduct inventory failed for cash POS order {order.OrderCode}: {ex.Message}");
                 }
+                await ApplyPostPaymentBenefitsAsync(order.OrderId);
             }
 
             var resultDto = (await GetByIdAsync(order.OrderId))!;
@@ -395,6 +355,81 @@ namespace WebCafe.Backend.Services.Implementation
             }
 
             return resultDto;
+        }
+
+        public async Task ApplyPostPaymentBenefitsAsync(int orderId)
+        {
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            var order = await _db.Orders
+                .Include(o => o.Customer)
+                .Include(o => o.Tenant)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+
+            if (order == null) throw new NotFoundException("Không tìm thấy đơn hàng.");
+
+            // Idempotency: post-payment effects must only be applied once.
+            if (order.PaymentActivatedAt.HasValue)
+            {
+                return;
+            }
+
+            if (order.Customer != null && order.PointsUsed > 0)
+            {
+                if (order.Customer.TotalPoints < order.PointsUsed)
+                    throw new AppException("Số điểm hiện tại không đủ để hoàn tất đơn hàng.");
+
+                order.Customer.TotalPoints -= order.PointsUsed;
+                _db.LoyaltyPoints.Add(new LoyaltyPoint
+                {
+                    CustomerId = order.Customer.CustomerId,
+                    OrderId = order.OrderId,
+                    Points = -order.PointsUsed,
+                    Type = "redeem",
+                    Description = "Sử dụng điểm giảm giá đơn hàng"
+                });
+            }
+
+            if (order.Customer != null)
+            {
+                order.Customer.TotalSpent += order.TotalAmount;
+                order.Customer.VisitCount += 1;
+                order.Customer.LastVisitAt = DateTime.UtcNow;
+                if (order.PointsEarned > 0)
+                {
+                    order.Customer.TotalPoints += order.PointsEarned;
+                    _db.LoyaltyPoints.Add(new LoyaltyPoint
+                    {
+                        CustomerId = order.Customer.CustomerId,
+                        OrderId = order.OrderId,
+                        Points = order.PointsEarned,
+                        Type = "earn",
+                        Description = "Tích điểm từ đơn hàng đã thanh toán"
+                    });
+                }
+            }
+
+            if (order.AppliedVoucherId.HasValue)
+            {
+                var voucher = await _db.Vouchers.FirstOrDefaultAsync(v => v.VoucherId == order.AppliedVoucherId.Value);
+                var alreadyUsed = await _db.VoucherUsages.AnyAsync(vu => vu.OrderId == order.OrderId);
+                if (voucher != null && !alreadyUsed)
+                {
+                    voucher.UsedCount += 1;
+                    _db.VoucherUsages.Add(new VoucherUsage
+                    {
+                        VoucherId = voucher.VoucherId,
+                        CustomerId = order.CustomerId,
+                        OrderId = order.OrderId,
+                        DiscountAmount = Math.Max(0, order.DiscountAmount - (order.PointsUsed * (order.Tenant?.PointsToMoney ?? 0))),
+                        UsedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            order.PaymentActivatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
 
         public async Task<OrderDto?> GetByIdAsync(int orderId)
@@ -484,6 +519,11 @@ namespace WebCafe.Backend.Services.Implementation
             var order = await _db.Orders.Include(o => o.Table).FirstOrDefaultAsync(o => o.OrderId == orderId);
             if (order == null) throw new NotFoundException("Không tìm thấy đơn hàng.");
 
+            if (!IsAllowedTransition(order.Status, newStatus))
+            {
+                throw new AppException($"Không thể chuyển trạng thái đơn từ '{order.Status}' sang '{newStatus}'.");
+            }
+
             order.Status = newStatus;
             order.UpdatedAt = DateTime.UtcNow;
             if (staffId.HasValue) order.StaffId = staffId.Value;
@@ -497,24 +537,6 @@ namespace WebCafe.Backend.Services.Implementation
                     await _notificationService.NotifyTableStatusChangedAsync(order.StoreId, order.Table.TableId, TableStatuses.Available);
                 }
 
-                // Tích điểm cho khách khi đơn hoàn tất
-                if ((newStatus == OrderStatus.Paid || newStatus == "completed" || newStatus == OrderStatus.Served) && order.CustomerId.HasValue && order.PointsEarned > 0)
-                {
-                    var customer = await _db.Customers.FindAsync(order.CustomerId.Value);
-                    if (customer != null)
-                    {
-                        customer.TotalPoints += order.PointsEarned;
-                        customer.TotalSpent += order.TotalAmount;
-                        _db.LoyaltyPoints.Add(new LoyaltyPoint
-                        {
-                            CustomerId = customer.CustomerId,
-                            OrderId = order.OrderId,
-                            Points = order.PointsEarned,
-                            Type = "earn",
-                            Description = $"Tích điểm đơn hàng {order.OrderCode}"
-                        });
-                    }
-                }
             }
 
             // Tự động trừ kho theo BOM khi hoàn thành pha chế (ready), phục vụ (served) hoặc thanh toán (paid/completed)
@@ -536,6 +558,22 @@ namespace WebCafe.Backend.Services.Implementation
             await _notificationService.NotifyOrderStatusChangedAsync(order.StoreId, order.TableId, order.OrderId, newStatus, order.OrderCode);
 
             return (await GetByIdAsync(order.OrderId))!;
+        }
+
+        private static bool IsAllowedTransition(string current, string next)
+        {
+            if (string.Equals(current, next, StringComparison.OrdinalIgnoreCase)) return true;
+            return current switch
+            {
+                OrderStatus.AwaitingPayment => next == OrderStatus.Cancelled,
+                OrderStatus.Pending => next is OrderStatus.Confirmed or OrderStatus.Cancelled or OrderStatus.Paid,
+                OrderStatus.Confirmed => next is OrderStatus.Preparing or OrderStatus.Cancelled or OrderStatus.Paid,
+                OrderStatus.Preparing => next is OrderStatus.Ready or OrderStatus.Cancelled,
+                OrderStatus.Ready => next is OrderStatus.Served or OrderStatus.Cancelled,
+                OrderStatus.Served => next is OrderStatus.Paid or OrderStatus.Completed,
+                OrderStatus.Paid => next == OrderStatus.Completed,
+                _ => false
+            };
         }
 
         private static OrderDto MapToDto(Order o)
@@ -643,6 +681,8 @@ namespace WebCafe.Backend.Services.Implementation
                 // Có thể gửi notification để staff xử lý thủ công
                 Console.WriteLine($"Warning: Failed to deduct inventory for order {order.OrderCode}: {ex.Message}");
             }
+
+            await _orderService.ApplyPostPaymentBenefitsAsync(order.OrderId);
 
             string? qrUrl = null;
             if (dto.Method == PaymentMethods.VietQR && order.Store != null)

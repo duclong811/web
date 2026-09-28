@@ -5,6 +5,7 @@ import StatusFilter from '../../components/staff/StatusFilter';
 import { notificationService } from '../../services/notificationService';
 import { useStore } from '../../store/useStore';
 import type { OrderStatus } from '../../store/useStore';
+import { useAuthStore } from '../../store/authStore';
 
 interface Order {
   orderId: number;
@@ -34,6 +35,7 @@ type LocalOrderStatus = 'all' | 'pending' | 'preparing' | 'ready' | 'paid';
 
 export default function StaffOrderDashboard() {
   const { orders: storeOrders } = useStore();
+  const storeId = useAuthStore(state => state.user?.storeId);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [activeFilter, setActiveFilter] = useState<LocalOrderStatus>('all');
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,9 @@ export default function StaffOrderDashboard() {
     try {
       setLoading(true);
       setError('');
-      const storeId = 1;
+      if (!storeId) {
+        throw new Error('Tài khoản chưa được gán cửa hàng.');
+      }
       const response = await apiClient.get(`/orders/active/store/${storeId}`);
       const ordersData = response.data.data || [];
       
@@ -143,7 +147,7 @@ export default function StaffOrderDashboard() {
       clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run once on mount
+  }, [storeId]);
 
   // Filter orders by status (memoized to prevent infinite loops)
   const filterOrders = useCallback((ordersList: Order[], status: LocalOrderStatus) => {

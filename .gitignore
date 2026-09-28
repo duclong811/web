@@ -41,3 +41,9 @@ dist-ssr
 # Environment variables
 .env.local
 .env.*.local
+
+test-results/
+
+playwright-report/
+
+blob-report/

@@ -28,5 +28,9 @@ jobs:
         run: npx tsc -b --pretty false
       - name: Lint frontend
         run: npm run lint
+      - name: Install EF Core CLI
+        run: |
+          dotnet tool install --global dotnet-ef --version 9.0.9
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
       - name: Check migration model is synchronized
         run: dotnet ef migrations has-pending-model-changes --project backend/WebCafe.Backend.csproj --startup-project backend/WebCafe.Backend.csproj --configuration Release

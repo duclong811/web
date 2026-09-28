@@ -197,7 +197,10 @@ export const useStore = create<StoreState>((set, get) => ({
       storeName,
       timestamp: new Date().toISOString(),
     };
-    
+
+    const previousStoreId = get().currentStoreId;
+    const isSwitchingStore = previousStoreId > 0 && previousStoreId !== storeId;
+
     // Persist to localStorage
     localStorage.setItem('guestSession', JSON.stringify(session));
     
@@ -207,6 +210,10 @@ export const useStore = create<StoreState>((set, get) => ({
       currentTable: typeof tableId === 'string' ? tableId : displayTableNumber,
       currentTableId: numericTableId > 0 ? numericTableId : null,
       currentTableNumber: displayTableNumber,
+      // Tự động làm sạch giỏ hàng khi đổi sang quán khác để tránh lẫn món
+      cart: isSwitchingStore ? [] : get().cart,
+      appliedVoucherCode: isSwitchingStore ? null : get().appliedVoucherCode,
+      voucherDiscount: isSwitchingStore ? 0 : get().voucherDiscount,
     });
   },
 

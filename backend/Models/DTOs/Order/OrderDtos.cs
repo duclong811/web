@@ -101,6 +101,7 @@ namespace WebCafe.Backend.Models.DTOs.Order
     {
         public int OrderId { get; set; }
         public int TenantId { get; set; }
+        public string TenantName { get; set; } = string.Empty;
         public int StoreId { get; set; }
         public string StoreName { get; set; } = string.Empty;
         public string OrderCode { get; set; } = string.Empty;

@@ -14,6 +14,7 @@ export default function Cart() {
     updateQuantity, 
     removeFromCart, 
     createOrder, 
+    currentStoreId,
     currentTable,
     currentTableId,
     currentTableNumber,
@@ -47,11 +48,12 @@ export default function Cart() {
   const discountAmount = voucherDiscount ? (subtotal * voucherDiscount / 100) : 0;
   const serviceFee = cart.length > 0 ? 0 : 0;
 
-  // Lấy thông tin điểm tích lũy của khách khi đã đăng nhập
+  // Lấy thông tin điểm tích lũy của khách theo đúng quán đang ghé
   useEffect(() => {
     if (isAuthenticated && user?.username) {
       setLoadingProfile(true);
-      customerApi.getProfile(user.username)
+      const storeIdForProfile = guestSession?.storeId || currentStoreId;
+      customerApi.getProfile({ phone: user.username, storeId: storeIdForProfile > 0 ? storeIdForProfile : undefined })
         .then(profile => {
           setCustomerProfile(profile);
           if (profile.phone && !customerPhone) {
@@ -70,7 +72,7 @@ export default function Cart() {
       setPointsToUse(0);
       setPointsInput('');
     }
-  }, [isAuthenticated, user?.username]);
+  }, [isAuthenticated, user?.username, guestSession?.storeId, currentStoreId]);
 
   const pointsToMoney = customerProfile?.pointsToMoney || 200;
   const maxPointsByOrder = Math.floor(Math.max(0, subtotal - discountAmount) / pointsToMoney);
@@ -350,7 +352,7 @@ export default function Cart() {
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-bold text-on-surface-variant flex items-center gap-1">
                       <span className="material-symbols-outlined text-amber-500 text-base" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-                      Điểm Tích Lũy
+                      Điểm Tích Lũy {customerProfile?.tenantName ? `(${customerProfile.tenantName})` : ''}
                     </label>
                     {isAuthenticated && customerProfile && (
                       <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">

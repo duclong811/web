@@ -41,14 +41,21 @@ builder.Services.RegisterApplicationServices(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+});
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
-    app.UseHttpsRedirection();
 }
 
-// Development convenience only. Production migrations must run as a deployment step.
-if (app.Environment.IsDevelopment())
+// Auto-migrate on Development or when Database:AutoMigrate=true in container deployment
+var shouldAutoMigrate = app.Environment.IsDevelopment() || 
+    string.Equals(builder.Configuration["Database:AutoMigrate"], "true", StringComparison.OrdinalIgnoreCase);
+
+if (shouldAutoMigrate)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<WebCafeDbContext>();

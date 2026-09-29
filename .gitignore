@@ -41,6 +41,10 @@ dist-ssr
 # Environment variables
 .env.local
 .env.*.local
+.env.docker
+.env.docker.*
+.env.production
+.env.production.*
 
 test-results/
 

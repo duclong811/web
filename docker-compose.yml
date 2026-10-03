@@ -5,6 +5,7 @@ services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: webcafe_db
+    user: root
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"

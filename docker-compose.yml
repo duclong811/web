@@ -33,6 +33,8 @@ services:
       dockerfile: Dockerfile
     container_name: webcafe_backend
     restart: unless-stopped
+    ports:
+      - "5277:5277"
     depends_on:
       db:
         condition: service_healthy
@@ -47,8 +49,12 @@ services:
       Cors__AllowedOrigins__0: "http://localhost"
       Cors__AllowedOrigins__1: "http://127.0.0.1"
       Cors__AllowedOrigins__2: "https://localhost"
-      Cors__AllowedOrigins__3: "${FRONTEND_DOMAIN_ORIGIN:-http://localhost}"
-      Frontend__PublicUrl: "${FRONTEND_PUBLIC_URL:-http://localhost}"
+      Cors__AllowedOrigins__3: "https://ai-smartserve.io.vn"
+      Cors__AllowedOrigins__4: "https://www.ai-smartserve.io.vn"
+      Cors__AllowedOrigins__5: "http://ai-smartserve.io.vn"
+      Cors__AllowedOrigins__6: "http://www.ai-smartserve.io.vn"
+      Cors__AllowedOrigins__7: "${FRONTEND_DOMAIN_ORIGIN:-http://localhost}"
+      Frontend__PublicUrl: "${FRONTEND_PUBLIC_URL:-https://ai-smartserve.io.vn}"
       PayOS__ClientId: "${PAYOS_CLIENT_ID:-YOUR_PAYOS_CLIENT_ID}"
       PayOS__ApiKey: "${PAYOS_API_KEY:-YOUR_PAYOS_API_KEY}"
       PayOS__ChecksumKey: "${PAYOS_CHECKSUM_KEY:-YOUR_PAYOS_CHECKSUM_KEY}"

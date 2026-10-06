@@ -465,6 +465,31 @@ export interface AiChatResponseDto {
   modelUsed: string;
 }
 
+export interface InventoryAiChatRequestDto {
+  storeId: number;
+  message: string;
+  periodDays?: number;
+  history?: AiChatMessageDto[];
+}
+
+export interface InventoryAiRecommendationDto {
+  ingredientName: string;
+  suggestedQuantity: number;
+  unit: string;
+  priority: string;
+  reason: string;
+}
+
+export interface InventoryAiChatResponseDto {
+  reply: string;
+  recommendations: InventoryAiRecommendationDto[];
+  quickFollowUps: string[];
+  isAiGenerated: boolean;
+  storeName: string;
+  periodDays: number;
+  topSellingItems: { menuItemId: number; menuItemName: string; soldQuantity: number }[];
+}
+
 // --- Inventory Types ---
 export interface IngredientDto {
   ingredientId: number;

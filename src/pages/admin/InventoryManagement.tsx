@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { inventoryApi, menuApi } from '../../api/apis';
 import { useStore } from '../../store/useStore';
 import { useAuthStore } from '../../store/authStore';
+import InventoryAiChat from '../../components/inventory/InventoryAiChat';
 import type {
   IngredientDto,
   InventoryStockDto,
@@ -1585,6 +1586,9 @@ export default function InventoryManagement() {
           </div>
         </div>
       )}
+
+      {/* Floating AI Inventory Chatbot */}
+      <InventoryAiChat storeId={storeId} lowStockCount={alerts.length} />
     </div>
   );
 }

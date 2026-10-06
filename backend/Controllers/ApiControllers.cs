@@ -846,15 +846,18 @@ namespace WebCafe.Backend.Controllers
         private readonly IInventoryService _inventoryService;
         private readonly ICurrentUserService _currentUser;
         private readonly ITenantAccessService _tenantAccess;
+        private readonly IGeminiService _geminiService;
 
         public InventoryController(
             IInventoryService inventoryService,
             ICurrentUserService currentUser,
-            ITenantAccessService tenantAccess)
+            ITenantAccessService tenantAccess,
+            IGeminiService geminiService)
         {
             _inventoryService = inventoryService;
             _currentUser = currentUser;
             _tenantAccess = tenantAccess;
+            _geminiService = geminiService;
         }
 
         [HttpGet("store/{storeId}")]
@@ -964,6 +967,28 @@ namespace WebCafe.Backend.Controllers
         {
             var alerts = await _inventoryService.GetLowStockAlertsAsync(storeId);
             return Ok(ApiResponse<List<LowStockAlertDto>>.Ok(alerts));
+        }
+
+        [HttpPost("ai/chat")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<InventoryAiChatResponseDto>>> ChatWithInventoryAi([FromBody] InventoryAiChatRequestDto request)
+        {
+            if (request.StoreId <= 0 || string.IsNullOrWhiteSpace(request.Message))
+                return BadRequest(ApiResponse<InventoryAiChatResponseDto>.Fail("StoreId và câu hỏi là bắt buộc."));
+            await _tenantAccess.EnsureStoreAccessAsync(request.StoreId);
+            request.PeriodDays = request.PeriodDays is 7 or 30 or 90 ? request.PeriodDays : 30;
+            var result = await _geminiService.ChatWithInventoryAsync(request);
+            return Ok(ApiResponse<InventoryAiChatResponseDto>.Ok(result));
+        }
+
+        [HttpGet("ai/summary")]
+        [Authorize(Policy = "ManagerAccess")]
+        public async Task<ActionResult<ApiResponse<InventoryAiChatResponseDto>>> GetInventoryAiSummary([FromQuery] int storeId, [FromQuery] int periodDays = 30)
+        {
+            if (storeId <= 0) return BadRequest(ApiResponse<InventoryAiChatResponseDto>.Fail("StoreId không hợp lệ."));
+            await _tenantAccess.EnsureStoreAccessAsync(storeId);
+            var result = await _geminiService.GetInventorySummaryAsync(storeId, periodDays is 7 or 30 or 90 ? periodDays : 30);
+            return Ok(ApiResponse<InventoryAiChatResponseDto>.Ok(result));
         }
     }
 

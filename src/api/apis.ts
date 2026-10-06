@@ -23,6 +23,8 @@ import type {
   AiRecommendationResponseDto,
   AiChatRequestDto,
   AiChatResponseDto,
+  InventoryAiChatRequestDto,
+  InventoryAiChatResponseDto,
   IngredientDto,
   CreateIngredientDto,
   UpdateIngredientDto,
@@ -238,6 +240,14 @@ export const aiApi = {
 
 // Inventory API (FnB 4-Modules System)
 export const inventoryApi = {
+  getAiSummary: async (storeId: number, periodDays = 30) => {
+    const res = await apiClient.get<ApiResponse<InventoryAiChatResponseDto>>('/inventory/ai/summary', { params: { storeId, periodDays } });
+    return res.data.data;
+  },
+  chatWithAi: async (dto: InventoryAiChatRequestDto) => {
+    const res = await apiClient.post<ApiResponse<InventoryAiChatResponseDto>>('/inventory/ai/chat', dto);
+    return res.data.data;
+  },
   getStocks: async (storeId: number) => {
     const res = await apiClient.get<ApiResponse<InventoryStockDto[]>>(`/inventory/store/${storeId}`);
     return res.data.data;

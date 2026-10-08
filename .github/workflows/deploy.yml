@@ -27,6 +27,7 @@ jobs:
 
             echo "==> Fetching latest changes from main..."
             git checkout main
+            git reset --hard HEAD
             git pull origin main
 
             echo "==> Rebuilding and restarting backend container..."

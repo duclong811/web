@@ -30,6 +30,14 @@ jobs:
             git reset --hard HEAD
             git pull origin main
 
+            echo "==> Restoring environment configuration..."
+            if [ -f .env.docker ]; then
+              cp -f .env.docker .env
+            fi
+
+            echo "==> Ensuring database is up..."
+            docker compose up -d db
+
             echo "==> Rebuilding and restarting backend container..."
             docker compose up -d --build backend
 

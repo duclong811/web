@@ -124,7 +124,10 @@ namespace WebCafe.Backend.Controllers
             try
             {
                 var result = await _authService.SignupOwnerAsync(request);
-                return Ok(ApiResponse<OwnerSignupResponse>.Ok(result, "Tạo quán thành công. Vui lòng xác minh email để tiếp tục."));
+                var message = result.EmailSent
+                    ? "Tạo quán thành công. Vui lòng xác minh email để tiếp tục."
+                    : "Quán đã được tạo và lưu. Chưa gửi được email xác minh; hãy thử gửi lại email từ màn hình này.";
+                return Ok(ApiResponse<OwnerSignupResponse>.Ok(result, message));
             }
             catch (AppException ex)
             {
@@ -134,7 +137,7 @@ namespace WebCafe.Backend.Controllers
             {
                 _logger.LogError(ex, "Owner signup failed.");
                 return StatusCode(StatusCodes.Status500InternalServerError,
-                    ApiResponse<OwnerSignupResponse>.Fail("Không thể tạo quán lúc này. Vui lòng thử lại sau."));
+                    ApiResponse<OwnerSignupResponse>.Fail("Không thể gửi email xác minh nên quán chưa được tạo. Vui lòng kiểm tra lại email hoặc thử lại sau."));
             }
         }
 

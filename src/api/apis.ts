@@ -399,6 +399,10 @@ export const systemAdminApi = {
     const res = await apiClient.put<ApiResponse<any>>(`/system/tenants/${tenantId}/toggle-status`);
     return res.data;
   },
+  deleteTrialTenant: async (tenantId: number) => {
+    const res = await apiClient.delete<ApiResponse<any>>(`/system/tenants/${tenantId}`);
+    return res.data;
+  },
   updateTenantPlan: async (tenantId: number, payload: UpdateTenantPlanDto) => {
     const res = await apiClient.put<ApiResponse<any>>(`/system/tenants/${tenantId}/plan`, payload);
     return res.data;

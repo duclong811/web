@@ -131,7 +131,7 @@ export default function PaymentSettings() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12 font-body-md text-on-surface">
+    <div className="w-full max-w-[1600px] mx-auto space-y-6 pb-12 font-body-md text-on-surface">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-outline-variant/20 pb-4">
         <div>

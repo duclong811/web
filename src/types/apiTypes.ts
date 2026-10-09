@@ -88,6 +88,7 @@ export interface CreateOrderItemDto {
 export interface CreateOrderDto {
   storeId: number;
   tableId?: number | null;
+  tableToken?: string | null;
   customerPhone?: string | null;
   customerName?: string | null;
   guestId?: string | null;
@@ -183,6 +184,79 @@ export interface LoginResponse {
   storeId?: number | null;
   storeName?: string | null;
   brandName?: string | null;
+}
+
+export interface OwnerSignupRequest {
+  email: string;
+  password: string;
+  storeName: string;
+  phone?: string;
+  plan?: string;
+}
+
+export interface OwnerSignupResponse {
+  tenantId: number;
+  storeId: number;
+  email: string;
+  plan: string;
+  trialEndsAt: string;
+  emailVerificationRequired: boolean;
+  verificationUrl?: string | null;
+}
+
+export interface MySubscriptionDto {
+  plan: string;
+  status: string;
+  trialEndsAt?: string | null;
+  daysRemaining?: number | null;
+  maxStores?: number;
+  maxStaff?: number;
+  maxTablesPerStore?: number;
+  storesUsed?: number;
+  staffUsed?: number;
+  tablesUsed?: number;
+  features?: Record<string, boolean>;
+}
+
+export interface SubscriptionPlanDto {
+  code: string;
+  name: string;
+  monthlyPrice: number;
+  maxStores: number;
+  maxStaff: number;
+  maxTablesPerStore: number;
+  isActive: boolean;
+  features: Record<string, boolean>;
+}
+
+export interface StaffDto {
+  staffId: number;
+  storeId: number;
+  storeName: string;
+  username: string;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  role: 'Staff';
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateStaffRequest {
+  storeId: number;
+  username: string;
+  fullName: string;
+  email?: string;
+  phone?: string;
+  password: string;
+}
+
+export interface UpdateStaffRequest {
+  storeId: number;
+  fullName: string;
+  email?: string;
+  phone?: string;
+  password?: string;
 }
 
 // --- Voucher Types ---

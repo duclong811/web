@@ -206,24 +206,24 @@ export default function StaffOrderDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background font-body-md text-on-surface">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-surface/95 backdrop-blur-md border-b border-outline-variant/15 sticky top-0 z-30 shadow-xs">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Quản Lý Đơn Hàng</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Tổng đơn: <span className="font-semibold text-orange-600">{orders.length}</span> đơn
+              <h1 className="text-xl sm:text-2xl font-black text-primary tracking-tight">Quản Lý Đơn Hàng</h1>
+              <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
+                Tổng đơn: <span className="font-bold text-primary">{orders.length}</span> đơn
               </p>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleSound}
-                className={`p-2.5 rounded-lg border-2 transition-colors ${
+                className={`p-2.5 rounded-xl border transition-colors ${
                   soundEnabled
-                    ? 'bg-orange-50 border-orange-500 text-orange-600'
-                    : 'bg-gray-50 border-gray-300 text-gray-400'
+                    ? 'bg-primary/10 border-primary/30 text-primary'
+                    : 'bg-surface-container border-outline-variant/30 text-on-surface-variant'
                 }`}
                 title={soundEnabled ? 'Tắt âm thanh' : 'Bật âm thanh'}
               >
@@ -233,7 +233,7 @@ export default function StaffOrderDashboard() {
               </button>
               <button
                 onClick={fetchOrders}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-primary-container transition-colors font-bold text-xs shadow-xs"
               >
                 <span className="material-symbols-outlined text-xl">refresh</span>
                 <span className="hidden sm:inline">Làm mới</span>
@@ -243,7 +243,7 @@ export default function StaffOrderDashboard() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Status Filter */}
         <StatusFilter
           activeFilter={activeFilter}
@@ -253,8 +253,8 @@ export default function StaffOrderDashboard() {
 
         {/* Error State */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-800">
+          <div className="mb-6 p-4 bg-error-container border border-error/20 rounded-2xl">
+            <div className="flex items-center gap-2 text-error">
               <span className="material-symbols-outlined">error</span>
               <p className="font-medium">{error}</p>
             </div>
@@ -265,20 +265,20 @@ export default function StaffOrderDashboard() {
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-orange-600"></div>
-              <p className="mt-4 text-gray-600">Đang tải đơn hàng...</p>
+              <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-outline-variant/30 border-t-primary"></div>
+              <p className="mt-4 text-on-surface-variant">Đang tải đơn hàng...</p>
             </div>
           </div>
         ) : filteredOrders.length === 0 ? (
           /* Empty State */
           <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-              <span className="material-symbols-outlined text-4xl text-gray-400">receipt_long</span>
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-surface-container rounded-2xl mb-4">
+              <span className="material-symbols-outlined text-4xl text-on-surface-variant">receipt_long</span>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-bold text-on-surface mb-2">
               Không có đơn hàng
             </h3>
-            <p className="text-gray-600">
+            <p className="text-on-surface-variant">
               {activeFilter === 'all' 
                 ? 'Chưa có đơn hàng nào trong hệ thống'
                 : `Không có đơn hàng ở trạng thái "${activeFilter}"`}

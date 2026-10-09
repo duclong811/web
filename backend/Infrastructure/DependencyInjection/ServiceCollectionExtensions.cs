@@ -24,6 +24,7 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
 
             services.AddDbContext<WebCafeDbContext>(options =>
                 options.UseSqlServer(connectionString));
+            services.AddHostedService<DemoMaintenanceService>();
             services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -112,29 +113,23 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
                     policy.RequireRole(AppRoles.TenantOwner, AppRoles.SystemAdmin));
 
                 options.AddPolicy(AppPolicies.TenantAdminAccess, policy =>
-                    policy.RequireRole(AppRoles.TenantOwner, AppRoles.Manager, AppRoles.SystemAdmin));
+                    policy.RequireRole(AppRoles.TenantOwner, AppRoles.SystemAdmin));
 
-                // Policy cho Manager - quản lý cửa hàng
+                // Policy cho các chức năng quản trị của chủ quán
                 options.AddPolicy(AppPolicies.ManagerAccess, policy =>
-                    policy.RequireRole(AppRoles.Manager, AppRoles.TenantOwner, AppRoles.SystemAdmin));
+                    policy.RequireRole(AppRoles.TenantOwner, AppRoles.SystemAdmin));
 
                 // Policy cho Staff - nhân viên thông thường
                 options.AddPolicy(AppPolicies.StaffAccess, policy =>
-                    policy.RequireRole(AppRoles.Staff, AppRoles.Kitchen, AppRoles.Cashier, AppRoles.Manager, AppRoles.TenantOwner, AppRoles.SystemAdmin));
+                    policy.RequireRole(AppRoles.Staff, AppRoles.TenantOwner, AppRoles.SystemAdmin));
 
                 options.AddPolicy(AppPolicies.OrderStatusAccess, policy =>
-                    policy.RequireRole(AppRoles.Staff, AppRoles.Kitchen, AppRoles.Cashier, AppRoles.Manager, AppRoles.TenantOwner, AppRoles.SystemAdmin));
+                    policy.RequireRole(AppRoles.Staff, AppRoles.TenantOwner, AppRoles.SystemAdmin));
 
                 options.AddPolicy(AppPolicies.CustomerOnly, policy =>
                     policy.RequireRole(AppRoles.Customer));
 
-                // Policy cho Kitchen - bếp
-                options.AddPolicy("KitchenAccess", policy => 
-                    policy.RequireRole("Kitchen", "Manager", "Owner", "SystemAdmin"));
-
-                // Policy cho Cashier - thu ngân
-                options.AddPolicy("CashierAccess", policy => 
-                    policy.RequireRole("Cashier", "Manager", "Owner", "SystemAdmin"));
+                // Hệ thống chỉ phát hành hai vai trò nghiệp vụ: Owner và Staff.
 
                 // Policy cho tất cả authenticated users
                 options.AddPolicy(AppPolicies.RequireAuthenticated, policy =>
@@ -154,6 +149,7 @@ namespace WebCafe.Backend.Infrastructure.DependencyInjection
             services.AddScoped<ITenantAccessService, TenantAccessService>();
             services.AddScoped<IFileStorageService, LocalFileSystemStorage>();
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IEmailService, SmtpEmailService>();
             services.AddScoped<ICategoryService, CategoryService>();
             services.AddScoped<IMenuItemService, MenuItemService>();
             services.AddScoped<ITableService, TableService>();

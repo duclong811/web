@@ -24,20 +24,20 @@ export default function StatusFilter({ activeFilter, onFilterChange, counts }: S
     
     const colorClasses = {
       gray: isActive 
-        ? 'bg-gray-600 text-white border-gray-600' 
-        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
+        ? 'bg-primary text-white border-primary'
+        : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/30 hover:bg-primary/5',
       yellow: isActive 
-        ? 'bg-yellow-500 text-white border-yellow-500' 
-        : 'bg-white text-yellow-700 border-yellow-300 hover:bg-yellow-50',
+        ? 'bg-amber-700 text-white border-amber-700'
+        : 'bg-surface-container-lowest text-amber-800 border-amber-200 hover:bg-amber-50',
       blue: isActive 
-        ? 'bg-blue-600 text-white border-blue-600' 
-        : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50',
+        ? 'bg-blue-700 text-white border-blue-700'
+        : 'bg-surface-container-lowest text-blue-800 border-blue-200 hover:bg-blue-50',
       green: isActive 
-        ? 'bg-green-600 text-white border-green-600' 
-        : 'bg-white text-green-700 border-green-300 hover:bg-green-50',
+        ? 'bg-emerald-700 text-white border-emerald-700'
+        : 'bg-surface-container-lowest text-emerald-800 border-emerald-200 hover:bg-emerald-50',
     };
 
-    return `flex items-center gap-2 px-4 py-3 rounded-lg border-2 font-semibold transition-all ${
+    return `flex items-center gap-2 px-4 py-3 rounded-2xl border font-bold text-xs transition-all ${
       colorClasses[color as keyof typeof colorClasses]
     } ${isActive ? 'shadow-md' : 'hover:shadow-sm'}`;
   };
@@ -57,7 +57,7 @@ export default function StatusFilter({ activeFilter, onFilterChange, counts }: S
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
               activeFilter === filter.key 
                 ? 'bg-white/20' 
-                : 'bg-gray-100'
+                : 'bg-surface-container'
             }`}>
               {counts[filter.key as keyof typeof counts]}
             </span>
@@ -67,13 +67,13 @@ export default function StatusFilter({ activeFilter, onFilterChange, counts }: S
 
       {/* Mobile: Dropdown Filter */}
       <div className="md:hidden">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-xs font-bold text-on-surface-variant mb-2">
           Lọc theo trạng thái
         </label>
         <select
           value={activeFilter}
           onChange={(e) => onFilterChange(e.target.value as any)}
-          className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-900 bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+          className="w-full px-4 py-3 border border-outline-variant/30 rounded-2xl font-bold text-on-surface bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 focus:border-primary"
         >
           {FILTERS.map((filter) => (
             <option key={filter.key} value={filter.key}>

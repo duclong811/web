@@ -18,6 +18,13 @@ namespace WebCafe.Backend.Services.Abstraction
         Task<LoginResponse> LoginSystemAdminAsync(LoginRequest request);
         Task<LoginResponse> LoginCustomerAsync(LoginRequest request);
         Task<RegisterResponse> RegisterCustomerAsync(RegisterRequest request);
+        Task<OwnerSignupResponse> SignupOwnerAsync(OwnerSignupRequest request);
+        Task<LoginResponse> VerifyOwnerEmailAsync(string token);
+    }
+
+    public interface IEmailService
+    {
+        Task SendVerificationEmailAsync(string recipient, string verificationUrl, CancellationToken cancellationToken = default);
     }
 
     public interface ICategoryService

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '../../api/apiClient';
+import { useNotification } from '../../components/NotificationProvider';
 import QRCode from 'qrcode';
 import { useAuthStore } from '../../store/authStore';
 import TableQrPrintModal from '../../components/print/TableQrPrintModal';
@@ -18,6 +19,7 @@ interface TableData {
 }
 
 export default function TableManagement() {
+  const { confirm } = useNotification();
   const user = useAuthStore(state => state.user);
   const storeId = user?.storeId;
   const [tables, setTables] = useState<TableData[]>([]);
@@ -90,8 +92,7 @@ export default function TableManagement() {
   };
 
   const handleDeleteTable = async (tableId: number) => {
-    if (!confirm('Bạn có chắc muốn xóa bàn này?')) return;
-    
+    confirm({ tone: 'warning', title: 'Xóa bàn?', message: 'Bạn có chắc muốn xóa bàn này? Thao tác này không thể hoàn tác.', confirmText: 'Xóa bàn', onConfirm: async () => {
     try {
       setError('');
       await apiClient.delete(`/tables/${tableId}`);
@@ -99,10 +100,11 @@ export default function TableManagement() {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Xóa bàn thất bại');
     }
+    }});
   };
 
   const handleRegenerateQr = async (tableId: number) => {
-    if (!confirm('Mã QR cũ sẽ không còn sử dụng được. Bạn có muốn tạo mã mới không?')) return;
+    confirm({ tone: 'warning', title: 'Tạo lại mã QR?', message: 'Mã QR cũ sẽ không còn sử dụng được. Bạn có muốn tạo mã mới không?', confirmText: 'Tạo mã mới', onConfirm: async () => {
     try {
       setError('');
       await apiClient.post(`/tables/${tableId}/qr/regenerate`);
@@ -110,6 +112,7 @@ export default function TableManagement() {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Tạo lại mã QR thất bại');
     }
+    }});
   };
 
   const storePrintInfo: StorePrintInfo = {
@@ -180,7 +183,7 @@ export default function TableManagement() {
   if (loading) {
     return (
       <div className="pt-24 pb-12 px-gutter">
-        <div className="max-w-6xl mx-auto text-center">
+        <div className="w-full max-w-[1600px] mx-auto text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-on-surface-variant">Đang tải danh sách bàn...</p>
         </div>

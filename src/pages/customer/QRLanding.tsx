@@ -21,6 +21,7 @@ export default function QRLanding() {
         let tableId: number;
         let tableNumber: string;
         let storeName: string | undefined;
+        let tableToken: string | undefined;
 
         if (params.qrToken) {
           const resolved = await tableApi.resolveQr(params.qrToken);
@@ -29,6 +30,7 @@ export default function QRLanding() {
           tableId = resolved.tableId;
           tableNumber = resolved.tableNumber;
           storeName = resolved.storeName;
+          tableToken = resolved.qrToken || params.qrToken;
         } else if (params.storeId && params.tableId) {
           // Path params: /table/:storeId/:tableId
           const resolved = await tableApi.resolveLegacyQr(parseInt(params.storeId), parseInt(params.tableId));
@@ -37,6 +39,7 @@ export default function QRLanding() {
           tableId = resolved.tableId;
           tableNumber = resolved.tableNumber;
           storeName = resolved.storeName;
+          tableToken = resolved.qrToken;
         } else {
           // Query params: /qr?store=1&table=5
           const storeParam = searchParams.get('store');
@@ -56,6 +59,7 @@ export default function QRLanding() {
           tableId = resolved.tableId;
           tableNumber = resolved.tableNumber;
           storeName = resolved.storeName;
+          tableToken = resolved.qrToken;
         }
 
         if (isNaN(storeId) || isNaN(tableId)) {
@@ -69,7 +73,7 @@ export default function QRLanding() {
         }
 
         // Initialize guest session with both tableId (number) and tableNumber (display string)
-        initGuestSession(storeId, tableId, tableNumber, storeName);
+        initGuestSession(storeId, tableId, tableNumber, storeName, tableToken);
         setConnectedInfo({ storeName, tableNumber });
 
         // Fetch menu for this store

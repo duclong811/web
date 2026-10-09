@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { apiClient } from '../../api/apiClient';
 import Pagination from '../../components/Pagination';
+import { useNotification } from '../../components/NotificationProvider';
 
 interface Category {
   categoryId: number;
@@ -26,6 +27,7 @@ interface MenuItem {
 }
 
 export default function MenuManagement() {
+  const { confirm } = useNotification();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,8 +120,7 @@ export default function MenuManagement() {
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    if (!confirm('Bạn có chắc muốn xóa món này?')) return;
-    
+    confirm({ tone: 'warning', title: 'Xóa món?', message: 'Bạn có chắc muốn xóa món này? Thao tác này không thể hoàn tác.', confirmText: 'Xóa món', onConfirm: async () => {
     try {
       setError('');
       await apiClient.delete(`/menu/items/${itemId}`);
@@ -127,6 +128,7 @@ export default function MenuManagement() {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Xóa món thất bại');
     }
+    }});
   };
 
   const handleAddCategory = async (e: React.FormEvent) => {
@@ -173,7 +175,7 @@ export default function MenuManagement() {
   if (loading) {
     return (
       <div className="pt-24 pb-12 px-gutter">
-        <div className="max-w-6xl mx-auto text-center">
+        <div className="w-full max-w-[1600px] mx-auto text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-on-surface-variant">Đang tải thực đơn...</p>
         </div>
@@ -183,7 +185,7 @@ export default function MenuManagement() {
 
   return (
     <div className="pt-24 pb-12 px-gutter animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="max-w-6xl mx-auto">
+      <div className="w-full max-w-[1600px] mx-auto">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-stack-lg gap-4">
           <div>
@@ -248,7 +250,7 @@ export default function MenuManagement() {
                   : 'bg-surface-container text-on-surface-variant hover:bg-secondary-container/50'
               }`}
             >
-              {cat.icon && <span className="mr-1">{cat.icon}</span>}
+              {cat.icon && <span className="material-symbols-outlined align-middle mr-1 text-base">{cat.icon}</span>}
               {cat.name} ({menuItems.filter(i => i.categoryId === cat.categoryId).length})
             </button>
           ))}
@@ -257,7 +259,7 @@ export default function MenuManagement() {
         {/* Menu Table */}
         <div className="bg-surface-container-lowest rounded-2xl shadow-[0_4px_20px_rgba(85,55,34,0.06)] border border-outline-variant/30 overflow-hidden flex flex-col justify-between">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[980px] text-left border-collapse">
               <thead className="bg-surface-container-low">
                 <tr>
                   <th className="px-6 py-4 font-label-md text-on-surface-variant uppercase tracking-wider text-xs">Món</th>
@@ -288,7 +290,10 @@ export default function MenuManagement() {
                               alt={item.name} 
                             />
                             <div>
-                              <p className="font-label-md text-on-surface font-bold">{item.name}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-label-md text-on-surface font-bold">{item.name}</p>
+                                {item.isFeatured && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800"><span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>Nổi bật</span>}
+                              </div>
                               <p className="text-xs text-on-surface-variant line-clamp-1">
                                 {item.description || 'Không có mô tả'}
                               </p>
@@ -671,7 +676,7 @@ export default function MenuManagement() {
                   {categories.map(cat => (
                     <div key={cat.categoryId} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                       <span className="text-sm font-medium">
-                        {cat.icon} {cat.name}
+                        <span className="material-symbols-outlined align-middle mr-1 text-base">{cat.icon || 'category'}</span>{cat.name}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${
                         cat.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'

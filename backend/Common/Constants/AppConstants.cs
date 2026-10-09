@@ -11,10 +11,7 @@ namespace WebCafe.Backend.Common.Constants
     {
         public const string SystemAdmin = "SystemAdmin";
         public const string TenantOwner = "Owner";
-        public const string Manager = "Manager";
         public const string Staff = "Staff";
-        public const string Kitchen = "Kitchen";
-        public const string Cashier = "Cashier";
         public const string Customer = "Customer";
     }
 
@@ -33,6 +30,7 @@ namespace WebCafe.Backend.Common.Constants
     {
         public const string AwaitingPayment = "awaiting_payment";
         public const string Pending = "pending";
+        public const string Expired = "expired";
         public const string Confirmed = "confirmed";
         public const string Preparing = "preparing";
         public const string Ready = "ready";

@@ -571,6 +571,13 @@ Hãy trả về JSON theo cấu trúc chính xác sau:
                 .Select(g => new { g.Key.MenuItemId, g.Key.Name, Quantity = g.Sum(x => x.Quantity) })
                 .OrderByDescending(x => x.Quantity).Take(10).ToListAsync();
 
+            var dailySales = await _db.OrderItems.AsNoTracking()
+                .Where(i => i.Order != null && i.Order.StoreId == request.StoreId && i.Order.CreatedAt >= since && i.Order.Status != "cancelled")
+                .GroupBy(i => i.Order!.CreatedAt.Date)
+                .Select(g => new { Date = g.Key, Quantity = g.Sum(x => x.Quantity) })
+                .OrderBy(x => x.Date)
+                .ToListAsync();
+
             var stocks = await _db.InventoryStocks.AsNoTracking()
                 .Where(s => s.StoreId == request.StoreId)
                 .Select(s => new { s.IngredientId, Name = s.Ingredient!.Name, s.Ingredient.Unit, s.Ingredient.MinimumStock, s.CurrentQuantity })
@@ -579,6 +586,12 @@ Hãy trả về JSON theo cấu trúc chính xác sau:
             var recipes = await _db.MenuItemRecipes.AsNoTracking()
                 .Where(r => r.MenuItem != null && r.MenuItem.TenantId == store.TenantId && topMenuItemIds.Contains(r.MenuItemId))
                 .Select(r => new { r.MenuItemId, IngredientName = r.Ingredient!.Name, Unit = r.Ingredient.Unit, r.QuantityRequired })
+                .ToListAsync();
+
+            var inventoryMovements = await _db.InventoryTransactions.AsNoTracking()
+                .Where(t => t.Stock != null && t.Stock.StoreId == request.StoreId && t.CreatedAt >= since)
+                .GroupBy(t => t.Type)
+                .Select(g => new { Type = g.Key, Quantity = g.Sum(x => x.Quantity), Count = g.Count() })
                 .ToListAsync();
 
             var fallback = BuildInventoryFallback(store.Name, request.PeriodDays, sales, stocks, recipes);
@@ -590,15 +603,26 @@ Hãy trả về JSON theo cấu trúc chính xác sau:
                 if (primaryModel == "gemini-3.5-flash-lite") primaryModel = "gemini-3.5-flash";
                 var backupModel = primaryModel == "gemini-3.5-flash" ? "gemini-3.6-flash" : "gemini-3.5-flash";
 
-                var context = JsonSerializer.Serialize(new { store = store.Name, periodDays = request.PeriodDays, topProducts = sales, stock = stocks, recipes });
+                var context = JsonSerializer.Serialize(new
+                {
+                    store = store.Name,
+                    periodDays = request.PeriodDays,
+                    topProducts = sales,
+                    dailySales,
+                    stock = stocks,
+                    recipes,
+                    inventoryMovements
+                });
                 var systemInstruction = $"Bạn là chuyên gia trợ lý quản lý kho và chuỗi cung ứng của WebCafe cho cửa hàng {store.Name}.\n" +
                     $"DỮ LIỆU HIỆN TẠI TỪ HỆ THỐNG:\n{context}\n\n" +
                     "QUY TẮC BẮT BUỘC:\n" +
-                    "1. Phân tích chính xác theo DỮ LIỆU HIỆN TẠI (tồn kho, mức tồn tối thiểu, doanh số món bán chạy).\n" +
-                    "2. Không bịa số liệu. Đề xuất số lượng nhập hợp lý kèm lý do rõ ràng, thực tế.\n" +
-                    "3. BẮT BUỘC trả về JSON thuần túy theo schema sau, không kèm bất kỳ markdown hay text nào ngoài JSON:\n" +
+                    "1. Trả lời ngắn gọn, đi thẳng vào quyết định nhập hàng; tối đa 4 câu, không lặp lại toàn bộ dữ liệu.\n" +
+                    "2. Phân tích chính xác theo dữ liệu hiện tại: tồn kho, mức tối thiểu, doanh số theo ngày, BOM và biến động nhập/xuất.\n" +
+                    "3. Chỉ đề xuất nguyên liệu có trong stock hoặc recipes. Không bịa tên, số lượng hay doanh số. Nếu thiếu dữ liệu, nói rõ thiếu dữ liệu nào.\n" +
+                    "4. Khi được hỏi nguyên liệu cần nhập, luôn nêu tên, tồn hiện tại, số lượng nên nhập, mức ưu tiên và lý do ngắn gọn.\n" +
+                    "5. BẮT BUỘC trả về JSON thuần túy theo schema sau, không kèm markdown hay text ngoài JSON:\n" +
                     "{\n" +
-                    "  \"reply\": \"Lời tư vấn phân tích chi tiết, ấm áp và chuyên nghiệp bằng tiếng Việt\",\n" +
+                    "  \"reply\": \"Tư vấn ngắn gọn, trực tiếp bằng tiếng Việt\",\n" +
                     "  \"recommendations\": [\n" +
                     "    {\n" +
                     "      \"ingredientName\": \"Tên nguyên liệu\",\n" +
@@ -689,7 +713,7 @@ Hãy trả về JSON theo cấu trúc chính xác sau:
                     generationConfig = new
                     {
                         temperature = 0.2,
-                        maxOutputTokens = 4096,
+                        maxOutputTokens = 1200,
                         responseMimeType = "application/json"
                     }
                 };

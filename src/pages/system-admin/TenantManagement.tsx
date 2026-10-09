@@ -626,7 +626,7 @@ export default function TenantManagement() {
                         <span className="text-[11px] text-on-surface-variant">1 Quán - 10 Bàn QR</span>
                       </div>
                     </div>
-                    <span className="font-bold text-primary">290k/th</span>
+                    <span className="font-bold text-primary">239k/th</span>
                   </label>
 
                   <label className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition ${
@@ -645,7 +645,7 @@ export default function TenantManagement() {
                         <span className="text-[11px] text-on-surface-variant">3 Chi nhánh - Không giới hạn bàn</span>
                       </div>
                     </div>
-                    <span className="font-bold text-primary">790k/th</span>
+                    <span className="font-bold text-primary">1.299tr/th</span>
                   </label>
 
                   <label className={`flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition ${
@@ -664,7 +664,7 @@ export default function TenantManagement() {
                         <span className="text-[11px] text-on-surface-variant">Không giới hạn điểm bán & BOM</span>
                       </div>
                     </div>
-                    <span className="font-bold text-primary">1.5tr/th</span>
+                    <span className="font-bold text-primary">1.999tr/th</span>
                   </label>
                 </div>
               </div>
@@ -798,9 +798,9 @@ export default function TenantManagement() {
                     onChange={(e) => setCreateForm({ ...createForm, plan: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-surface-container-lowest border border-outline-variant/30 rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    <option value="basic">Gói Cơ Bản (Starter - 290k/tháng)</option>
-                    <option value="pro">Gói Phổ Thông (Pro - 790k/tháng)</option>
-                    <option value="premium">Gói Cao Cấp (Premium - 1.5tr/tháng)</option>
+                    <option value="basic">Gói Basic (239.000đ/tháng)</option>
+                    <option value="premium">Gói Premium (1.299.000đ/tháng)</option>
+                    <option value="pro">Gói Pro (1.999.000đ/tháng)</option>
                   </select>
                 </div>
               </div>

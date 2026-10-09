@@ -1,6 +1,8 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore, type MenuItem } from '../../store/useStore';
+import { paymentApi } from '../../api/apis';
+import { useAuthStore } from '../../store/authStore';
 
 interface StockStatus {
   [productId: string]: boolean;
@@ -8,6 +10,7 @@ interface StockStatus {
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
+  const user = useAuthStore(state => state.user);
   const { orders, menuItems, fetchMenu, fetchOrders, initRealtime, currentStoreId, updateOrderStatus } = useStore();
   
   // Stock status keyed by storeId to isolate branches
@@ -84,7 +87,7 @@ export default function StaffDashboard() {
     .slice(0, 5);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-5 pb-10">
+    <div className="w-full max-w-[1600px] mx-auto space-y-5 pb-10">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-primary text-white text-xs sm:text-sm font-bold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
@@ -102,7 +105,7 @@ export default function StaffDashboard() {
               Ca Sáng / Đang Hoạt Động
             </span>
             <span className="text-[11px] text-on-surface-variant font-medium">
-              Chi nhánh #{currentStoreId} · The Coffee House
+              {user?.storeName || user?.brandName || `Chi nhánh #${currentStoreId}`}
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-primary tracking-tight">
@@ -119,7 +122,7 @@ export default function StaffDashboard() {
             className="flex-1 md:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-bold shadow-xs hover:bg-primary-container active:scale-95 transition-all"
           >
             <span className="material-symbols-outlined text-base">assignment</span>
-            <span>Màn Hình Bếp / Barista</span>
+            <span>Màn Hình Xử Lý Đơn</span>
             {activeOrdersCount > 0 && (
               <span className="ml-1 px-1.5 py-0.2 bg-amber-400 text-primary rounded-full text-[10px] font-black">
                 {activeOrdersCount}
@@ -308,8 +311,15 @@ export default function StaffDashboard() {
                         {isReady && (
                           <button
                             onClick={() => {
-                              updateOrderStatus(order.id, 'paid');
-                              showToast(`Đã thu tiền đơn #${order.orderCode || order.id} thành công!`);
+                              void (async () => {
+                                try {
+                                  await paymentApi.processPayment({ orderId: Number(order.id), method: 'cash', amount: order.total });
+                                  await fetchOrders(currentStoreId);
+                                  showToast(`Đã thu tiền đơn #${order.orderCode || order.id} thành công!`);
+                                } catch (error: any) {
+                                  showToast(error?.response?.data?.message || 'Không thể ghi nhận tiền mặt. Vui lòng thử lại.');
+                                }
+                              })();
                             }}
                             className="px-3 py-1.5 bg-green-600 text-white text-[11px] font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all shadow-xs"
                           >
@@ -374,7 +384,7 @@ export default function StaffDashboard() {
               </span>
             </div>
             <p className="text-[11px] text-on-surface-variant mb-3">
-              Barista bật/tắt trạng thái hết món riêng cho <span className="font-bold text-primary">Chi nhánh #{currentStoreId}</span> (không ảnh hưởng đến quán khác).
+              Nhân viên có thể bật/tắt trạng thái hết món riêng cho <span className="font-bold text-primary">Chi nhánh #{currentStoreId}</span> (không ảnh hưởng đến quán khác).
             </p>
 
             <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">

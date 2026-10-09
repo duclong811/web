@@ -26,8 +26,8 @@ export default function CustomerLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-background font-body-md text-on-surface">
       {/* Header/TopAppBar - Responsive */}
-      <header className="sticky top-0 z-50 w-full bg-surface/95 backdrop-blur-md border-b border-outline-variant/10 shadow-sm">
-        <div className="flex justify-between items-center px-4 sm:px-6 md:px-8 py-3.5 max-w-7xl mx-auto">
+      <header className="sticky top-0 z-50 w-full bg-surface/95 backdrop-blur-md border-b border-outline-variant/10 shadow-sm h-[104px] flex items-center">
+        <div className="flex justify-between items-center px-4 sm:px-6 md:px-8 w-full max-w-7xl mx-auto">
           {/* Left: Logo + Brand */}
           <Link 
             to="/menu" 

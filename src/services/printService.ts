@@ -466,12 +466,12 @@ export function generateTableQrStickerHtml(table: TableQrPrintItem, storeInfo: S
       text-align: center;
       color: #1a1a1a;
       background: #fff;
-      border: 2px solid #ea580c;
+      border: 2px solid #6f4e37;
       border-radius: 12px;
     ">
       <!-- Thương hiệu -->
       <div style="margin-bottom: 4px;">
-        <div style="font-size: 15px; font-weight: 900; text-transform: uppercase; color: #ea580c; letter-spacing: 0.5px;">
+        <div style="font-size: 15px; font-weight: 900; text-transform: uppercase; color: #6f4e37; letter-spacing: 0.5px;">
           ${storeInfo.brandName || storeInfo.storeName}
         </div>
         ${storeInfo.brandName && storeInfo.storeName !== storeInfo.brandName ? `
@@ -485,7 +485,7 @@ export function generateTableQrStickerHtml(table: TableQrPrintItem, storeInfo: S
       <div style="
         margin: 6px auto;
         padding: 4px 16px;
-        background: #ea580c;
+        background: #6f4e37;
         color: #fff;
         font-size: 20px;
         font-weight: 900;
@@ -501,7 +501,7 @@ export function generateTableQrStickerHtml(table: TableQrPrintItem, storeInfo: S
         margin: 6px auto;
         padding: 8px;
         background: #fff;
-        border: 1.5px solid #fed7aa;
+        border: 1.5px solid #e8d2c0;
         border-radius: 10px;
         display: inline-block;
       ">
@@ -510,7 +510,7 @@ export function generateTableQrStickerHtml(table: TableQrPrintItem, storeInfo: S
 
       <!-- Hướng dẫn khách hàng -->
       <div style="margin: 6px 0;">
-        <div style="font-size: 13px; font-weight: 900; color: #ea580c; text-transform: uppercase;">
+        <div style="font-size: 13px; font-weight: 900; color: #6f4e37; text-transform: uppercase;">
           QUÉT MÃ ĐỂ GỌI MÓN
         </div>
         <div style="font-size: 10px; color: #4b5563; margin-top: 2px; line-height: 1.4;">
@@ -525,11 +525,11 @@ export function generateTableQrStickerHtml(table: TableQrPrintItem, storeInfo: S
         <div style="
           margin-top: 8px;
           padding: 4px 8px;
-          background: #fff7ed;
-          border: 1px dashed #fdba74;
+          background: #fbf7f3;
+          border: 1px dashed #d7b59b;
           border-radius: 6px;
           font-size: 10px;
-          color: #9a3412;
+          color: #6f4e37;
         ">
           📶 <strong>Wifi:</strong> ${storeInfo.wifiName} ${storeInfo.wifiPassword ? `· <strong>Pass:</strong> ${storeInfo.wifiPassword}` : ''}
         </div>
@@ -560,7 +560,7 @@ export function generateBatchTableQrA4Html(tables: TableQrPrintItem[], storeInfo
         page-break-after: always;
       }
       .table-card {
-        border: 1.5px dashed #ea580c;
+        border: 1.5px dashed #6f4e37;
         border-radius: 10mm;
         padding: 5mm;
         box-sizing: border-box;
@@ -591,7 +591,7 @@ export function generateBatchTableQrA4Html(tables: TableQrPrintItem[], storeInfo
                 <div class="table-card">
                   <!-- Header -->
                   <div>
-                    <div style="font-size: 13px; font-weight: 900; color: #ea580c; text-transform: uppercase;">
+                    <div style="font-size: 13px; font-weight: 900; color: #6f4e37; text-transform: uppercase;">
                       ${storeInfo.brandName || storeInfo.storeName}
                     </div>
                     ${storeInfo.brandName && storeInfo.storeName !== storeInfo.brandName ? `
@@ -602,7 +602,7 @@ export function generateBatchTableQrA4Html(tables: TableQrPrintItem[], storeInfo
                     <div style="
                       margin: 3px auto;
                       padding: 2px 14px;
-                      background: #ea580c;
+                      background: #6f4e37;
                       color: #fff;
                       font-size: 17px;
                       font-weight: 900;
@@ -617,7 +617,7 @@ export function generateBatchTableQrA4Html(tables: TableQrPrintItem[], storeInfo
                   <div style="
                     padding: 4px;
                     background: #fff;
-                    border: 1px solid #fed7aa;
+                    border: 1px solid #e8d2c0;
                     border-radius: 8px;
                     display: inline-block;
                     margin: 2px 0;
@@ -627,7 +627,7 @@ export function generateBatchTableQrA4Html(tables: TableQrPrintItem[], storeInfo
 
                   <!-- Footer -->
                   <div>
-                    <div style="font-size: 11px; font-weight: 900; color: #ea580c; text-transform: uppercase;">
+                    <div style="font-size: 11px; font-weight: 900; color: #6f4e37; text-transform: uppercase;">
                       QUÉT MÃ ĐỂ GỌI MÓN
                     </div>
                     <div style="font-size: 9px; color: #666; margin-top: 1px;">

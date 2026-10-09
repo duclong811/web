@@ -35,6 +35,7 @@ namespace WebCafe.Backend.Models.DTOs.Order
         public int StoreId { get; set; }
         
         public int? TableId { get; set; }
+        public string? TableToken { get; set; }
         
         [Phone(ErrorMessage = "Số điện thoại khách hàng không đúng định dạng.")]
         public string? CustomerPhone { get; set; }

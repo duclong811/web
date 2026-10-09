@@ -50,10 +50,8 @@ export default function UserMenu({ isOpen, onClose }: UserMenuProps) {
             <div className="mt-2 inline-block px-2.5 py-0.5 bg-white/20 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase">
               {user.role === 'SystemAdmin' ? 'Quản trị viên' : 
                user.role === 'Owner' ? 'Chủ quán' :
-               user.role === 'Manager' ? 'Quản lý' :
                user.role === 'Staff' ? 'Nhân viên' :
-               user.role === 'Kitchen' ? 'Bếp' :
-               user.role === 'Cashier' ? 'Thu ngân' : 'Khách hàng'}
+               'Khách hàng'}
             </div>
           )}
         </div>
@@ -77,7 +75,7 @@ export default function UserMenu({ isOpen, onClose }: UserMenuProps) {
           </button>
 
           {/* Admin/Staff Menu Access */}
-          {(user?.role === 'SystemAdmin' || user?.role === 'Owner' || user?.role === 'Manager') && (
+          {(user?.role === 'SystemAdmin' || user?.role === 'Owner' || user?.role === 'TenantOwner') && (
             <button
               onClick={() => handleNavigate('/admin')}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-left"
@@ -87,7 +85,7 @@ export default function UserMenu({ isOpen, onClose }: UserMenuProps) {
             </button>
           )}
 
-          {(user?.role === 'Staff' || user?.role === 'Kitchen' || user?.role === 'Cashier') && (
+          {user?.role === 'Staff' && (
             <button
               onClick={() => handleNavigate('/staff')}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-xl transition-colors text-left"

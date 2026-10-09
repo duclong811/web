@@ -13,6 +13,7 @@ namespace WebCafe.Backend.Infrastructure.Data
         public DbSet<Tenant> Tenants => Set<Tenant>();
         public DbSet<Store> Stores => Set<Store>();
         public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+        public DbSet<SubscriptionPlanFeature> SubscriptionPlanFeatures => Set<SubscriptionPlanFeature>();
         public DbSet<TenantSubscription> TenantSubscriptions => Set<TenantSubscription>();
         public DbSet<SubscriptionBillingRecord> SubscriptionBillingRecords => Set<SubscriptionBillingRecord>();
         public DbSet<Permission> Permissions => Set<Permission>();
@@ -51,7 +52,10 @@ namespace WebCafe.Backend.Infrastructure.Data
             // Unique constraints
             modelBuilder.Entity<Tenant>().HasIndex(t => t.Slug).IsUnique();
             modelBuilder.Entity<Tenant>().HasIndex(t => t.OwnerEmail).IsUnique();
+            modelBuilder.Entity<Tenant>().Property(t => t.OwnerEmailVerified).HasDefaultValue(true);
             modelBuilder.Entity<SubscriptionPlan>().HasIndex(p => p.Code).IsUnique();
+            modelBuilder.Entity<SubscriptionPlanFeature>().HasIndex(p => new { p.PlanId, p.FeatureCode }).IsUnique();
+            modelBuilder.Entity<SubscriptionPlanFeature>().HasOne(p => p.Plan).WithMany(p => p.Features).HasForeignKey(p => p.PlanId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<TenantSubscription>().HasIndex(s => new { s.TenantId, s.Status });
             modelBuilder.Entity<SystemAdmin>().HasIndex(a => a.Username).IsUnique();
             modelBuilder.Entity<Permission>().HasIndex(p => p.Code).IsUnique();

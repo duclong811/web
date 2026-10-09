@@ -249,11 +249,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <span className="material-symbols-outlined text-2xl">close</span>
         </button>
 
-        {/* Logo */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full mx-auto mb-3 flex items-center justify-center">
-            <span className="text-white text-2xl font-bold">WC</span>
-          </div>
           <h2 className="text-2xl font-bold text-gray-800">
             {isLogin ? 'Đăng Nhập' : 'Đăng Ký'}
           </h2>

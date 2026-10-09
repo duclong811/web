@@ -12,6 +12,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { inventoryApi } from '../../api/apis';
+import { useNotification } from '../NotificationProvider';
 import type { 
   InventoryAiChatRequestDto, 
   InventoryAiChatResponseDto,
@@ -40,6 +41,7 @@ const DEFAULT_STARTER_PROMPTS = [
 ];
 
 export default function InventoryAiChat({ storeId = 0, lowStockCount = 0 }: InventoryAiChatProps) {
+  const { confirm } = useNotification();
   const [isOpen, setIsOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -121,14 +123,14 @@ export default function InventoryAiChat({ storeId = 0, lowStockCount = 0 }: Inve
   }, [isOpen]);
 
   const handleResetChat = () => {
-    if (window.confirm('Bạn có chắc muốn xóa lịch sử cuộc trò chuyện AI kho này?')) {
+    confirm({ tone: 'warning', title: 'Xóa lịch sử trò chuyện?', message: 'Bạn có chắc muốn xóa lịch sử cuộc trò chuyện AI kho này?', confirmText: 'Xóa lịch sử', onConfirm: async () => {
       const resetList = [defaultWelcomeMessage];
       setMessages(resetList);
       setErrorMessage(null);
       if (storeId > 0) {
         localStorage.removeItem(`inventory_ai_chat_history_store_${storeId}`);
       }
-    }
+    }});
   };
 
   const handleSendMessage = async (textToSend?: string) => {

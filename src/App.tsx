@@ -7,6 +7,10 @@ import SystemAdminLayout from './layouts/SystemAdminLayout';
 
 // Auth Pages
 import Login from './pages/Login';
+import DemoLanding from './pages/DemoLanding';
+import DemoBackoffice from './pages/DemoBackoffice';
+import OwnerSignup from './pages/OwnerSignup';
+import VerifyEmail from './pages/VerifyEmail';
 
 // Customer Pages
 import ProductDetail from './pages/customer/ProductDetail';
@@ -23,6 +27,7 @@ import OrderHistory from './pages/customer/OrderHistory';
 import StaffOrderDashboard from './pages/staff/StaffOrderDashboard';
 import StaffDashboard from './pages/staff/StaffDashboard';
 import NewOrder from './pages/staff/NewOrder';
+import StaffLogin from './pages/staff/StaffLogin';
 
 // Admin Pages (Store Owner)
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -32,21 +37,34 @@ import InventoryManagement from './pages/admin/InventoryManagement';
 import TableManagement from './pages/admin/TableManagement';
 import StaffManagement from './pages/admin/StaffManagement';
 import PaymentSettings from './pages/admin/PaymentSettings';
+import SubscriptionManagement from './pages/admin/SubscriptionManagement';
 
 // Super Admin Pages (SaaS Platform Master)
 import SystemAdminDashboard from './pages/system-admin/SystemAdminDashboard';
 import TenantManagement from './pages/system-admin/TenantManagement';
 import SaaSPlansSettings from './pages/system-admin/SaaSPlansSettings';
 import AnalyticsTracker from './components/AnalyticsTracker';
+import SubscriptionFeatureGate from './components/SubscriptionFeatureGate';
 import ProtectedRoute from './components/ProtectedRoute';
+import NotificationProvider from './components/NotificationProvider';
 
 function App() {
   return (
-    <Router>
+    <NotificationProvider><Router>
       <AnalyticsTracker />
       <Routes>
         {/* Auth Route */}
         <Route path="/login" element={<Login />} />
+        <Route path="/system-admin/login" element={<Login />} />
+        <Route path="/demo" element={<DemoLanding />} />
+        <Route path="/demo/backoffice" element={<Navigate to="/demo/owner/dashboard" replace />} />
+        <Route path="/demo/owner" element={<Navigate to="/demo/owner/dashboard" replace />} />
+        <Route path="/demo/owner/:page" element={<DemoBackoffice />} />
+        <Route path="/demo/staff" element={<Navigate to="/demo/staff/orders" replace />} />
+        <Route path="/demo/staff/:page" element={<DemoBackoffice />} />
+        <Route path="/signup" element={<OwnerSignup />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/staff/login" element={<StaffLogin />} />
 
         {/* QR Code Landing - Outside CustomerLayout for custom styling */}
         <Route path="/qr" element={<QRLanding />} />
@@ -67,16 +85,12 @@ function App() {
               <Profile />
             </ProtectedRoute>
           )} />
-          <Route path="/history" element={(
-            <ProtectedRoute allowedRoles={['Customer']}>
-              <OrderHistory />
-            </ProtectedRoute>
-          )} />
+          <Route path="/history" element={<OrderHistory />} />
         </Route>
 
         {/* Staff Routes - Wrapped in StaffLayout */}
         <Route path="/staff" element={(
-          <ProtectedRoute allowedRoles={['Staff', 'Kitchen', 'Cashier', 'Barista', 'Manager', 'Owner']}>
+          <ProtectedRoute allowedRoles={['Staff', 'Owner', 'TenantOwner']}>
             <StaffLayout />
           </ProtectedRoute>
         )}>
@@ -88,18 +102,19 @@ function App() {
 
         {/* Store Owner / Store Admin Routes - Wrapped in AdminLayout */}
         <Route path="/admin" element={(
-          <ProtectedRoute allowedRoles={['Owner', 'TenantOwner', 'Manager']}>
+          <ProtectedRoute allowedRoles={['Owner', 'TenantOwner']}>
             <AdminLayout />
           </ProtectedRoute>
         )}>
           <Route index element={<AdminDashboard />} />
-          <Route path="analytics" element={<Analytics />} />
+          <Route path="analytics" element={<SubscriptionFeatureGate feature="advanced_analytics" requiredPlan="Premium"><Analytics /></SubscriptionFeatureGate>} />
           <Route path="menu" element={<MenuManagement />} />
-          <Route path="inventory" element={<InventoryManagement />} />
+          <Route path="inventory" element={<SubscriptionFeatureGate feature="inventory" requiredPlan="Premium"><InventoryManagement /></SubscriptionFeatureGate>} />
           <Route path="tables" element={<TableManagement />} />
           <Route path="staff" element={<StaffManagement />} />
           <Route path="settings" element={<PaymentSettings />} />
-          <Route path="payments" element={<PaymentSettings />} />
+          <Route path="subscription" element={<SubscriptionManagement />} />
+          <Route path="payments" element={<Navigate to="/admin/settings" replace />} />
         </Route>
 
         {/* Super Admin Platform Routes - Wrapped in SystemAdminLayout */}
@@ -113,7 +128,7 @@ function App() {
           <Route path="plans" element={<SaaSPlansSettings />} />
         </Route>
       </Routes>
-    </Router>
+    </Router></NotificationProvider>
   );
 }
 

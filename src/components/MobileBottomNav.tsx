@@ -1,15 +1,18 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useStore } from '../store/useStore';
 
 export default function MobileBottomNav() {
   const location = useLocation();
   const path = location.pathname;
+  const activeOrder = useStore(state => state.activeOrder);
+  const guestSession = useStore(state => state.guestSession);
 
   const isHome = path === '/' || path === '/menu';
   const isAi = path === '/ai-suggest';
   const isTracking = path.startsWith('/tracking');
   const isOrderSuccess = path.startsWith('/order-success');
   const isHistory = path === '/history';
-  const isOrderActive = isTracking || isOrderSuccess;
+  const isOrderActive = isTracking || isOrderSuccess || Boolean(activeOrder || guestSession?.guestId);
   const isProfile = path === '/profile';
 
   return (
@@ -27,7 +30,7 @@ export default function MobileBottomNav() {
         <span className="text-[10px] font-bold mt-0.5">Hỏi AI</span>
       </Link>
 
-      <Link to={isOrderActive ? '/tracking' : '/history'} className={`flex flex-col items-center transition-colors ${(isOrderActive || isHistory) ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}>
+      <Link to={activeOrder ? `/tracking?code=${encodeURIComponent(activeOrder.orderCode || activeOrder.id)}` : guestSession?.guestId ? `/tracking?guestId=${encodeURIComponent(guestSession.guestId)}` : '/history'} className={`flex flex-col items-center transition-colors ${(isOrderActive || isHistory) ? 'text-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}>
         <div className="relative">
           <span className="material-symbols-outlined text-xl" style={(isOrderActive || isHistory) ? { fontVariationSettings: "'FILL' 1" } : {}}>receipt_long</span>
           {isOrderActive && <span className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full animate-pulse"></span>}

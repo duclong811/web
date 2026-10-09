@@ -58,6 +58,7 @@ export interface GuestSession {
   guestId: string; // UUID for tracking
   storeId: number;
   tableId: string | number;
+  tableToken?: string;
   tableNumber: string;
   storeName?: string;
   guestName?: string;
@@ -114,7 +115,7 @@ interface StoreState {
   fetchOrders: (storeId?: number) => Promise<void>;
   
   // Guest Session Actions
-  initGuestSession: (storeId: number, tableId: string | number, tableNumber?: string, storeName?: string) => void;
+  initGuestSession: (storeId: number, tableId: string | number, tableNumber?: string, storeName?: string, tableToken?: string) => void;
   updateGuestInfo: (name?: string, phone?: string) => void;
   clearGuestSession: () => void;
   
@@ -184,7 +185,7 @@ export const useStore = create<StoreState>((set, get) => ({
   setTable: (table) => set({ currentTable: table, currentTableNumber: table }),
 
   // Guest Session Management
-  initGuestSession: (storeId, tableId, tableNumber, storeName) => {
+  initGuestSession: (storeId, tableId, tableNumber, storeName, tableToken) => {
     const guestId = `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const displayTableNumber = tableNumber || (typeof tableId === 'string' ? tableId : `Bàn ${tableId}`);
     const numericTableId = typeof tableId === 'number' ? tableId : (parseInt(tableId) || 0);
@@ -195,6 +196,7 @@ export const useStore = create<StoreState>((set, get) => ({
       tableId,
       tableNumber: displayTableNumber,
       storeName,
+      tableToken,
       timestamp: new Date().toISOString(),
     };
 
@@ -467,6 +469,7 @@ export const useStore = create<StoreState>((set, get) => ({
       const payload = {
         storeId: effectiveStoreId,
         tableId: finalTableNumId,
+        tableToken: guestSession?.tableToken || undefined,
         customerPhone: customerPhone || undefined,
         customerName: customerName || undefined,
         

@@ -39,18 +39,11 @@ namespace WebCafe.Backend.Controllers
                 .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
 
             // Tính ước tính doanh thu thuê bao phần mềm dựa trên gói
-            var tenants = await _db.Tenants.ToListAsync();
-            decimal subscriptionRevenue = 0;
-            foreach (var t in tenants)
-            {
-                if (!t.IsActive) continue;
-                subscriptionRevenue += (t.Plan?.ToLower()) switch
-                {
-                    "premium" or "enterprise" => 1500000m,
-                    "pro" or "standard" => 790000m,
-                    _ => 290000m
-                };
-            }
+            var activePlanPrices = await _db.SubscriptionPlans
+                .Where(p => p.IsActive)
+                .ToDictionaryAsync(p => p.Code.ToLower(), p => p.MonthlyPrice);
+            var tenants = await _db.Tenants.Where(t => t.IsActive).Select(t => t.Plan).ToListAsync();
+            decimal subscriptionRevenue = tenants.Sum(plan => activePlanPrices.TryGetValue((plan ?? "basic").ToLower(), out var price) ? price : 0m);
 
             // Tính toán doanh thu thực tế 7 ngày gần nhất từ cơ sở dữ liệu Orders
             var now = DateTime.UtcNow;
@@ -128,6 +121,43 @@ namespace WebCafe.Backend.Controllers
             }));
         }
 
+        [HttpGet("plans")]
+        public async Task<ActionResult<ApiResponse<List<SubscriptionPlanConfigDto>>>> GetPlans()
+        {
+            var plans = await _db.SubscriptionPlans.Include(p => p.Features).OrderBy(p => p.MonthlyPrice).ToListAsync();
+            return Ok(ApiResponse<List<SubscriptionPlanConfigDto>>.Ok(plans.Select(ToPlanConfig).ToList()));
+        }
+
+        [HttpPut("plans/{code}")]
+        public async Task<ActionResult<ApiResponse<SubscriptionPlanConfigDto>>> UpdatePlan(string code, [FromBody] UpdateSubscriptionPlanRequest request)
+        {
+            var plan = await _db.SubscriptionPlans.Include(p => p.Features).FirstOrDefaultAsync(p => p.Code == code.ToLower());
+            if (plan == null) return NotFound(ApiResponse<SubscriptionPlanConfigDto>.Fail("Không tìm thấy gói dịch vụ."));
+            plan.MonthlyPrice = request.MonthlyPrice;
+            plan.MaxStores = request.MaxStores;
+            plan.MaxStaff = request.MaxStaff;
+            plan.MaxTablesPerStore = request.MaxTablesPerStore;
+            plan.IsActive = request.IsActive;
+            if (request.Features != null)
+            {
+                foreach (var pair in request.Features)
+                {
+                    var feature = plan.Features.FirstOrDefault(f => f.FeatureCode == pair.Key);
+                    if (feature == null) plan.Features.Add(new SubscriptionPlanFeature { PlanId = plan.PlanId, FeatureCode = pair.Key, IsEnabled = pair.Value });
+                    else feature.IsEnabled = pair.Value;
+                }
+            }
+            await _db.SaveChangesAsync();
+            return Ok(ApiResponse<SubscriptionPlanConfigDto>.Ok(ToPlanConfig(plan), "Đã cập nhật cấu hình gói."));
+        }
+
+        private static SubscriptionPlanConfigDto ToPlanConfig(SubscriptionPlan plan) => new()
+        {
+            Code = plan.Code, Name = plan.Name, MonthlyPrice = plan.MonthlyPrice,
+            MaxStores = plan.MaxStores, MaxStaff = plan.MaxStaff, MaxTablesPerStore = plan.MaxTablesPerStore,
+            IsActive = plan.IsActive, Features = plan.Features.ToDictionary(f => f.FeatureCode, f => f.IsEnabled, StringComparer.OrdinalIgnoreCase)
+        };
+
         /// <summary>
         /// Lấy danh sách tất cả các quán cafe đối tác trên hệ thống
         /// </summary>
@@ -202,6 +232,10 @@ namespace WebCafe.Backend.Controllers
                 return BadRequest(ApiResponse<TenantDetailDto>.Fail("Email chủ quán này đã tồn tại trong hệ thống."));
             }
 
+            var planCode = (request.Plan ?? "basic").Trim().ToLowerInvariant();
+            var selectedPlan = await _db.SubscriptionPlans.FirstOrDefaultAsync(p => p.Code == planCode && p.IsActive);
+            if (selectedPlan == null) return BadRequest(ApiResponse<TenantDetailDto>.Fail("Gói dịch vụ không tồn tại hoặc đang tạm ngưng."));
+
             var slug = string.IsNullOrWhiteSpace(request.Slug)
                 ? request.Name.ToLower().Replace(" ", "-").Replace("/", "-")
                 : request.Slug.Trim().ToLower();
@@ -216,8 +250,8 @@ namespace WebCafe.Backend.Controllers
                 OwnerPhone = request.OwnerPhone.Trim(),
                 OwnerPasswordHash = SecurityHelper.HashPassword(request.OwnerPassword.Trim()),
                 LogoUrl = request.LogoUrl ?? "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&q=80",
-                Plan = request.Plan ?? "basic",
-                MaxStores = request.MaxStores > 0 ? request.MaxStores : 1,
+                Plan = selectedPlan.Code,
+                MaxStores = selectedPlan.MaxStores,
                 PointsPerAmount = 10000,
                 PointsToMoney = 200,
                 IsActive = true,
@@ -225,6 +259,16 @@ namespace WebCafe.Backend.Controllers
             };
 
             _db.Tenants.Add(tenant);
+            await _db.SaveChangesAsync();
+
+            _db.TenantSubscriptions.Add(new TenantSubscription
+            {
+                TenantId = tenant.TenantId,
+                PlanId = selectedPlan.PlanId,
+                Status = "active",
+                StartsAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            });
             await _db.SaveChangesAsync();
 
             // 3. Tạo chi nhánh đầu tiên mặc định cho quán
@@ -313,11 +357,26 @@ namespace WebCafe.Backend.Controllers
                 return NotFound(ApiResponse<object>.Fail("Không tìm thấy quán cafe với mã đã cung cấp."));
             }
 
-            tenant.Plan = request.Plan.ToLower();
-            tenant.MaxStores = request.MaxStores;
+            var planCode = request.Plan.ToLowerInvariant();
+            var plan = await _db.SubscriptionPlans.FirstOrDefaultAsync(p => p.Code == planCode && p.IsActive);
+            if (plan == null) return BadRequest(ApiResponse<object>.Fail("Gói dịch vụ không tồn tại hoặc đang tạm ngưng."));
+            tenant.Plan = plan.Code;
+            tenant.MaxStores = plan.MaxStores;
+            var subscription = await _db.TenantSubscriptions.Where(s => s.TenantId == id && s.Status != "cancelled").OrderByDescending(s => s.CreatedAt).FirstOrDefaultAsync();
+            if (subscription == null)
+            {
+                subscription = new TenantSubscription { TenantId = id, PlanId = plan.PlanId, Status = "active", StartsAt = DateTime.UtcNow, CreatedAt = DateTime.UtcNow };
+                _db.TenantSubscriptions.Add(subscription);
+            }
+            else
+            {
+                subscription.PlanId = plan.PlanId;
+                if (subscription.Status == "suspended" || subscription.Status == "grace") subscription.Status = "active";
+                subscription.CurrentPeriodStart = DateTime.UtcNow;
+            }
             await _db.SaveChangesAsync();
 
-            return Ok(ApiResponse<object>.Ok(new { tenant.TenantId, tenant.Plan, tenant.MaxStores }, $"Cập nhật gói dịch vụ quán '{tenant.Name}' thành công."));
+            return Ok(ApiResponse<object>.Ok(new { tenant.TenantId, tenant.Plan, tenant.MaxStores, maxStaff = plan.MaxStaff, maxTablesPerStore = plan.MaxTablesPerStore }, $"Cập nhật gói dịch vụ quán '{tenant.Name}' thành công."));
         }
     }
 }

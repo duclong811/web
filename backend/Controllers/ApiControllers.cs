@@ -30,10 +30,12 @@ namespace WebCafe.Backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, ILogger<AuthController> logger)
         {
             _authService = authService;
+            _logger = logger;
         }
 
         [HttpPost("login")]
@@ -113,6 +115,40 @@ namespace WebCafe.Backend.Controllers
             catch (AppException ex)
             {
                 return BadRequest(ApiResponse<RegisterResponse>.Fail(ex.Message));
+            }
+        }
+
+        [HttpPost("signup")]
+        public async Task<ActionResult<ApiResponse<OwnerSignupResponse>>> SignupOwner([FromBody] OwnerSignupRequest request)
+        {
+            try
+            {
+                var result = await _authService.SignupOwnerAsync(request);
+                return Ok(ApiResponse<OwnerSignupResponse>.Ok(result, "Tạo quán thành công. Vui lòng xác minh email để tiếp tục."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<OwnerSignupResponse>.Fail(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Owner signup failed.");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse<OwnerSignupResponse>.Fail("Không thể tạo quán lúc này. Vui lòng thử lại sau."));
+            }
+        }
+
+        [HttpGet("verify-owner")]
+        public async Task<ActionResult<ApiResponse<LoginResponse>>> VerifyOwnerEmail([FromQuery] string token)
+        {
+            try
+            {
+                var result = await _authService.VerifyOwnerEmailAsync(token);
+                return Ok(ApiResponse<LoginResponse>.Ok(result, "Xác minh email thành công."));
+            }
+            catch (AppException ex)
+            {
+                return BadRequest(ApiResponse<LoginResponse>.Fail(ex.Message));
             }
         }
     }
@@ -347,7 +383,7 @@ namespace WebCafe.Backend.Controllers
             var source = string.IsNullOrWhiteSpace(dto.Source) ? "qr_table" : dto.Source;
             if (source.Equals("pos_staff", StringComparison.OrdinalIgnoreCase))
             {
-                var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Manager, AppRoles.Staff, AppRoles.Cashier };
+                var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Staff };
                 if (!_currentUser.IsAuthenticated || !staffRoles.Contains(_currentUser.Role, StringComparer.OrdinalIgnoreCase)) return Unauthorized();
                 await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
             }
@@ -375,10 +411,8 @@ namespace WebCafe.Backend.Controllers
             var isCustomerOwner = _currentUser.CustomerId.HasValue && order.CustomerId == _currentUser.CustomerId;
             var isStaff = string.Equals(_currentUser.Role, AppRoles.SystemAdmin, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(_currentUser.Role, AppRoles.TenantOwner, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(_currentUser.Role, AppRoles.Manager, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(_currentUser.Role, AppRoles.Staff, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(_currentUser.Role, AppRoles.Kitchen, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(_currentUser.Role, AppRoles.Cashier, StringComparison.OrdinalIgnoreCase);
+                ;
             if (!isCustomerOwner && !isStaff) return Forbid();
             if (isStaff) await _tenantAccess.EnsureOrderAccessAsync(id);
             return Ok(ApiResponse<OrderDto>.Ok(order));
@@ -391,7 +425,7 @@ namespace WebCafe.Backend.Controllers
             if (order == null) return NotFound(ApiResponse<OrderDto>.Fail("Không tìm thấy đơn hàng."));
             var entity = await _db.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.OrderCode == code);
             if (entity == null) return NotFound(ApiResponse<OrderDto>.Fail("Không tìm thấy đơn hàng."));
-            var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Manager, AppRoles.Staff, AppRoles.Cashier, AppRoles.Kitchen };
+            var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Staff };
             var isCustomerOwner = _currentUser.CustomerId.HasValue && entity.CustomerId == _currentUser.CustomerId;
             if (!isCustomerOwner && _currentUser.IsAuthenticated && staffRoles.Contains(_currentUser.Role, StringComparer.OrdinalIgnoreCase))
             {
@@ -482,7 +516,7 @@ namespace WebCafe.Backend.Controllers
                 {
                     return;
                 }
-                var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Manager, AppRoles.Staff, AppRoles.Cashier, AppRoles.Kitchen };
+                var staffRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Staff };
                 if (staffRoles.Contains(_currentUser.Role, StringComparer.OrdinalIgnoreCase) && _currentUser.TenantId.HasValue)
                 {
                     await _tenantAccess.EnsureOrderAccessAsync(orderId);
@@ -506,7 +540,7 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = AppPolicies.StaffAccess)]
         public async Task<ActionResult<ApiResponse<PaymentResultDto>>> ProcessPayment([FromBody] CreatePaymentDto dto)
         {
-            var paymentRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Manager, AppRoles.Staff, AppRoles.Cashier };
+                var paymentRoles = new[] { AppRoles.SystemAdmin, AppRoles.TenantOwner, AppRoles.Staff };
             if (!paymentRoles.Contains(_currentUser.Role, StringComparer.OrdinalIgnoreCase)) return Forbid();
             await _tenantAccess.EnsureOrderAccessAsync(dto.OrderId);
             var result = await _paymentService.ProcessPaymentAsync(dto, _currentUser.UserId);
@@ -692,11 +726,15 @@ namespace WebCafe.Backend.Controllers
     {
         private readonly IAnalyticsService _analyticsService;
         private readonly ITenantAccessService _tenantAccess;
+        private readonly ICurrentUserService _currentUser;
+        private readonly ISubscriptionService _subscription;
 
-        public AnalyticsController(IAnalyticsService analyticsService, ITenantAccessService tenantAccess)
+        public AnalyticsController(IAnalyticsService analyticsService, ITenantAccessService tenantAccess, ICurrentUserService currentUser, ISubscriptionService subscription)
         {
             _analyticsService = analyticsService;
             _tenantAccess = tenantAccess;
+            _currentUser = currentUser;
+            _subscription = subscription;
         }
 
         [HttpGet("dashboard/store/{storeId}")]
@@ -725,6 +763,7 @@ namespace WebCafe.Backend.Controllers
             [FromQuery] DateTime? toDate)
         {
             await _tenantAccess.EnsureStoreAccessAsync(storeId);
+            if (_currentUser.TenantId.HasValue) await _subscription.EnsureFeatureAccessAsync(_currentUser.TenantId.Value, "advanced_analytics", "premium");
             var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-6);
             var to = toDate ?? DateTime.UtcNow;
             var report = await _analyticsService.GetBusinessAnalyticsReportAsync(storeId, from, to);
@@ -739,6 +778,7 @@ namespace WebCafe.Backend.Controllers
             [FromQuery] DateTime? toDate)
         {
             await _tenantAccess.EnsureStoreAccessAsync(storeId);
+            if (_currentUser.TenantId.HasValue) await _subscription.EnsureFeatureAccessAsync(_currentUser.TenantId.Value, "advanced_analytics", "premium");
             var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-29);
             var to = toDate ?? DateTime.UtcNow;
             var summary = await _analyticsService.GetMenuEngineeringMatrixAsync(storeId, from, to);
@@ -847,17 +887,20 @@ namespace WebCafe.Backend.Controllers
         private readonly ICurrentUserService _currentUser;
         private readonly ITenantAccessService _tenantAccess;
         private readonly IGeminiService _geminiService;
+        private readonly ISubscriptionService _subscription;
 
         public InventoryController(
             IInventoryService inventoryService,
             ICurrentUserService currentUser,
             ITenantAccessService tenantAccess,
-            IGeminiService geminiService)
+            IGeminiService geminiService,
+            ISubscriptionService subscription)
         {
             _inventoryService = inventoryService;
             _currentUser = currentUser;
             _tenantAccess = tenantAccess;
             _geminiService = geminiService;
+            _subscription = subscription;
         }
 
         [HttpGet("store/{storeId}")]
@@ -865,6 +908,7 @@ namespace WebCafe.Backend.Controllers
         public async Task<ActionResult<ApiResponse<List<InventoryStockDto>>>> GetInventory(int storeId)
         {
             await _tenantAccess.EnsureStoreAccessAsync(storeId);
+            if (_currentUser.TenantId.HasValue) await _subscription.EnsureFeatureAccessAsync(_currentUser.TenantId.Value, "inventory", "premium");
             var stocks = await _inventoryService.GetInventoryByStoreAsync(storeId);
             return Ok(ApiResponse<List<InventoryStockDto>>.Ok(stocks));
         }
@@ -874,6 +918,7 @@ namespace WebCafe.Backend.Controllers
         public async Task<ActionResult<ApiResponse<object>>> ImportInventory([FromBody] ImportInventoryDto dto)
         {
             await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
+            if (_currentUser.TenantId.HasValue) await _subscription.EnsureFeatureAccessAsync(_currentUser.TenantId.Value, "inventory", "premium");
             await _inventoryService.ImportInventoryAsync(dto.StoreId, dto.IngredientId, dto.Quantity, _currentUser.UserId, dto.Note);
             return Ok(ApiResponse<object>.Ok(new { }, "Nhập kho thành công."));
         }
@@ -883,6 +928,7 @@ namespace WebCafe.Backend.Controllers
         public async Task<ActionResult<ApiResponse<object>>> AdjustInventory([FromBody] AdjustInventoryDto dto)
         {
             await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
+            if (_currentUser.TenantId.HasValue) await _subscription.EnsureFeatureAccessAsync(_currentUser.TenantId.Value, "inventory", "premium");
             await _inventoryService.AdjustInventoryAsync(dto.StoreId, dto.IngredientId, dto.NewQuantity, _currentUser.UserId, dto.Note);
             return Ok(ApiResponse<object>.Ok(new { }, "Điều chỉnh kho thành công."));
         }
@@ -896,6 +942,7 @@ namespace WebCafe.Backend.Controllers
             [FromQuery] DateTime? toDate)
         {
             await _tenantAccess.EnsureStoreAccessAsync(storeId);
+            if (_currentUser.TenantId.HasValue) await _subscription.EnsureFeatureAccessAsync(_currentUser.TenantId.Value, "inventory", "premium");
             var transactions = await _inventoryService.GetTransactionHistoryAsync(storeId, ingredientId, fromDate, toDate);
             return Ok(ApiResponse<List<InventoryTransactionDto>>.Ok(transactions));
         }
@@ -907,6 +954,7 @@ namespace WebCafe.Backend.Controllers
         {
             if (storeId.HasValue) await _tenantAccess.EnsureStoreAccessAsync(storeId.Value);
             var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory", "premium");
             var list = await _inventoryService.GetIngredientsAsync(tenantId, storeId);
             return Ok(ApiResponse<List<IngredientDto>>.Ok(list));
         }
@@ -917,6 +965,7 @@ namespace WebCafe.Backend.Controllers
         {
             await _tenantAccess.EnsureStoreAccessAsync(dto.StoreId);
             dto.TenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(dto.TenantId, "inventory", "premium");
             var result = await _inventoryService.CreateIngredientAsync(dto);
             return Ok(ApiResponse<IngredientDto>.Ok(result, "Tạo nguyên liệu thành công."));
         }
@@ -925,6 +974,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<IngredientDto>>> UpdateIngredient(int id, [FromBody] UpdateIngredientDto dto)
         {
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory", "premium");
             var result = await _inventoryService.UpdateIngredientAsync(id, dto);
             return Ok(ApiResponse<IngredientDto>.Ok(result, "Cập nhật nguyên liệu thành công."));
         }
@@ -933,6 +984,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<object>>> DeleteIngredient(int id)
         {
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory", "premium");
             await _inventoryService.DeleteIngredientAsync(id);
             return Ok(ApiResponse<object>.Ok(new { }, "Xóa nguyên liệu thành công."));
         }
@@ -941,6 +994,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<List<MenuItemRecipeDto>>>> GetMenuItemRecipes(int menuItemId)
         {
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory_bom", "premium");
             var recipes = await _inventoryService.GetMenuItemRecipesAsync(menuItemId);
             return Ok(ApiResponse<List<MenuItemRecipeDto>>.Ok(recipes));
         }
@@ -949,6 +1004,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<object>>> UpsertRecipe([FromBody] UpsertRecipeDto dto)
         {
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory_bom", "premium");
             await _inventoryService.UpsertMenuItemRecipeAsync(dto);
             return Ok(ApiResponse<object>.Ok(new { }, "Lưu định lượng công thức thành công."));
         }
@@ -957,6 +1014,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "ManagerAccess")]
         public async Task<ActionResult<ApiResponse<object>>> DeleteRecipe(int recipeId)
         {
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory_bom", "premium");
             await _inventoryService.DeleteMenuItemRecipeAsync(recipeId);
             return Ok(ApiResponse<object>.Ok(new { }, "Xóa nguyên liệu khỏi công thức thành công."));
         }
@@ -965,6 +1024,8 @@ namespace WebCafe.Backend.Controllers
         [Authorize(Policy = "StaffAccess")]
         public async Task<ActionResult<ApiResponse<List<LowStockAlertDto>>>> GetLowStockAlerts(int storeId)
         {
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory", "premium");
             var alerts = await _inventoryService.GetLowStockAlertsAsync(storeId);
             return Ok(ApiResponse<List<LowStockAlertDto>>.Ok(alerts));
         }
@@ -976,6 +1037,8 @@ namespace WebCafe.Backend.Controllers
             if (request.StoreId <= 0 || string.IsNullOrWhiteSpace(request.Message))
                 return BadRequest(ApiResponse<InventoryAiChatResponseDto>.Fail("StoreId và câu hỏi là bắt buộc."));
             await _tenantAccess.EnsureStoreAccessAsync(request.StoreId);
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory_ai", "premium");
             request.PeriodDays = request.PeriodDays is 7 or 30 or 90 ? request.PeriodDays : 30;
             var result = await _geminiService.ChatWithInventoryAsync(request);
             return Ok(ApiResponse<InventoryAiChatResponseDto>.Ok(result));
@@ -987,6 +1050,8 @@ namespace WebCafe.Backend.Controllers
         {
             if (storeId <= 0) return BadRequest(ApiResponse<InventoryAiChatResponseDto>.Fail("StoreId không hợp lệ."));
             await _tenantAccess.EnsureStoreAccessAsync(storeId);
+            var tenantId = _currentUser.TenantId ?? throw new ForbiddenException();
+            await _subscription.EnsureFeatureAccessAsync(tenantId, "inventory_ai", "premium");
             var result = await _geminiService.GetInventorySummaryAsync(storeId, periodDays is 7 or 30 or 90 ? periodDays : 30);
             return Ok(ApiResponse<InventoryAiChatResponseDto>.Ok(result));
         }

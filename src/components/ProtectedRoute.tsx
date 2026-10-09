@@ -5,11 +5,7 @@ const ROLE_HOME: Record<string, string> = {
   SystemAdmin: '/system-admin',
   Owner: '/admin',
   TenantOwner: '/admin',
-  Manager: '/admin',
   Staff: '/staff/orders',
-  Kitchen: '/staff/orders',
-  Cashier: '/staff/orders',
-  Barista: '/staff/orders',
   Customer: '/',
 };
 
@@ -23,7 +19,11 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
   // Chưa đăng nhập -> redirect về login
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" replace />;
+    const requestedPath = window.location.pathname;
+    const loginPath = requestedPath.startsWith('/system-admin')
+      ? '/system-admin/login'
+      : '/login';
+    return <Navigate to={loginPath} replace />;
   }
 
   // Kiểm tra role nếu có yêu cầu

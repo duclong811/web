@@ -64,7 +64,8 @@ apiClient.interceptors.response.use(
         const path = window.location.pathname;
         const isAdminOrStaffPath = path.startsWith('/admin') || path.startsWith('/staff') || path.startsWith('/system-admin');
         if (isAdminOrStaffPath && !path.includes('/login')) {
-          window.location.href = `/login?redirect=${encodeURIComponent(path)}`;
+          const loginPath = path.startsWith('/system-admin') ? '/system-admin/login' : '/login';
+          window.location.href = `${loginPath}?redirect=${encodeURIComponent(path)}`;
         }
       }
     }

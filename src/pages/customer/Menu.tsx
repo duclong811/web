@@ -88,7 +88,9 @@ export default function Menu() {
       const matchCat = activeCategory === 'Tất Cả' || itemCat.includes(activeCat) || activeCat.includes(itemCat);
       const matchSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchCat && matchSearch;
-    });
+    })
+    // Featured items are shown first while preserving the configured menu order.
+    .sort((a, b) => Number(Boolean(b.rawDto?.isFeatured)) - Number(Boolean(a.rawDto?.isFeatured)) || (a.rawDto?.sortOrder ?? 0) - (b.rawDto?.sortOrder ?? 0));
 
   const totalPages = Math.ceil(activeItems.length / PAGE_SIZE);
   const paginatedItems = activeItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -246,55 +248,61 @@ export default function Menu() {
                 return (
                   <div 
                     key={item.id} 
-                    className={`group bg-white rounded-2xl overflow-hidden border border-primary/5 shadow-xs transition-all duration-300 flex flex-col relative ${
+                    className={`group bg-white rounded-xl sm:rounded-2xl overflow-hidden border border-primary/5 shadow-xs transition-all duration-300 flex flex-row sm:flex-col relative ${
                       isOutOfStock ? 'opacity-70 grayscale-[0.25] hover:shadow-xs' : 'hover:shadow-lg'
                     }`}
                   >
                     {/* Out of stock badge */}
                     {isOutOfStock && (
-                      <div className="absolute top-3 left-3 z-20 px-2.5 py-1 bg-red-600 text-white font-black text-[10px] uppercase rounded-lg shadow-md flex items-center gap-1 animate-pulse">
+                      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 px-1.5 sm:px-2.5 py-0.5 sm:py-1 bg-red-600 text-white font-black text-[8px] sm:text-[10px] uppercase rounded-md sm:rounded-lg shadow-md flex items-center gap-1 animate-pulse">
                         <span className="material-symbols-outlined text-xs">block</span>
                         TẠM HẾT MÓN
                       </div>
                     )}
+                    {!isOutOfStock && item.rawDto?.isFeatured && (
+                      <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 px-1.5 sm:px-2.5 py-0.5 sm:py-1 bg-amber-400 text-stone-950 font-black text-[8px] sm:text-[10px] uppercase rounded-md sm:rounded-lg shadow-md flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        Nổi bật
+                      </div>
+                    )}
 
-                    <Link to={`/product/${item.id}`} className="relative h-52 sm:h-64 overflow-hidden block bg-surface-container-low">
+                    <Link to={`/product/${item.id}`} className="relative m-2 h-24 w-24 shrink-0 overflow-hidden rounded-xl block bg-surface-container-low sm:m-0 sm:h-64 sm:w-auto sm:rounded-none">
                       <div className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-transform duration-500" 
                            style={{ backgroundImage: `url('${item.image}')` }}>
                       </div>
-                      <div className="absolute bottom-3 right-3 px-3 py-1 bg-primary text-on-primary rounded-lg font-bold text-xs sm:text-label-md shadow-md">
+                      <div className="absolute bottom-1.5 right-1.5 sm:bottom-3 sm:right-3 px-1.5 sm:px-3 py-0.5 sm:py-1 bg-primary text-on-primary rounded-md sm:rounded-lg font-bold text-[10px] sm:text-label-md shadow-md">
                           {item.price.toLocaleString('vi-VN')}đ
                       </div>
                       {!isOutOfStock && (
-                        <div className="absolute top-3 left-3 px-2 py-0.5 bg-white/95 backdrop-blur-md shadow-xs rounded-md flex items-center gap-1">
-                          <span className="material-symbols-outlined text-amber-500 text-xs sm:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                          <span className="text-[11px] sm:text-xs font-bold text-on-surface">{item.rating || 4.8}</span>
+                        <div className="absolute top-1.5 left-1.5 sm:top-3 sm:left-3 px-1.5 sm:px-2 py-0.5 bg-white/95 backdrop-blur-md shadow-xs rounded-md flex items-center gap-0.5 sm:gap-1">
+                          <span className="material-symbols-outlined text-amber-500 text-[10px] sm:text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                          <span className="text-[9px] sm:text-xs font-bold text-on-surface">{item.rating || 4.8}</span>
                         </div>
                       )}
                     </Link>
-                    <div className="p-4 sm:p-stack-md flex-1 flex flex-col">
+                    <div className="min-w-0 p-2 sm:p-stack-md flex-1 flex flex-col">
                       <Link to={`/product/${item.id}`} className="block group-hover:opacity-80 transition-opacity">
-                        <h3 className={`text-base sm:text-lg font-bold mb-1 line-clamp-1 ${isOutOfStock ? 'text-on-surface/80 line-through' : 'text-on-surface'}`}>
+                        <h3 className={`text-sm sm:text-lg font-bold mb-0.5 sm:mb-1 line-clamp-1 ${isOutOfStock ? 'text-on-surface/80 line-through' : 'text-on-surface'}`}>
                           {item.name}
                         </h3>
-                        <p className="text-xs sm:text-sm text-on-surface-variant line-clamp-2 mb-4 leading-relaxed">
+                        <p className="hidden sm:block text-xs sm:text-sm text-on-surface-variant line-clamp-2 mb-4 leading-relaxed">
                             {item.description || 'Hương vị hảo hạng được pha chế tươi ngon mỗi ngày.'}
                         </p>
                       </Link>
-                      <div className="flex items-center justify-between mt-auto pt-2 border-t border-surface-variant/40">
+                      <div className="flex items-center justify-between gap-2 mt-auto pt-1.5 sm:pt-2 border-t border-surface-variant/40">
                         {isOutOfStock ? (
-                          <span className="px-3.5 py-1.5 bg-red-50 text-red-600 rounded-full text-xs font-bold border border-red-200">
+                          <span className="px-2 sm:px-3.5 py-1 sm:py-1.5 bg-red-50 text-red-600 rounded-full text-[10px] sm:text-xs font-bold border border-red-200">
                             Tạm Hết Món
                           </span>
                         ) : (
-                          <Link to={`/product/${item.id}`} className="px-3.5 py-1.5 border-[1.5px] border-primary text-primary rounded-full text-xs font-bold hover:bg-primary/5 transition-colors">
+                          <Link to={`/product/${item.id}`} className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 border-[1.5px] border-primary text-primary rounded-full text-[10px] sm:text-xs font-bold hover:bg-primary/5 transition-colors">
                             Tùy Chỉnh
                           </Link>
                         )}
 
                         <button 
                           disabled={isOutOfStock}
-                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${
+                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${
                             isOutOfStock 
                             ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
                             : 'bg-primary text-on-primary hover:bg-primary-container active:scale-90 shadow-sm'
@@ -302,7 +310,7 @@ export default function Menu() {
                           onClick={() => handleAddToCart(item.id, item.name, item.price, item.image)}
                           title={isOutOfStock ? 'Món này tạm hết tại chi nhánh' : 'Thêm nhanh vào giỏ'}
                         >
-                          <span className="material-symbols-outlined text-lg sm:text-xl">
+                          <span className="material-symbols-outlined text-base sm:text-xl">
                             {isOutOfStock ? 'block' : 'add'}
                           </span>
                         </button>

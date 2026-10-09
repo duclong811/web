@@ -5,6 +5,7 @@ import { signalRService } from '../../api/signalr';
 import { notificationService } from '../../services/notificationService';
 import type { Order } from '../../store/useStore';
 import type { PayOSPaymentDto } from '../../types/apiTypes';
+import { useNotification } from '../NotificationProvider';
 
 interface PayOSCounterModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const PayOSCounterModal: React.FC<PayOSCounterModalProps> = ({
   order,
   onPaidSuccess,
 }) => {
+  const { alert } = useNotification();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [payosData, setPayosData] = useState<PayOSPaymentDto | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -222,7 +224,7 @@ export const PayOSCounterModal: React.FC<PayOSCounterModalProps> = ({
       triggerSuccess();
     } catch (err: any) {
       console.error('Lỗi chuyển đổi sang tiền mặt:', err);
-      alert(err?.response?.data?.message || err?.message || 'Chuyển tiền mặt thất bại.');
+      alert(err?.response?.data?.message || err?.message || 'Chuyển tiền mặt thất bại.', 'error', 'Thanh toán thất bại');
     } finally {
       setIsConvertingCash(false);
     }

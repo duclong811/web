@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebCafe.Backend.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using WebCafe.Backend.Infrastructure.Data;
 namespace WebCafe.Backend.Migrations
 {
     [DbContext(typeof(WebCafeDbContext))]
-    partial class WebCafeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007183153_AddOwnerSignupVerification")]
+    partial class AddOwnerSignupVerification
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1050,33 +1053,6 @@ namespace WebCafe.Backend.Migrations
                     b.ToTable("SubscriptionPlans");
                 });
 
-            modelBuilder.Entity("WebCafe.Backend.Models.Entities.SubscriptionPlanFeature", b =>
-                {
-                    b.Property<int>("PlanFeatureId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PlanFeatureId"));
-
-                    b.Property<string>("FeatureCode")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("nvarchar(80)");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("PlanId")
-                        .HasColumnType("int");
-
-                    b.HasKey("PlanFeatureId");
-
-                    b.HasIndex("PlanId", "FeatureCode")
-                        .IsUnique();
-
-                    b.ToTable("SubscriptionPlanFeatures");
-                });
-
             modelBuilder.Entity("WebCafe.Backend.Models.Entities.SystemAdmin", b =>
                 {
                     b.Property<int>("AdminId")
@@ -1881,17 +1857,6 @@ namespace WebCafe.Backend.Migrations
                     b.Navigation("Tenant");
                 });
 
-            modelBuilder.Entity("WebCafe.Backend.Models.Entities.SubscriptionPlanFeature", b =>
-                {
-                    b.HasOne("WebCafe.Backend.Models.Entities.SubscriptionPlan", "Plan")
-                        .WithMany("Features")
-                        .HasForeignKey("PlanId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Plan");
-                });
-
             modelBuilder.Entity("WebCafe.Backend.Models.Entities.Table", b =>
                 {
                     b.HasOne("WebCafe.Backend.Models.Entities.Store", "Store")
@@ -2090,11 +2055,6 @@ namespace WebCafe.Backend.Migrations
                     b.Navigation("StaffList");
 
                     b.Navigation("Tables");
-                });
-
-            modelBuilder.Entity("WebCafe.Backend.Models.Entities.SubscriptionPlan", b =>
-                {
-                    b.Navigation("Features");
                 });
 
             modelBuilder.Entity("WebCafe.Backend.Models.Entities.Table", b =>

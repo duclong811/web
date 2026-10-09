@@ -9,6 +9,13 @@ import type {
   TableDto, 
   LoginRequest, 
   LoginResponse, 
+  OwnerSignupRequest,
+  OwnerSignupResponse,
+  MySubscriptionDto,
+  SubscriptionPlanDto,
+  StaffDto,
+  CreateStaffRequest,
+  UpdateStaffRequest,
   CheckVoucherRequest, 
   VoucherValidationResult, 
   DashboardStatsDto,
@@ -120,6 +127,14 @@ export const authApi = {
   loginOwner: async (data: LoginRequest) => {
     const res = await apiClient.post<ApiResponse<LoginResponse>>('/Auth/owner-login', data);
     return res.data.data;
+  },
+  signupOwner: async (data: OwnerSignupRequest) => {
+    const res = await apiClient.post<ApiResponse<OwnerSignupResponse>>('/Auth/signup', data);
+    return res.data.data;
+  },
+  verifyOwnerEmail: async (token: string) => {
+    const res = await apiClient.get<ApiResponse<LoginResponse>>('/Auth/verify-owner', { params: { token } });
+    return res.data.data;
   }
 };
 
@@ -137,6 +152,7 @@ export const tableApi = {
     const res = await apiClient.get<ApiResponse<{
       storeId: number;
       tableId: number;
+      qrToken?: string;
       tableNumber: string;
       storeName: string;
       tenantName: string;
@@ -147,6 +163,7 @@ export const tableApi = {
     const res = await apiClient.get<ApiResponse<{
       storeId: number;
       tableId: number;
+      qrToken?: string;
       tableNumber: string;
       storeName: string;
       tenantName: string;
@@ -157,6 +174,7 @@ export const tableApi = {
     const res = await apiClient.get<ApiResponse<{
       storeId: number;
       tableId: number;
+      qrToken?: string;
       tableNumber: string;
       storeName: string;
       tenantName: string;
@@ -169,11 +187,72 @@ export const tableApi = {
   }
 };
 
+// Public product demo API. The backend returns only the isolated demo table.
+export const demoApi = {
+  getInfo: async () => {
+    const res = await apiClient.get<ApiResponse<{
+      tenantId: number;
+      storeId: number;
+      storeName: string;
+      tableId: number;
+      tableNumber: string;
+      qrToken: string;
+    }>>('/demo/info');
+    return res.data.data;
+  },
+  getBackoffice: async (): Promise<DemoBackofficeSnapshot> => {
+    const res = await apiClient.get<ApiResponse<DemoBackofficeSnapshot>>('/demo/backoffice');
+    return res.data.data;
+  }
+};
+
+export interface DemoBackofficeSnapshot {
+  storeName: string;
+  sampleLabel: string;
+  categories: { categoryId: number; name: string }[];
+  menu: { menuItemId: number; name: string; basePrice: number; isAvailable: boolean; isFeatured: boolean; categoryId: number; categoryName: string; imageUrl?: string | null }[];
+  tables: { tableId: number; tableNumber: string; capacity: number; status: string }[];
+  inventory: { ingredientId: number; name: string; unit: string; minimumStock: number; currentQuantity: number }[];
+  sampleOrders: { orderCode: string; tableNumber: string; guestName: string; status: string; totalAmount: number; minutesAgo: number; items: { name: string; quantity: number }[] }[];
+  sampleStaff: { name: string; role: string; shift: string; status: string }[];
+  sampleRevenue: number[];
+}
+
 export const meApi = {
   getStores: async () => {
     const res = await apiClient.get<ApiResponse<Array<{ storeId: number; name: string; isActive: boolean }>>>('/me/stores');
     return res.data.data;
   },
+  getSubscription: async () => {
+    const res = await apiClient.get<ApiResponse<MySubscriptionDto>>('/me/subscription');
+    return res.data.data;
+  },
+  getPlans: async () => {
+    const res = await apiClient.get<ApiResponse<SubscriptionPlanDto[]>>('/me/subscription/plans');
+    return res.data.data ?? [];
+  },
+};
+
+export const staffApi = {
+  list: async (storeId: number) => {
+    const res = await apiClient.get<ApiResponse<StaffDto[]>>('/staff', { params: { storeId } });
+    return res.data.data ?? [];
+  },
+  create: async (data: CreateStaffRequest) => {
+    const res = await apiClient.post<ApiResponse<StaffDto>>('/staff', data);
+    return res.data.data;
+  },
+  update: async (staffId: number, data: UpdateStaffRequest) => {
+    const res = await apiClient.put<ApiResponse<StaffDto>>(`/staff/${staffId}`, data);
+    return res.data.data;
+  },
+  updateStatus: async (staffId: number, isActive: boolean) => {
+    const res = await apiClient.patch<ApiResponse<StaffDto>>(`/staff/${staffId}/status`, { isActive });
+    return res.data.data;
+  },
+  remove: async (staffId: number) => {
+    await apiClient.delete<ApiResponse<object>>(`/staff/${staffId}`);
+  }
 };
 
 // Voucher API
@@ -323,6 +402,14 @@ export const systemAdminApi = {
   updateTenantPlan: async (tenantId: number, payload: UpdateTenantPlanDto) => {
     const res = await apiClient.put<ApiResponse<any>>(`/system/tenants/${tenantId}/plan`, payload);
     return res.data;
+  },
+  getPlans: async () => {
+    const res = await apiClient.get<ApiResponse<any[]>>('/system/plans');
+    return res.data.data;
+  },
+  updatePlan: async (code: string, payload: any) => {
+    const res = await apiClient.put<ApiResponse<any>>(`/system/plans/${encodeURIComponent(code)}`, payload);
+    return res.data.data;
   }
 };
 

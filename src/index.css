@@ -4,7 +4,7 @@
 
 @layer base {
   body { 
-    background-color: #fbf9f8; 
+    background-color: #F6F1E7;
     font-family: 'Plus Jakarta Sans', sans-serif;
     color: #1b1c1c;
   }
@@ -17,13 +17,19 @@
   
   .glass-header {
     backdrop-filter: blur(8px);
-    background-color: rgba(251, 249, 248, 0.85);
+    background-color: rgba(246, 241, 231, 0.9);
   }
   
   .glass-card {
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(85, 55, 34, 0.05);
+  }
+
+  /* Shared landing-page canvas for all application and demo shells. */
+  .demo-shell,
+  .demo-top {
+    background-color: #F6F1E7 !important;
   }
 
   .hide-scrollbar::-webkit-scrollbar { 

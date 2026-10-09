@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 using WebCafe.Backend.Common.Constants;
 using WebCafe.Backend.Common.Exceptions;
 using WebCafe.Backend.Common.Helper;
@@ -13,27 +15,31 @@ namespace WebCafe.Backend.Services.Implementation
     {
         private readonly WebCafeDbContext _db;
         private readonly IConfiguration _config;
+        private readonly IEmailService _emailService;
 
-        public AuthService(WebCafeDbContext db, IConfiguration config)
+        public AuthService(WebCafeDbContext db, IConfiguration config, IEmailService emailService)
         {
             _db = db;
             _config = config;
+            _emailService = emailService;
         }
 
         public async Task<LoginResponse> LoginStaffAsync(LoginRequest request)
         {
+            var username = request.Username.Trim().ToLowerInvariant();
             var staff = await _db.Staff
                 .Include(s => s.Store)
                     .ThenInclude(st => st!.Tenant)
                 .Include(s => s.Role)
-                .FirstOrDefaultAsync(s => s.Username == request.Username && s.IsActive);
+                .FirstOrDefaultAsync(s => s.Username == username && s.IsActive && s.Store != null && s.Store.IsActive && s.Store.Tenant != null && s.Store.Tenant.IsActive);
 
             if (staff == null || !SecurityHelper.VerifyPassword(request.Password, staff.PasswordHash))
             {
                 throw new AppException("Tên đăng nhập hoặc mật khẩu không chính xác.");
             }
 
-            var roleName = staff.Role?.Name ?? AppRoles.Staff;
+            // Các role cũ trong database đều được xem như Staff trong mô hình mới.
+            var roleName = AppRoles.Staff;
             var tenantId = staff.Store?.TenantId ?? 0;
             var storeId = staff.StoreId;
 
@@ -75,6 +81,8 @@ namespace WebCafe.Backend.Services.Implementation
             {
                 throw new AppException("Tên đăng nhập hoặc mật khẩu chủ quán không chính xác.");
             }
+            if (!tenant.OwnerEmailVerified)
+                throw new AppException("Email chủ quán chưa được xác minh. Vui lòng kiểm tra email.");
 
             var jwtKey = GetRequiredJwtSetting("SecretKey");
             var jwtIssuer = _config["Jwt:Issuer"] ?? "WebCafeBackend";
@@ -262,6 +270,118 @@ namespace WebCafe.Backend.Services.Implementation
                 TenantId = customer.TenantId
             };
         }
+
+        public async Task<OwnerSignupResponse> SignupOwnerAsync(OwnerSignupRequest request)
+        {
+            var email = request.Email.Trim().ToLowerInvariant();
+            var planCode = request.Plan.Trim().ToLowerInvariant();
+            if (planCode is not ("basic" or "premium" or "pro"))
+                throw new AppException("Gói dùng thử không hợp lệ.");
+            if (await _db.Tenants.AnyAsync(t => t.OwnerEmail == email))
+                throw new AppException("Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác.");
+
+            var now = DateTime.UtcNow;
+            var trialEnds = now.AddDays(14);
+            await using var transaction = await _db.Database.BeginTransactionAsync();
+            var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+                .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+            var tenant = new Tenant
+            {
+                Name = request.StoreName.Trim(),
+                Slug = await CreateUniqueSlugAsync(request.StoreName),
+                OwnerName = request.StoreName.Trim(),
+                OwnerPhone = request.Phone?.Trim() ?? string.Empty,
+                OwnerEmail = email,
+                OwnerPasswordHash = SecurityHelper.HashPassword(request.Password),
+                OwnerEmailVerified = false,
+                EmailVerificationTokenHash = HashToken(rawToken),
+                EmailVerificationExpiresAt = now.AddHours(24),
+                Plan = planCode,
+                MaxStores = planCode == "pro" ? 10 : planCode == "premium" ? 5 : 1,
+                IsActive = true,
+                CreatedAt = now
+            };
+            _db.Tenants.Add(tenant);
+            await _db.SaveChangesAsync();
+
+            var plan = await _db.SubscriptionPlans.FirstOrDefaultAsync(p => p.Code == planCode);
+            if (plan == null)
+            {
+                plan = new SubscriptionPlan
+                {
+                    Code = planCode,
+                    Name = planCode.ToUpperInvariant(),
+                    MonthlyPrice = planCode == "pro" ? 1999000 : planCode == "premium" ? 1299000 : 239000,
+                    MaxStores = planCode == "pro" ? 10 : planCode == "premium" ? 5 : 1,
+                    MaxStaff = planCode == "pro" ? 50 : planCode == "premium" ? 20 : 5,
+                    MaxTablesPerStore = planCode == "pro" ? 100 : planCode == "premium" ? 50 : 20,
+                    IsActive = true
+                };
+                _db.SubscriptionPlans.Add(plan);
+                await _db.SaveChangesAsync();
+            }
+
+            var store = new Store { TenantId = tenant.TenantId, Name = request.StoreName.Trim(), Phone = request.Phone?.Trim(), IsActive = true };
+            _db.Stores.Add(store);
+            await _db.SaveChangesAsync();
+            var subscription = new TenantSubscription { TenantId = tenant.TenantId, PlanId = plan.PlanId, Status = "trialing", StartsAt = now, TrialEndsAt = trialEnds, CreatedAt = now };
+            _db.TenantSubscriptions.Add(subscription);
+            await _db.SaveChangesAsync();
+            _db.SubscriptionBillingRecords.Add(new SubscriptionBillingRecord { TenantId = tenant.TenantId, SubscriptionId = subscription.SubscriptionId, Status = "trial", Amount = 0, BillingPeriodStart = now, BillingPeriodEnd = trialEnds, CreatedAt = now });
+
+            var coffeeCategory = new Category { TenantId = tenant.TenantId, Name = "Cà Phê Pha Máy", Icon = "coffee", SortOrder = 1, IsActive = true };
+            var teaCategory = new Category { TenantId = tenant.TenantId, Name = "Trà & Trái Cây", Icon = "energy_savings_leaf", SortOrder = 2, IsActive = true };
+            var smoothieCategory = new Category { TenantId = tenant.TenantId, Name = "Sinh Tố & Trà Sữa", Icon = "bubble_chart", SortOrder = 3, IsActive = true };
+            var cakeCategory = new Category { TenantId = tenant.TenantId, Name = "Bánh Ngọt", Icon = "bakery_dining", SortOrder = 4, IsActive = true };
+            var giftCategory = new Category { TenantId = tenant.TenantId, Name = "Quà Lưu Niệm", Icon = "local_mall", SortOrder = 5, IsActive = true };
+            _db.Categories.AddRange(coffeeCategory, teaCategory, smoothieCategory, cakeCategory, giftCategory);
+            _db.MenuItems.AddRange(
+                new MenuItem { TenantId = tenant.TenantId, Category = coffeeCategory, Name = "Cà phê sữa", BasePrice = 35000, Description = "Món mẫu để bắt đầu dùng thử.", IsAvailable = true, IsFeatured = true, SortOrder = 1 },
+                new MenuItem { TenantId = tenant.TenantId, Category = teaCategory, Name = "Trà đào", BasePrice = 40000, Description = "Món mẫu để bắt đầu dùng thử.", IsAvailable = true, SortOrder = 2 });
+            _db.Tables.AddRange(new Table { StoreId = store.StoreId, TableNumber = "T01", Capacity = 4, Status = "Available", IsActive = true }, new Table { StoreId = store.StoreId, TableNumber = "T02", Capacity = 4, Status = "Available", IsActive = true });
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            var verificationBase = _config["Frontend:PublicUrl"]?.TrimEnd('/') ?? "http://localhost:5173";
+            var verificationUrl = $"{verificationBase}/verify-email?token={Uri.EscapeDataString(rawToken)}";
+            await _emailService.SendVerificationEmailAsync(email, verificationUrl);
+            return new OwnerSignupResponse { TenantId = tenant.TenantId, StoreId = store.StoreId, Email = email, Plan = planCode, TrialEndsAt = trialEnds, VerificationUrl = _config.GetValue<bool>("Email:ExposeVerificationUrl") ? verificationUrl : null };
+        }
+
+        public async Task<LoginResponse> VerifyOwnerEmailAsync(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token)) throw new AppException("Mã xác minh không hợp lệ.");
+            var tenant = await _db.Tenants.Include(t => t.Stores).FirstOrDefaultAsync(t => t.EmailVerificationTokenHash == HashToken(token));
+            if (tenant == null || tenant.EmailVerificationExpiresAt < DateTime.UtcNow)
+                throw new AppException("Liên kết xác minh không hợp lệ hoặc đã hết hạn.");
+            tenant.OwnerEmailVerified = true;
+            tenant.EmailVerificationTokenHash = null;
+            tenant.EmailVerificationExpiresAt = null;
+            await _db.SaveChangesAsync();
+            var store = tenant.Stores.FirstOrDefault(s => s.IsActive);
+            var tokenValue = JwtHelper.GenerateToken(tenant.TenantId.ToString(), tenant.OwnerEmail, AppRoles.TenantOwner, tenant.TenantId, store?.StoreId, GetRequiredJwtSetting("SecretKey"), _config["Jwt:Issuer"] ?? "WebCafeBackend", _config["Jwt:Audience"] ?? "WebCafeClients");
+            return new LoginResponse { Token = tokenValue, Username = tenant.OwnerEmail, FullName = tenant.OwnerName, Role = AppRoles.TenantOwner, TenantId = tenant.TenantId, StoreId = store?.StoreId, StoreName = store?.Name, BrandName = tenant.Name };
+        }
+
+        private async Task<string> CreateUniqueSlugAsync(string value)
+        {
+            var slug = new string(value.Trim().ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray());
+            while (slug.Contains("--")) slug = slug.Replace("--", "-");
+            slug = slug.Trim('-');
+            if (string.IsNullOrWhiteSpace(slug)) slug = "store";
+            if (slug.Length > 50) slug = slug[..50].TrimEnd('-');
+            var candidate = slug;
+            var suffix = 2;
+            while (await _db.Tenants.AnyAsync(t => t.Slug == candidate))
+            {
+                var suffixText = $"-{suffix++}";
+                var baseLength = Math.Max(1, 50 - suffixText.Length);
+                candidate = $"{slug[..Math.Min(slug.Length, baseLength)].TrimEnd('-')}{suffixText}";
+            }
+            return candidate;
+        }
+
+        private static string HashToken(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token))).ToLowerInvariant();
 
         private string GetRequiredJwtSetting(string key)
         {

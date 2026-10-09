@@ -348,7 +348,7 @@ export default function NewOrder() {
   const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
   const paginatedItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   return (
-    <div className="max-w-7xl mx-auto -m-3 sm:-m-6 md:-m-8 flex flex-col lg:flex-row h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-hidden bg-background">
+    <div className="w-full max-w-[1600px] mx-auto -m-3 sm:-m-6 md:-m-8 flex flex-col lg:flex-row h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-hidden bg-background">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-primary text-white text-xs sm:text-sm font-bold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce">
@@ -373,7 +373,7 @@ export default function NewOrder() {
               />
             </div>
             <div className="text-[11px] font-bold text-on-surface-variant shrink-0 bg-surface-container-low px-2.5 py-1.5 rounded-xl border border-outline-variant/15">
-              Quán #{currentStoreId}
+              {user?.storeName || user?.brandName || `Quán #${currentStoreId}`}
             </div>
           </div>
 

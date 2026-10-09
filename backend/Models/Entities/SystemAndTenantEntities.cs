@@ -48,6 +48,13 @@ namespace WebCafe.Backend.Models.Entities
         [Required, MaxLength(256)]
         public string OwnerPasswordHash { get; set; } = string.Empty;
 
+        public bool OwnerEmailVerified { get; set; } = true;
+
+        [MaxLength(128)]
+        public string? EmailVerificationTokenHash { get; set; }
+
+        public DateTime? EmailVerificationExpiresAt { get; set; }
+
         [MaxLength(500)]
         public string? LogoUrl { get; set; }
 
@@ -85,6 +92,16 @@ namespace WebCafe.Backend.Models.Entities
         public int MaxTablesPerStore { get; set; } = 20;
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public ICollection<SubscriptionPlanFeature> Features { get; set; } = new List<SubscriptionPlanFeature>();
+    }
+
+    public class SubscriptionPlanFeature
+    {
+        [Key] public int PlanFeatureId { get; set; }
+        public int PlanId { get; set; }
+        [Required, MaxLength(80)] public string FeatureCode { get; set; } = string.Empty;
+        public bool IsEnabled { get; set; } = true;
+        public SubscriptionPlan? Plan { get; set; }
     }
 
     public class TenantSubscription

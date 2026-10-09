@@ -345,6 +345,62 @@ namespace WebCafe.Backend.Controllers
             return Ok(ApiResponse<object>.Ok(new { tenant.TenantId, tenant.IsActive }, $"Đã {statusStr} quán '{tenant.Name}'."));
         }
 
+        [HttpDelete("tenants/{id}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteTrialTenant(int id)
+        {
+            var tenant = await _db.Tenants.FirstOrDefaultAsync(t => t.TenantId == id);
+            if (tenant == null) return NotFound(ApiResponse<object>.Fail("Không tìm thấy quán cần xóa."));
+            if (tenant.Slug == "aismartserve-demo") return BadRequest(ApiResponse<object>.Fail("Không thể xóa khu demo công khai."));
+            var isTrial = await _db.TenantSubscriptions.AnyAsync(s => s.TenantId == id && s.Status == "trialing") || !tenant.OwnerEmailVerified;
+            if (!isTrial) return BadRequest(ApiResponse<object>.Fail("Chỉ được xóa quán đang dùng thử 14 ngày."));
+
+            await using var transaction = await _db.Database.BeginTransactionAsync();
+            var storeIds = await _db.Stores.Where(s => s.TenantId == id).Select(s => s.StoreId).ToListAsync();
+            var menuIds = await _db.MenuItems.Where(m => m.TenantId == id).Select(m => m.MenuItemId).ToListAsync();
+            var orderIds = await _db.Orders.Where(o => o.TenantId == id).Select(o => o.OrderId).ToListAsync();
+            var orderItemIds = await _db.OrderItems.Where(i => orderIds.Contains(i.OrderId)).Select(i => i.OrderItemId).ToListAsync();
+            var customerIds = await _db.Customers.Where(c => c.TenantId == id).Select(c => c.CustomerId).ToListAsync();
+            var ingredientIds = await _db.Ingredients.Where(i => i.TenantId == id).Select(i => i.IngredientId).ToListAsync();
+            var stockIds = await _db.InventoryStocks.Where(s => storeIds.Contains(s.StoreId) || ingredientIds.Contains(s.IngredientId)).Select(s => s.StockId).ToListAsync();
+            var staffIds = await _db.Staff.Where(s => storeIds.Contains(s.StoreId)).Select(s => s.StaffId).ToListAsync();
+            var shiftIds = await _db.Shifts.Where(s => storeIds.Contains(s.StoreId)).Select(s => s.ShiftId).ToListAsync();
+
+            await _db.OrderItemToppings.Where(x => orderItemIds.Contains(x.OrderItemId)).ExecuteDeleteAsync();
+            await _db.Payments.Where(x => orderIds.Contains(x.OrderId)).ExecuteDeleteAsync();
+            await _db.LoyaltyPoints.Where(x => customerIds.Contains(x.CustomerId) || (x.OrderId.HasValue && orderIds.Contains(x.OrderId.Value))).ExecuteDeleteAsync();
+            await _db.VoucherUsages.Where(x => (x.CustomerId.HasValue && customerIds.Contains(x.CustomerId.Value)) || orderIds.Contains(x.OrderId)).ExecuteDeleteAsync();
+            await _db.OrderItems.Where(x => orderIds.Contains(x.OrderId)).ExecuteDeleteAsync();
+            await _db.Orders.Where(x => orderIds.Contains(x.OrderId)).ExecuteDeleteAsync();
+            // Inventory transactions can reference stock, order or staff; remove all of them before parents.
+            await _db.InventoryTransactions.Where(x => stockIds.Contains(x.StockId) || (x.OrderId.HasValue && orderIds.Contains(x.OrderId.Value)) || (x.StaffId.HasValue && staffIds.Contains(x.StaffId.Value))).ExecuteDeleteAsync();
+            await _db.InventoryStocks.Where(x => stockIds.Contains(x.StockId)).ExecuteDeleteAsync();
+            await _db.MenuItemRecipes.Where(x => menuIds.Contains(x.MenuItemId)).ExecuteDeleteAsync();
+            await _db.ToppingRecipes.Where(x => ingredientIds.Contains(x.IngredientId)).ExecuteDeleteAsync();
+            await _db.MenuItemSizes.Where(x => menuIds.Contains(x.MenuItemId)).ExecuteDeleteAsync();
+            await _db.MenuItemToppings.Where(x => menuIds.Contains(x.MenuItemId)).ExecuteDeleteAsync();
+            await _db.StaffShifts.Where(x => staffIds.Contains(x.StaffId) || shiftIds.Contains(x.ShiftId)).ExecuteDeleteAsync();
+            await _db.Shifts.Where(x => shiftIds.Contains(x.ShiftId)).ExecuteDeleteAsync();
+            await _db.Staff.Where(x => staffIds.Contains(x.StaffId)).ExecuteDeleteAsync();
+            await _db.Tables.Where(x => storeIds.Contains(x.StoreId)).ExecuteDeleteAsync();
+            await _db.Vouchers.Where(x => x.TenantId == id).ExecuteDeleteAsync();
+            await _db.Customers.Where(x => customerIds.Contains(x.CustomerId)).ExecuteDeleteAsync();
+            await _db.RolePermissions.Where(x => _db.Roles.Where(r => r.TenantId == id).Select(r => r.RoleId).Contains(x.RoleId)).ExecuteDeleteAsync();
+            await _db.MenuItems.Where(x => menuIds.Contains(x.MenuItemId)).ExecuteDeleteAsync();
+            await _db.Categories.Where(x => x.TenantId == id).ExecuteDeleteAsync();
+            await _db.Sizes.Where(x => x.TenantId == id).ExecuteDeleteAsync();
+            await _db.MenuItemToppings.Where(x => x.Topping != null && x.Topping.TenantId == id).ExecuteDeleteAsync();
+            await _db.Toppings.Where(x => x.TenantId == id).ExecuteDeleteAsync();
+            await _db.Ingredients.Where(x => x.TenantId == id).ExecuteDeleteAsync();
+            await _db.Roles.Where(x => x.TenantId == id).ExecuteDeleteAsync();
+            var subIds = await _db.TenantSubscriptions.Where(x => x.TenantId == id).Select(x => x.SubscriptionId).ToListAsync();
+            await _db.SubscriptionBillingRecords.Where(x => x.TenantId == id || subIds.Contains(x.SubscriptionId)).ExecuteDeleteAsync();
+            await _db.TenantSubscriptions.Where(x => x.TenantId == id).ExecuteDeleteAsync();
+            await _db.Stores.Where(x => storeIds.Contains(x.StoreId)).ExecuteDeleteAsync();
+            await _db.Tenants.Where(x => x.TenantId == id).ExecuteDeleteAsync();
+            await transaction.CommitAsync();
+            return Ok(ApiResponse<object>.Ok(new { tenantId = id }, "Đã xóa vĩnh viễn quán dùng thử."));
+        }
+
         /// <summary>
         /// Cập nhật gói cước dịch vụ và số chi nhánh tối đa
         /// </summary>

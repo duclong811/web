@@ -277,14 +277,41 @@ namespace WebCafe.Backend.Services.Implementation
             var planCode = request.Plan.Trim().ToLowerInvariant();
             if (planCode is not ("basic" or "premium" or "pro"))
                 throw new AppException("Gói dùng thử không hợp lệ.");
-            if (await _db.Tenants.AnyAsync(t => t.OwnerEmail == email))
-                throw new AppException("Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác.");
+            var existingTenant = await _db.Tenants.Include(t => t.Stores)
+                .FirstOrDefaultAsync(t => t.OwnerEmail == email);
+            if (existingTenant != null)
+            {
+                if (existingTenant.OwnerEmailVerified || !SecurityHelper.VerifyPassword(request.Password, existingTenant.OwnerPasswordHash))
+                    throw new AppException("Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác.");
+
+                await using var retryTransaction = await _db.Database.BeginTransactionAsync();
+                var retryNow = DateTime.UtcNow;
+                var retryToken = CreateVerificationToken();
+                existingTenant.EmailVerificationTokenHash = HashToken(retryToken);
+                existingTenant.EmailVerificationExpiresAt = retryNow.AddHours(24);
+                var retryUrl = BuildVerificationUrl(retryToken);
+                await _db.SaveChangesAsync();
+                await _emailService.SendVerificationEmailAsync(email, retryUrl);
+                await retryTransaction.CommitAsync();
+                var existingStore = existingTenant.Stores.FirstOrDefault(s => s.IsActive);
+                var trialSubscription = await _db.TenantSubscriptions.Where(s => s.TenantId == existingTenant.TenantId)
+                    .OrderByDescending(s => s.CreatedAt).FirstOrDefaultAsync();
+                return new OwnerSignupResponse
+                {
+                    TenantId = existingTenant.TenantId,
+                    StoreId = existingStore?.StoreId ?? 0,
+                    Email = email,
+                    Plan = existingTenant.Plan,
+                    TrialEndsAt = trialSubscription?.TrialEndsAt ?? retryNow,
+                    EmailSent = true,
+                    VerificationUrl = _config.GetValue<bool>("Email:ExposeVerificationUrl") ? retryUrl : null
+                };
+            }
 
             var now = DateTime.UtcNow;
             var trialEnds = now.AddDays(14);
             await using var transaction = await _db.Database.BeginTransactionAsync();
-            var rawToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
-                .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+            var rawToken = CreateVerificationToken();
             var tenant = new Tenant
             {
                 Name = request.StoreName.Trim(),
@@ -339,13 +366,19 @@ namespace WebCafe.Backend.Services.Implementation
                 new MenuItem { TenantId = tenant.TenantId, Category = coffeeCategory, Name = "Cà phê sữa", BasePrice = 35000, Description = "Món mẫu để bắt đầu dùng thử.", IsAvailable = true, IsFeatured = true, SortOrder = 1 },
                 new MenuItem { TenantId = tenant.TenantId, Category = teaCategory, Name = "Trà đào", BasePrice = 40000, Description = "Món mẫu để bắt đầu dùng thử.", IsAvailable = true, SortOrder = 2 });
             _db.Tables.AddRange(new Table { StoreId = store.StoreId, TableNumber = "T01", Capacity = 4, Status = "Available", IsActive = true }, new Table { StoreId = store.StoreId, TableNumber = "T02", Capacity = 4, Status = "Available", IsActive = true });
-            await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            var verificationBase = _config["Frontend:PublicUrl"]?.TrimEnd('/') ?? "http://localhost:5173";
-            var verificationUrl = $"{verificationBase}/verify-email?token={Uri.EscapeDataString(rawToken)}";
+            var verificationUrl = BuildVerificationUrl(rawToken);
             await _emailService.SendVerificationEmailAsync(email, verificationUrl);
-            return new OwnerSignupResponse { TenantId = tenant.TenantId, StoreId = store.StoreId, Email = email, Plan = planCode, TrialEndsAt = trialEnds, VerificationUrl = _config.GetValue<bool>("Email:ExposeVerificationUrl") ? verificationUrl : null };
+            await transaction.CommitAsync();
+            return new OwnerSignupResponse { TenantId = tenant.TenantId, StoreId = store.StoreId, Email = email, Plan = planCode, TrialEndsAt = trialEnds, EmailSent = true, VerificationUrl = _config.GetValue<bool>("Email:ExposeVerificationUrl") ? verificationUrl : null };
+        }
+
+        private static string CreateVerificationToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+
+        private string BuildVerificationUrl(string token)
+        {
+            var verificationBase = _config["Frontend:PublicUrl"]?.TrimEnd('/') ?? "http://localhost:5173";
+            return $"{verificationBase}/verify-email?token={Uri.EscapeDataString(token)}";
         }
 
         public async Task<LoginResponse> VerifyOwnerEmailAsync(string token)

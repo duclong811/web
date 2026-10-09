@@ -41,6 +41,7 @@ export default function OwnerSignup() {
   const [selectedPlan, setSelectedPlan] = useState<'basic' | 'premium' | 'pro'>(initialPlan);
   const [form, setForm] = useState({ email: '', password: '', storeName: '', phone: '' });
   const [done, setDone] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -73,6 +74,7 @@ export default function OwnerSignup() {
 
       const result = await authApi.signupOwner(payload);
       setVerificationUrl(result?.verificationUrl ?? null);
+      setEmailSent(Boolean(result?.emailSent));
       setDone(true);
     } catch (err: any) {
       const apiData = err?.response?.data;
@@ -104,15 +106,38 @@ export default function OwnerSignup() {
     }
   };
 
+  const resendVerification = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await authApi.signupOwner({
+        email: form.email.trim(),
+        password: form.password,
+        storeName: form.storeName.trim(),
+        phone: form.phone.trim() || undefined,
+        plan: selectedPlan
+      });
+      setVerificationUrl(result?.verificationUrl ?? null);
+      setEmailSent(Boolean(result?.emailSent));
+      if (!result?.emailSent) setError('Quán đã được lưu nhưng email vẫn chưa gửi được. Kiểm tra cấu hình SMTP của backend rồi thử gửi lại.');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Không thể gửi lại email xác minh. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return <main className="min-h-screen bg-[#F6F1E7] px-4 py-10 text-[#3f2d22]">
     <div className="mx-auto max-w-xl rounded-3xl bg-white p-8 shadow-xl">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#5A4030]">AI-SMARTSERVE</p>
       <h1 className="mt-3 text-3xl font-bold">Tạo quán dùng thử 14 ngày</h1>
       {done ? <div className="mt-6 space-y-4">
-        <div className="rounded-2xl bg-emerald-50 p-4 text-emerald-800">
-          Quán đã được tạo thành công với gói <strong>{selectedPlan.toUpperCase()}</strong> (Dùng thử 14 ngày). Hãy kiểm tra email <strong>{form.email}</strong> để xác minh và vào trang quản lý.
+        <div className={`rounded-2xl p-4 ${emailSent ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-950'}`}>
+          {emailSent ? <>Quán đã được tạo thành công với gói <strong>{selectedPlan.toUpperCase()}</strong> (dùng thử 14 ngày). Email xác minh đã gửi đến <strong>{form.email}</strong>. Hãy xác minh trước khi đăng nhập.</> : <>Quán đã được tạo và lưu với gói <strong>{selectedPlan.toUpperCase()}</strong> (dùng thử 14 ngày), nhưng hệ thống chưa gửi được email xác minh đến <strong>{form.email}</strong>. Quán chỉ đăng nhập được sau khi xác minh email.</>}
         </div>
+        {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">{error}</div>}
         {verificationUrl && <a className="block break-all rounded-xl bg-amber-50 p-3 text-sm text-amber-900 underline" href={verificationUrl}>Mở liên kết xác minh local</a>}
+        {!emailSent && <button type="button" disabled={loading} onClick={resendVerification} className="w-full rounded-xl border border-[#5A4030] px-4 py-3 font-bold text-[#5A4030] disabled:opacity-50">{loading ? 'Đang gửi lại...' : 'Gửi lại email xác minh'}</button>}
         <Link className="inline-block font-semibold text-[#5A4030] underline" to="/login">Đã xác minh? Đăng nhập</Link>
       </div> : <form className="mt-6 space-y-4" onSubmit={submit}>
         <label className="block text-sm font-semibold">

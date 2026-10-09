@@ -201,6 +201,7 @@ export interface OwnerSignupResponse {
   plan: string;
   trialEndsAt: string;
   emailVerificationRequired: boolean;
+  emailSent: boolean;
   verificationUrl?: string | null;
 }
 

@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { systemAdminApi } from '../../api/apis';
 import type { TenantDetailDto, CreateTenantDto } from '../../types/apiTypes';
 import Pagination from '../../components/Pagination';
+import { useNotification } from '../../components/NotificationProvider';
 
 export default function TenantManagement() {
+  const { confirm } = useNotification();
   const [tenants, setTenants] = useState<TenantDetailDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -122,6 +124,29 @@ export default function TenantManagement() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDeleteTrialTenant = (tenant: TenantDetailDto) => {
+    confirm({
+      tone: 'error',
+      title: 'Xóa vĩnh viễn quán dùng thử?',
+      message: `Toàn bộ dữ liệu của quán “${tenant.name}” sẽ bị xóa và không thể khôi phục. Chỉ dùng cho quán test đang dùng thử 14 ngày.`,
+      confirmText: 'Xóa vĩnh viễn',
+      onConfirm: async () => {
+        setSubmitting(true);
+        try {
+          await systemAdminApi.deleteTrialTenant(tenant.tenantId);
+          setActiveMenuTenant(null);
+          setMenuCoords(null);
+          showToast('success', `Đã xóa quán test “${tenant.name}”.`);
+          await loadTenants();
+        } catch (err: any) {
+          showToast('error', err.response?.data?.message || 'Không thể xóa quán dùng thử.');
+        } finally {
+          setSubmitting(false);
+        }
+      }
+    });
   };
 
   // Handler: Execute Plan Change
@@ -973,6 +998,14 @@ export default function TenantManagement() {
                 {activeMenuTenant.isActive ? 'lock' : 'lock_open'}
               </span>
               <span>{activeMenuTenant.isActive ? 'Tạm Khóa Quán' : 'Mở Khóa Quán'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDeleteTrialTenant(activeMenuTenant)}
+              className="w-full text-left px-3.5 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-500/10 flex items-center gap-2.5 transition"
+            >
+              <span className="material-symbols-outlined text-base">delete_forever</span>
+              <span>Xóa quán dùng thử</span>
             </button>
           </div>
         </>

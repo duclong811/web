@@ -99,6 +99,7 @@ namespace WebCafe.Backend.Models.DTOs.Auth
         public string Plan { get; set; } = "basic";
         public DateTime TrialEndsAt { get; set; }
         public bool EmailVerificationRequired { get; set; } = true;
+        public bool EmailSent { get; set; }
         public string? VerificationUrl { get; set; }
     }
 }
